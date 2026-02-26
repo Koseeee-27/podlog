@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
 	"github.com/kobayashikosei/podlog/backend/internal/model"
 )
 
@@ -17,6 +19,7 @@ type mockEpisodeRepo struct {
 	getByIDFunc            func(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	getByPodcastIDFunc     func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
 	getByItunesTrackIDFunc func(ctx context.Context, trackID int64) (*model.Episode, error)
+	getByGUIDFunc          func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -47,6 +50,25 @@ func (m *mockEpisodeRepo) GetByItunesTrackID(ctx context.Context, trackID int64)
 	return m.getByItunesTrackIDFunc(ctx, trackID)
 }
 
+func (m *mockEpisodeRepo) GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error) {
+	if m.getByGUIDFunc == nil {
+		return nil, fmt.Errorf("mockEpisodeRepo.GetByGUID: not implemented")
+	}
+	return m.getByGUIDFunc(ctx, podcastID, guid)
+}
+
+// mockRSSFetcher は rss.Fetcher のモックです。
+type mockRSSFetcher struct {
+	fetchFunc func(ctx context.Context, feedURL string) ([]rss.FeedItem, error)
+}
+
+func (m *mockRSSFetcher) Fetch(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+	if m.fetchFunc == nil {
+		return nil, fmt.Errorf("mockRSSFetcher.Fetch: not implemented")
+	}
+	return m.fetchFunc(ctx, feedURL)
+}
+
 // ── Create テスト ──
 
 func TestCreateEpisode_Success(t *testing.T) {
@@ -56,7 +78,7 @@ func TestCreateEpisode_Success(t *testing.T) {
 			return nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	result, err := uc.Create(context.Background(), podcastID, CreateEpisodeInput{
 		Title: "テストエピソード #1",
@@ -92,7 +114,7 @@ func TestCreateEpisode_WithAllFields(t *testing.T) {
 			return nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	result, err := uc.Create(context.Background(), podcastID, CreateEpisodeInput{
 		Title:       "フルフィールドエピソード",
@@ -130,7 +152,7 @@ func TestCreateEpisode_TitleTrimmed(t *testing.T) {
 			return nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	result, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title: "  前後に空白  ",
@@ -145,7 +167,7 @@ func TestCreateEpisode_TitleTrimmed(t *testing.T) {
 
 func TestCreateEpisode_EmptyTitle(t *testing.T) {
 	repo := &mockEpisodeRepo{}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title: "",
@@ -157,7 +179,7 @@ func TestCreateEpisode_EmptyTitle(t *testing.T) {
 
 func TestCreateEpisode_WhitespaceOnlyTitle(t *testing.T) {
 	repo := &mockEpisodeRepo{}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title: "   \t\n  ",
@@ -179,7 +201,7 @@ func TestCreateEpisode_DuplicateItunesTrackID(t *testing.T) {
 			return existingEpisode, nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	result, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title:         "新しいエピソード",
@@ -222,7 +244,7 @@ func TestCreateEpisode_UniqueViolationFallback(t *testing.T) {
 			return fmt.Errorf("duplicate key value violates unique constraint")
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	result, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title:         "並行リクエストで作成",
@@ -241,7 +263,7 @@ func TestCreateEpisode_UniqueViolationFallback(t *testing.T) {
 
 func TestCreateEpisode_InvalidPublishedAt(t *testing.T) {
 	repo := &mockEpisodeRepo{}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	invalidDate := "not-a-date"
 	_, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
@@ -259,7 +281,7 @@ func TestCreateEpisode_DBError(t *testing.T) {
 			return fmt.Errorf("database connection failed")
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	_, err := uc.Create(context.Background(), uuid.New(), CreateEpisodeInput{
 		Title: "テスト",
@@ -283,7 +305,7 @@ func TestGetEpisodeByID_Success(t *testing.T) {
 			return expected, nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	episode, err := uc.GetByID(context.Background(), episodeID)
 	if err != nil {
@@ -300,7 +322,7 @@ func TestGetEpisodeByID_NotFound(t *testing.T) {
 			return nil, nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	_, err := uc.GetByID(context.Background(), uuid.New())
 	if err == nil {
@@ -322,7 +344,7 @@ func TestGetEpisodesByPodcastID_Success(t *testing.T) {
 			return expected, nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	episodes, err := uc.GetByPodcastID(context.Background(), podcastID, 20, 0)
 	if err != nil {
@@ -342,7 +364,7 @@ func TestGetEpisodesByPodcastID_LimitClamp(t *testing.T) {
 			return []model.Episode{}, nil
 		},
 	}
-	uc := NewEpisodeUsecase(repo)
+	uc := NewEpisodeUsecase(repo, nil)
 
 	// limit=0 は 20 にクランプされるべき
 	_, err := uc.GetByPodcastID(context.Background(), uuid.New(), 0, 0)
@@ -354,5 +376,214 @@ func TestGetEpisodesByPodcastID_LimitClamp(t *testing.T) {
 	_, err = uc.GetByPodcastID(context.Background(), uuid.New(), 200, 0)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+// ── FetchFromFeed テスト ──
+
+func TestFetchFromFeed_NewEpisodes(t *testing.T) {
+	// RSS フィードから新規エピソードを取得するケース
+	podcastID := uuid.New()
+	now := time.Now()
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			dur := int64(3600000)
+			return []rss.FeedItem{
+				{
+					Title:       "新しいエピソード1",
+					Description: "説明1",
+					GUID:        "guid-001",
+					AudioURL:    "https://example.com/ep1.mp3",
+					DurationMs:  &dur,
+					PubDate:     &now,
+				},
+				{
+					Title: "新しいエピソード2",
+					GUID:  "guid-002",
+				},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			// どちらも未登録
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 2 {
+		t.Errorf("expected 2 new episodes, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 0 {
+		t.Errorf("expected 0 skipped, got %d", result.SkippedCount)
+	}
+	if len(result.Episodes) != 2 {
+		t.Errorf("expected 2 episodes in result, got %d", len(result.Episodes))
+	}
+}
+
+func TestFetchFromFeed_AllDuplicate(t *testing.T) {
+	// 全てのエピソードが既に登録済みのケース
+	podcastID := uuid.New()
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "既存1", GUID: "guid-001"},
+				{Title: "既存2", GUID: "guid-002"},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			// 全て登録済み
+			return &model.Episode{ID: uuid.New(), Title: "既存"}, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 0 {
+		t.Errorf("expected 0 new, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 2 {
+		t.Errorf("expected 2 skipped, got %d", result.SkippedCount)
+	}
+}
+
+func TestFetchFromFeed_MixedNewAndExisting(t *testing.T) {
+	// 新規と既存が混在するケース
+	podcastID := uuid.New()
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "新規", GUID: "new-001"},
+				{Title: "既存", GUID: "existing-001"},
+				{Title: "新規2", GUID: "new-002"},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			if guid == "existing-001" {
+				return &model.Episode{ID: uuid.New(), Title: "既存"}, nil
+			}
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 2 {
+		t.Errorf("expected 2 new, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 1 {
+		t.Errorf("expected 1 skipped, got %d", result.SkippedCount)
+	}
+}
+
+func TestFetchFromFeed_RSSError(t *testing.T) {
+	// RSS フィード取得時にエラーが発生するケース
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return nil, fmt.Errorf("network error")
+		},
+	}
+
+	repo := &mockEpisodeRepo{}
+	uc := NewEpisodeUsecase(repo, fetcher)
+
+	_, err := uc.FetchFromFeed(context.Background(), uuid.New(), "https://example.com/feed.xml")
+	if err == nil {
+		t.Fatal("expected error for RSS fetch failure, got nil")
+	}
+}
+
+func TestFetchFromFeed_SkipsItemsWithoutGUID(t *testing.T) {
+	// GUID がないアイテムはスキップされるケース
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "GUIDなし", GUID: ""},
+				{Title: "GUIDあり", GUID: "guid-001"},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), uuid.New(), "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 1 {
+		t.Errorf("expected 1 new, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 1 {
+		t.Errorf("expected 1 skipped (no GUID), got %d", result.SkippedCount)
+	}
+}
+
+func TestFetchFromFeed_UniqueViolationSkipped(t *testing.T) {
+	// 並行リクエストで UNIQUE 違反が発生するケース → スキップとして扱う
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "競合エピソード", GUID: "guid-race"},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			// チェック時点では未登録
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			// INSERT 時に UNIQUE 違反（別リクエストが先に登録）
+			return fmt.Errorf("duplicate key value violates unique constraint")
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), uuid.New(), "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 0 {
+		t.Errorf("expected 0 new, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 1 {
+		t.Errorf("expected 1 skipped, got %d", result.SkippedCount)
 	}
 }
