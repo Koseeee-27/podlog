@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
@@ -17,6 +17,21 @@ export default function PodcastPageClient() {
   const { episodes, loading: episodesLoading, error: episodesError, hasMore, loadMore, refresh } = useEpisodes(id);
   const { fetchFromFeed, loading: fetchLoading, error: fetchError, result: fetchResult } = useFetchFromFeed(id);
   const [showFetchResult, setShowFetchResult] = useState(false);
+  const hasFetchedRef = useRef(false);
+
+  // feed_url がある場合、ページ表示時に自動でRSSフィードからエピソードを取得
+  useEffect(() => {
+    if (!podcast?.feed_url || hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+
+    (async () => {
+      const result = await fetchFromFeed();
+      if (result && result.new_count > 0) {
+        setShowFetchResult(true);
+        await refresh();
+      }
+    })();
+  }, [podcast, fetchFromFeed, refresh]);
 
   if (podcastLoading) {
     return <Loading />;
@@ -53,7 +68,7 @@ export default function PodcastPageClient() {
               loading={fetchLoading}
               onClick={handleFetchFromFeed}
             >
-              RSSからエピソードを取得
+              RSSから再取得
             </Button>
           )}
         </div>
@@ -81,7 +96,7 @@ export default function PodcastPageClient() {
         ) : (
           <EpisodeList
             episodes={episodes}
-            loading={episodesLoading}
+            loading={episodesLoading || fetchLoading}
             hasMore={hasMore}
             onLoadMore={loadMore}
           />
