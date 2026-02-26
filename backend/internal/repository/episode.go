@@ -17,6 +17,7 @@ type EpisodeRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
+	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 }
 
 type episodeRepository struct {
@@ -31,8 +32,8 @@ func NewEpisodeRepository(db *sqlx.DB) EpisodeRepository {
 // Create は新しいエピソードをDBに保存します。
 func (r *episodeRepository) Create(ctx context.Context, episode *model.Episode) error {
 	query := `
-		INSERT INTO episodes (id, podcast_id, itunes_track_id, title, description, audio_url, artwork_url, source_url, duration_ms, published_at)
-		VALUES (:id, :podcast_id, :itunes_track_id, :title, :description, :audio_url, :artwork_url, :source_url, :duration_ms, :published_at)
+		INSERT INTO episodes (id, podcast_id, itunes_track_id, guid, title, description, audio_url, artwork_url, source_url, duration_ms, published_at)
+		VALUES (:id, :podcast_id, :itunes_track_id, :guid, :title, :description, :audio_url, :artwork_url, :source_url, :duration_ms, :published_at)
 	`
 	_, err := r.db.NamedExecContext(ctx, query, episode)
 	if err != nil {
@@ -82,6 +83,21 @@ func (r *episodeRepository) GetByItunesTrackID(ctx context.Context, trackID int6
 			return nil, nil
 		}
 		return nil, fmt.Errorf("failed to get episode by itunes_track_id: %w", err)
+	}
+	return &episode, nil
+}
+
+// GetByGUID はポッドキャストIDとGUIDの組み合わせでエピソードを取得します。
+// RSS フィードの重複検知に使用します。
+func (r *episodeRepository) GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error) {
+	var episode model.Episode
+	query := `SELECT * FROM episodes WHERE podcast_id = $1 AND guid = $2`
+	err := r.db.GetContext(ctx, &episode, query, podcastID, guid)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get episode by guid: %w", err)
 	}
 	return &episode, nil
 }

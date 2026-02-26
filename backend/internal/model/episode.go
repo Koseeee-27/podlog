@@ -11,6 +11,7 @@ type Episode struct {
 	ID             uuid.UUID  `db:"id" json:"id"`
 	PodcastID      uuid.UUID  `db:"podcast_id" json:"podcast_id"`
 	ItunesTrackID  *int64     `db:"itunes_track_id" json:"itunes_track_id,omitempty"`
+	GUID           *string    `db:"guid" json:"guid,omitempty"`
 	Title          string     `db:"title" json:"title"`
 	Description    *string    `db:"description" json:"description,omitempty"`
 	AudioURL       *string    `db:"audio_url" json:"audio_url,omitempty"`
