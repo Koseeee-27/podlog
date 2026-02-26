@@ -554,6 +554,40 @@ func TestFetchFromFeed_SkipsItemsWithoutGUID(t *testing.T) {
 	}
 }
 
+func TestFetchFromFeed_SkipsEmptyTitle(t *testing.T) {
+	// タイトルが空・空白のみのアイテムはスキップされるケース
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "", GUID: "guid-empty"},
+				{Title: "   ", GUID: "guid-whitespace"},
+				{Title: "有効なタイトル", GUID: "guid-valid"},
+			}, nil
+		},
+	}
+
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), uuid.New(), "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.NewCount != 1 {
+		t.Errorf("expected 1 new, got %d", result.NewCount)
+	}
+	if result.SkippedCount != 2 {
+		t.Errorf("expected 2 skipped (empty titles), got %d", result.SkippedCount)
+	}
+}
+
 func TestFetchFromFeed_UniqueViolationSkipped(t *testing.T) {
 	// 並行リクエストで UNIQUE 違反が発生するケース → スキップとして扱う
 	fetcher := &mockRSSFetcher{

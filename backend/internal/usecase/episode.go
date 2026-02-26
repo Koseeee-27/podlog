@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -190,6 +191,13 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 
 	// 2. 各アイテムを処理
 	for _, item := range items {
+		// タイトルのバリデーション（Create メソッドと同じルール）
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			result.SkippedCount++
+			continue
+		}
+
 		// GUID がないアイテムはスキップ（重複検知ができないため）
 		if item.GUID == "" {
 			result.SkippedCount++
@@ -199,6 +207,7 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		// GUID で既存チェック
 		existing, err := u.episodeRepo.GetByGUID(ctx, podcastID, item.GUID)
 		if err != nil {
+			log.Printf("[FetchFromFeed] failed to check GUID %q for podcast %s: %v", item.GUID, podcastID, err)
 			result.FailedCount++
 			continue
 		}
@@ -210,13 +219,13 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 
 		// 3. 新規エピソードを構築して保存
 		episode := &model.Episode{
-			ID:        uuid.New(),
-			PodcastID: podcastID,
-			GUID:      &item.GUID,
-			Title:     item.Title,
-			AudioURL:  strPtr(item.AudioURL),
+			ID:         uuid.New(),
+			PodcastID:  podcastID,
+			GUID:       &item.GUID,
+			Title:      title,
+			AudioURL:   strPtr(item.AudioURL),
 			ArtworkURL: strPtr(item.ImageURL),
-			SourceURL: strPtr(item.Link),
+			SourceURL:  strPtr(item.Link),
 			DurationMs: item.DurationMs,
 			PublishedAt: item.PubDate,
 		}
@@ -232,6 +241,7 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 				result.SkippedCount++
 				continue
 			}
+			log.Printf("[FetchFromFeed] failed to create episode %q (GUID: %s) for podcast %s: %v", title, item.GUID, podcastID, err)
 			result.FailedCount++
 			continue
 		}
