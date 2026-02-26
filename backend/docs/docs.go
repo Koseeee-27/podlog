@@ -275,7 +275,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "ポッドキャストに新しいエピソードを登録します",
+                "description": "ポッドキャストに新しいエピソードを登録します。iTunes Track ID が既に存在する場合は既存エピソードを返します。",
                 "consumes": [
                     "application/json"
                 ],
@@ -305,8 +305,14 @@ const docTemplate = `{
                     }
                 ],
                 "responses": {
+                    "200": {
+                        "description": "既存エピソード返却（iTunes Track ID 重複）",
+                        "schema": {
+                            "$ref": "#/definitions/model.Episode"
+                        }
+                    },
                     "201": {
-                        "description": "Created",
+                        "description": "新規作成",
                         "schema": {
                             "$ref": "#/definitions/model.Episode"
                         }
