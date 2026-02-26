@@ -17,3 +17,14 @@ export interface EpisodeWithStats extends Episode {
   review_count: number;
   average_rating: number;
 }
+
+export interface CreateEpisodeRequest {
+  title: string;
+  description?: string | null;
+  audio_url?: string | null;
+  artwork_url?: string | null;
+  source_url?: string | null;
+  duration_ms?: number | null;
+  published_at?: string | null;
+  itunes_track_id?: number | null;
+}
