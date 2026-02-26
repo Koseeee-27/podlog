@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getEpisodesByPodcast, getEpisode } from "@/lib/api/episodes";
-import type { Episode, EpisodeWithStats } from "@/types/episode";
+import { getEpisodesByPodcast, getEpisode, createEpisode } from "@/lib/api/episodes";
+import type { Episode, EpisodeWithStats, CreateEpisodeRequest } from "@/types/episode";
 
 const PAGE_SIZE = 20;
 
@@ -83,4 +83,29 @@ export function useEpisode(id: string) {
   }, [id]);
 
   return { episode, loading, error };
+}
+
+export function useCreateEpisode(podcastId: string) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const create = useCallback(
+    async (data: CreateEpisodeRequest): Promise<Episode | null> => {
+      setLoading(true);
+      setError(null);
+      try {
+        const episode = await createEpisode(podcastId, data);
+        return episode;
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "エピソードの作成に失敗しました";
+        setError(message);
+        return null;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [podcastId]
+  );
+
+  return { create, loading, error };
 }

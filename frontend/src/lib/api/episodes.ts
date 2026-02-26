@@ -1,5 +1,5 @@
-import { apiGet } from "./client";
-import type { Episode, EpisodeWithStats } from "@/types/episode";
+import { apiGet, apiPost } from "./client";
+import type { Episode, EpisodeWithStats, CreateEpisodeRequest } from "@/types/episode";
 
 export function getEpisodesByPodcast(
   podcastId: string,
@@ -16,4 +16,14 @@ export function getEpisodesByPodcast(
 
 export function getEpisode(id: string): Promise<EpisodeWithStats> {
   return apiGet<EpisodeWithStats>(`/episodes/${encodeURIComponent(id)}`);
+}
+
+export function createEpisode(
+  podcastId: string,
+  data: CreateEpisodeRequest
+): Promise<Episode> {
+  return apiPost<Episode>(
+    `/podcasts/${encodeURIComponent(podcastId)}/episodes`,
+    data
+  );
 }
