@@ -36,13 +36,13 @@ export function useEpisodes(podcastId: string) {
     return () => { cancelled = true; };
   }, [podcastId]);
 
+  const episodesLength = (episodes ?? []).length;
   const loadMore = useCallback(async () => {
     setLoading(true);
     try {
-      const currentLength = (episodes ?? []).length;
       const data = await getEpisodesByPodcast(podcastId, {
         limit: PAGE_SIZE,
-        offset: currentLength,
+        offset: episodesLength,
       });
       const list = Array.isArray(data) ? data : [];
       setEpisodes((prev) => [...prev, ...list]);
@@ -52,7 +52,7 @@ export function useEpisodes(podcastId: string) {
     } finally {
       setLoading(false);
     }
-  }, [podcastId, episodes?.length ?? 0]);
+  }, [podcastId, episodesLength]);
 
   return { episodes, loading, error, hasMore, loadMore };
 }

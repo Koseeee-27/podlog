@@ -37,7 +37,8 @@ export function useAuth() {
   }, [supabase.auth]);
 
   useEffect(() => {
-    refreshProfile();
+    // 初回プロフィール取得を非同期で実行（同期的な setState によるカスケードレンダーを回避）
+    queueMicrotask(() => { refreshProfile(); });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: AuthChangeEvent, session: Session | null) => {
       if (!session) {
