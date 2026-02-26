@@ -124,6 +124,25 @@ definitions:
       url:
         type: string
     type: object
+  usecase.CreateEpisodeInput:
+    properties:
+      artwork_url:
+        type: string
+      audio_url:
+        type: string
+      description:
+        type: string
+      duration_ms:
+        type: integer
+      itunes_track_id:
+        type: integer
+      published_at:
+        type: string
+      source_url:
+        type: string
+      title:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact: {}
@@ -233,6 +252,46 @@ paths:
       summary: エピソード一覧取得
       tags:
       - podcasts
+    post:
+      consumes:
+      - application/json
+      description: ポッドキャストに新しいエピソードを登録します
+      parameters:
+      - description: ポッドキャストID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: エピソード情報
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.CreateEpisodeInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Episode'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: エピソード作成
+      tags:
+      - episodes
   /podcasts/fetch-url:
     post:
       consumes:
