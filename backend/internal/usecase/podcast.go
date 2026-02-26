@@ -93,7 +93,7 @@ func (u *podcastUsecase) GetByID(ctx context.Context, id uuid.UUID) (*model.Podc
 		return nil, fmt.Errorf("failed to get podcast: %w", err)
 	}
 	if podcast == nil {
-		return nil, fmt.Errorf("podcast not found")
+		return nil, &NotFoundError{Resource: "podcast"}
 	}
 	return podcast, nil
 }

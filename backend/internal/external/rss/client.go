@@ -5,6 +5,7 @@ package rss
 import (
 	"context"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,6 +17,25 @@ import (
 
 	"github.com/kobayashikosei/podlog/backend/internal/util"
 )
+
+// ErrSSRFBlocked は SSRF 対策でリクエストがブロックされたことを表す sentinel error です。
+// errors.Is で判定できるようにするため、型ではなく値として定義しています。
+var ErrSSRFBlocked = errors.New("SSRF blocked")
+
+// SSRFError は SSRF 対策でブロックされた際の詳細情報を持つエラーです。
+// handler 層では errors.As で判定し、400 Bad Request を返します。
+type SSRFError struct {
+	Reason string
+}
+
+func (e *SSRFError) Error() string {
+	return e.Reason
+}
+
+// Unwrap は ErrSSRFBlocked を返すことで errors.Is(err, ErrSSRFBlocked) を可能にします。
+func (e *SSRFError) Unwrap() error {
+	return ErrSSRFBlocked
+}
 
 // FeedItem は RSS フィードの1件のエピソードを表す構造体です。
 type FeedItem struct {
@@ -41,11 +61,50 @@ type Client struct {
 }
 
 // NewClient は RSS Client を生成します。
-// タイムアウト 10 秒を設定しています。
+// カスタム Transport を使用して、接続時（DialContext）に IP アドレスを検証します。
+// これにより DNS rebinding 攻撃（TOCTOU 脆弱性）を防止します。
+//
+// DNS rebinding 攻撃とは:
+//   - 事前の DNS 解決チェックでは安全な IP が返る
+//   - 実際の HTTP 接続時に DNS が変更され、プライベート IP に接続される
+//
+// DialContext 内で IP を検証することで、接続直前の IP を確認でき、この攻撃を防げます。
 func NewClient() *Client {
+	// カスタム Dialer: 接続直前に解決された IP アドレスを検証する
+	dialer := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// addr は "host:port" 形式なのでホスト部分を取り出す
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid address: %w", err)
+			}
+
+			// ホスト名を解決して全ての IP をチェック
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve host: %w", err)
+			}
+
+			for _, ipAddr := range ips {
+				if util.IsPrivateIP(ipAddr.IP) {
+					return nil, &SSRFError{Reason: "access to private IP addresses is not allowed"}
+				}
+			}
+
+			// 検証済みの IP アドレスに直接接続する（DNS を再解決させない）
+			// 最初の IP を使って接続
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+		},
+	}
+
 	return &Client{
 		httpClient: &http.Client{
-			Timeout: 10 * time.Second,
+			Timeout:   10 * time.Second,
+			Transport: transport,
 		},
 	}
 }
@@ -54,7 +113,7 @@ func NewClient() *Client {
 //
 // セキュリティ考慮事項（SSRF対策）:
 //  1. HTTPS のみ許可（HTTP は拒否）
-//  2. プライベート IP アドレスへのリクエストを禁止
+//  2. プライベート IP アドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
 //  3. レスポンスサイズを 5MB に制限（巨大フィード対策）
 func (c *Client) Fetch(ctx context.Context, feedURL string) ([]FeedItem, error) {
 	// 1. URL をパースして安全性を検証
@@ -65,22 +124,11 @@ func (c *Client) Fetch(ctx context.Context, feedURL string) ([]FeedItem, error) 
 
 	// HTTPS のみ許可
 	if parsed.Scheme != "https" {
-		return nil, fmt.Errorf("only HTTPS URLs are allowed")
+		return nil, &SSRFError{Reason: "only HTTPS URLs are allowed"}
 	}
 
-	// 2. ホスト名を解決してプライベート IP でないことを確認
-	host := parsed.Hostname()
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve host: %w", err)
-	}
-	for _, ip := range ips {
-		if util.IsPrivateIP(ip) {
-			return nil, fmt.Errorf("access to private IP addresses is not allowed")
-		}
-	}
-
-	// 3. HTTP GET リクエストを送信
+	// 2. HTTP GET リクエストを送信
+	// IP 検証は Transport の DialContext 内で接続直前に行われる
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -97,10 +145,10 @@ func (c *Client) Fetch(ctx context.Context, feedURL string) ([]FeedItem, error) 
 		return nil, fmt.Errorf("feed returned status %d", resp.StatusCode)
 	}
 
-	// 4. レスポンスサイズを 5MB に制限
+	// 3. レスポンスサイズを 5MB に制限
 	limitedReader := io.LimitReader(resp.Body, 5*1024*1024)
 
-	// 5. RSS XML をパース
+	// 4. RSS XML をパース
 	return parseFeed(limitedReader)
 }
 
@@ -142,9 +190,25 @@ type rssEnclosure struct {
 }
 
 // parseFeed は RSS 2.0 XML をパースして FeedItem のスライスに変換します。
+// XML bomb 対策として、エンティティ展開を無効化しています。
 func parseFeed(r io.Reader) ([]FeedItem, error) {
 	var feed rssFeed
 	decoder := xml.NewDecoder(r)
+
+	// XML bomb（billion laughs attack）対策:
+	// カスタムエンティティマップを空に設定することで、
+	// ユーザー定義エンティティの展開を無効化する。
+	// これにより <!ENTITY> で定義された再帰的・入れ子のエンティティが展開されなくなる。
+	decoder.Entity = map[string]string{}
+
+	decoder.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
+		// UTF-8 のみサポート（RSS は基本的に UTF-8）
+		if strings.EqualFold(charset, "utf-8") || strings.EqualFold(charset, "us-ascii") {
+			return input, nil
+		}
+		return nil, fmt.Errorf("unsupported charset: %s", charset)
+	}
+
 	if err := decoder.Decode(&feed); err != nil {
 		return nil, fmt.Errorf("failed to parse RSS feed: %w", err)
 	}

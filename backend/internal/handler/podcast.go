@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 
@@ -69,7 +70,8 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 
 	podcast, err := h.podcastUsecase.GetByID(c.Request().Context(), id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "podcast not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")

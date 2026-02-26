@@ -1,11 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
+	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
 	"github.com/kobayashikosei/podlog/backend/internal/response"
 	"github.com/kobayashikosei/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -55,7 +56,8 @@ func (h *EpisodeHandler) Create(c echo.Context) error {
 
 	result, err := h.episodeUsecase.Create(c.Request().Context(), podcastID, input)
 	if err != nil {
-		if strings.Contains(err.Error(), "is required") || strings.Contains(err.Error(), "invalid") {
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &validationErr) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to create episode")
@@ -84,7 +86,8 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 
 	episode, err := h.episodeUsecase.GetByID(c.Request().Context(), id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "episode not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get episode")
@@ -155,7 +158,8 @@ func (h *EpisodeHandler) FetchFromFeed(c echo.Context) error {
 	// 2. ポッドキャストを取得して feed_url の存在を確認
 	podcast, err := h.podcastUsecase.GetByID(c.Request().Context(), podcastID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "podcast not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
@@ -168,7 +172,8 @@ func (h *EpisodeHandler) FetchFromFeed(c echo.Context) error {
 	// 3. RSS フィードからエピソードを取得
 	result, err := h.episodeUsecase.FetchFromFeed(c.Request().Context(), podcastID, *podcast.FeedURL)
 	if err != nil {
-		if strings.Contains(err.Error(), "only HTTPS") || strings.Contains(err.Error(), "private IP") {
+		// SSRF 関連エラー（HTTPS only / プライベート IP ブロック）は 400 を返す
+		if errors.Is(err, rss.ErrSSRFBlocked) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to fetch episodes from feed")

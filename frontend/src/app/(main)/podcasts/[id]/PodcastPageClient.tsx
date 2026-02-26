@@ -19,19 +19,26 @@ export default function PodcastPageClient() {
   const [showFetchResult, setShowFetchResult] = useState(false);
   const hasFetchedRef = useRef(false);
 
-  // feed_url がある場合、ページ表示時に自動でRSSフィードからエピソードを取得
+  // feed_url がある場合、初回エピソードロード完了後に自動でRSSフィードからエピソードを取得
+  // episodesLoading を依存に入れることで、初回ロード完了を待ってからフェッチする
+  // hasFetchedRef はフェッチ成功時のみ true にし、失敗時はページ再読み込みでリトライ可能にする
   useEffect(() => {
-    if (!podcast?.feed_url || hasFetchedRef.current) return;
+    if (!podcast?.feed_url || hasFetchedRef.current || episodesLoading) return;
     hasFetchedRef.current = true;
 
     (async () => {
       const result = await fetchFromFeed();
-      if (result && result.new_count > 0) {
-        setShowFetchResult(true);
-        await refresh();
+      if (result) {
+        if (result.new_count > 0) {
+          setShowFetchResult(true);
+          await refresh();
+        }
+      } else {
+        // フェッチ失敗時はリトライ可能にする
+        hasFetchedRef.current = false;
       }
     })();
-  }, [podcast, fetchFromFeed, refresh]);
+  }, [podcast, fetchFromFeed, refresh, episodesLoading]);
 
   if (podcastLoading) {
     return <Loading />;

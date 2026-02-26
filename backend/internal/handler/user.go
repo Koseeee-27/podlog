@@ -1,8 +1,8 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
-	"strings"
 
 	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
 	"github.com/kobayashikosei/podlog/backend/internal/model"
@@ -51,13 +51,13 @@ func (h *UserHandler) CreateProfile(c echo.Context) error {
 	// 3. ユースケースを呼び出し
 	user, err := h.userUsecase.CreateProfile(c.Request().Context(), userID, req)
 	if err != nil {
-		// エラーメッセージに応じてステータスコードを分ける
-		msg := err.Error()
-		if strings.Contains(msg, "already taken") || strings.Contains(msg, "already exists") {
-			return response.Error(c, http.StatusConflict, msg)
+		var conflictErr *usecase.ConflictError
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &conflictErr) {
+			return response.Error(c, http.StatusConflict, err.Error())
 		}
-		if strings.Contains(msg, "invalid") || strings.Contains(msg, "must be") {
-			return response.Error(c, http.StatusBadRequest, msg)
+		if errors.As(err, &validationErr) {
+			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to create profile")
 	}
@@ -84,7 +84,8 @@ func (h *UserHandler) GetMyProfile(c echo.Context) error {
 
 	user, err := h.userUsecase.GetMyProfile(c.Request().Context(), userID)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "profile not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get profile")
@@ -119,10 +120,12 @@ func (h *UserHandler) UpdateMyProfile(c echo.Context) error {
 
 	user, err := h.userUsecase.UpdateMyProfile(c.Request().Context(), userID, req)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "profile not found")
 		}
-		if strings.Contains(err.Error(), "must be") {
+		if errors.As(err, &validationErr) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to update profile")
@@ -148,7 +151,8 @@ func (h *UserHandler) GetPublicProfile(c echo.Context) error {
 
 	user, err := h.userUsecase.GetPublicProfile(c.Request().Context(), username)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "user not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get profile")

@@ -76,7 +76,7 @@ func (u *episodeUsecase) Create(ctx context.Context, podcastID uuid.UUID, input 
 	// 1. バリデーション: タイトルは必須（空白のみも不可）
 	input.Title = strings.TrimSpace(input.Title)
 	if input.Title == "" {
-		return nil, fmt.Errorf("title is required")
+		return nil, &ValidationError{Message: "title is required"}
 	}
 
 	// 2. iTunes Track ID の既存チェック
@@ -96,7 +96,7 @@ func (u *episodeUsecase) Create(ctx context.Context, podcastID uuid.UUID, input 
 	if input.PublishedAt != nil && *input.PublishedAt != "" {
 		t, err := time.Parse(time.RFC3339, *input.PublishedAt)
 		if err != nil {
-			return nil, fmt.Errorf("invalid published_at format (use RFC3339): %w", err)
+			return nil, &ValidationError{Message: fmt.Sprintf("invalid published_at format (use RFC3339): %v", err)}
 		}
 		publishedAt = &t
 	}
@@ -150,7 +150,7 @@ func (u *episodeUsecase) GetByID(ctx context.Context, id uuid.UUID) (*model.Epis
 		return nil, fmt.Errorf("failed to get episode: %w", err)
 	}
 	if episode == nil {
-		return nil, fmt.Errorf("episode not found")
+		return nil, &NotFoundError{Resource: "episode"}
 	}
 	return episode, nil
 }
@@ -189,6 +189,11 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		Episodes: make([]model.Episode, 0),
 	}
 
+	// 連続DB失敗のカウンタ（DB障害時の無駄なリトライを防止）
+	// 連続で maxConsecutiveFailures 回失敗したら早期打ち切りする
+	const maxConsecutiveFailures = 3
+	consecutiveFailures := 0
+
 	// 2. 各アイテムを処理
 	for _, item := range items {
 		// タイトルのバリデーション（Create メソッドと同じルール）
@@ -209,8 +214,16 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		if err != nil {
 			log.Printf("[FetchFromFeed] failed to check GUID %q for podcast %s: %v", item.GUID, podcastID, err)
 			result.FailedCount++
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
+			}
 			continue
 		}
+		// DB 成功したのでカウンタリセット
+		consecutiveFailures = 0
+
 		if existing != nil {
 			// 既に登録済み
 			result.SkippedCount++
@@ -239,13 +252,21 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 			// UNIQUE 違反の場合はスキップ（並行リクエストで先に INSERT されたケース）
 			if isUniqueViolation(err) {
 				result.SkippedCount++
+				consecutiveFailures = 0
 				continue
 			}
 			log.Printf("[FetchFromFeed] failed to create episode %q (GUID: %s) for podcast %s: %v", title, item.GUID, podcastID, err)
 			result.FailedCount++
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
+			}
 			continue
 		}
 
+		// DB 成功したのでカウンタリセット
+		consecutiveFailures = 0
 		result.NewCount++
 		result.Episodes = append(result.Episodes, *episode)
 	}

@@ -40,12 +40,12 @@ func NewUserUsecase(userRepo repository.UserRepository) UserUsecase {
 func (u *userUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req model.CreateProfileRequest) (*model.User, error) {
 	// バリデーション: ユーザー名の形式チェック
 	if !usernameRegex.MatchString(req.Username) {
-		return nil, fmt.Errorf("invalid username: must be 3-30 alphanumeric characters or underscores")
+		return nil, &ValidationError{Message: "invalid username: must be 3-30 alphanumeric characters or underscores"}
 	}
 
 	// バリデーション: 表示名の長さチェック
 	if len(req.DisplayName) == 0 || len(req.DisplayName) > 50 {
-		return nil, fmt.Errorf("display_name must be between 1 and 50 characters")
+		return nil, &ValidationError{Message: "display_name must be between 1 and 50 characters"}
 	}
 
 	// 既に同じユーザー名が使われていないか確認
@@ -54,7 +54,7 @@ func (u *userUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req m
 		return nil, fmt.Errorf("failed to check username: %w", err)
 	}
 	if exists {
-		return nil, fmt.Errorf("username already taken")
+		return nil, &ConflictError{Message: "username already taken"}
 	}
 
 	// 既にプロフィールが作成されていないか確認
@@ -63,7 +63,7 @@ func (u *userUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req m
 		return nil, fmt.Errorf("failed to check existing profile: %w", err)
 	}
 	if existing != nil {
-		return nil, fmt.Errorf("profile already exists")
+		return nil, &ConflictError{Message: "profile already exists"}
 	}
 
 	// ユーザーを作成
@@ -95,7 +95,7 @@ func (u *userUsecase) GetMyProfile(ctx context.Context, userID uuid.UUID) (*mode
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("profile not found")
+		return nil, &NotFoundError{Resource: "profile"}
 	}
 	return user, nil
 }
@@ -109,13 +109,13 @@ func (u *userUsecase) UpdateMyProfile(ctx context.Context, userID uuid.UUID, req
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("profile not found")
+		return nil, &NotFoundError{Resource: "profile"}
 	}
 
 	// 送られたフィールドだけ更新
 	if req.DisplayName != nil {
 		if len(*req.DisplayName) == 0 || len(*req.DisplayName) > 50 {
-			return nil, fmt.Errorf("display_name must be between 1 and 50 characters")
+			return nil, &ValidationError{Message: "display_name must be between 1 and 50 characters"}
 		}
 		user.DisplayName = *req.DisplayName
 	}
@@ -146,7 +146,7 @@ func (u *userUsecase) GetPublicProfile(ctx context.Context, username string) (*m
 		return nil, fmt.Errorf("failed to get profile: %w", err)
 	}
 	if user == nil {
-		return nil, fmt.Errorf("user not found")
+		return nil, &NotFoundError{Resource: "user"}
 	}
 	return user, nil
 }
