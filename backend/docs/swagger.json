@@ -332,6 +332,67 @@
                 }
             }
         },
+        "/podcasts/{id}/episodes/fetch": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "ポッドキャストのRSSフィードからエピソードを自動取得してDBに登録します。GUIDで重複を検知し、新規のみ追加します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "episodes"
+                ],
+                "summary": "RSSフィードからエピソード取得",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ポッドキャストID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "取得結果（新規・スキップ・失敗件数）",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.FetchFromFeedResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -584,6 +645,9 @@
                 "duration_ms": {
                     "type": "integer"
                 },
+                "guid": {
+                    "type": "string"
+                },
                 "id": {
                     "type": "string"
                 },
@@ -760,6 +824,26 @@
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.FetchFromFeedResult": {
+            "type": "object",
+            "properties": {
+                "episodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.Episode"
+                    }
+                },
+                "failed_count": {
+                    "type": "integer"
+                },
+                "new_count": {
+                    "type": "integer"
+                },
+                "skipped_count": {
+                    "type": "integer"
                 }
             }
         }

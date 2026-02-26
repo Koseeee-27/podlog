@@ -15,6 +15,7 @@ import (
 	"net/url"
 	"time"
 
+	"github.com/kobayashikosei/podlog/backend/internal/util"
 	"golang.org/x/net/html"
 )
 
@@ -69,7 +70,7 @@ func (s *Scraper) Fetch(ctx context.Context, targetURL string) (*OGPData, error)
 		return nil, fmt.Errorf("failed to resolve host: %w", err)
 	}
 	for _, ip := range ips {
-		if isPrivateIP(ip) {
+		if util.IsPrivateIP(ip) {
 			return nil, fmt.Errorf("access to private IP addresses is not allowed")
 		}
 	}
@@ -144,33 +145,5 @@ func parseOGP(r io.Reader) (*OGPData, error) {
 			}
 		}
 	}
-}
-
-// isPrivateIP は IP アドレスがプライベートネットワークに属するか判定します。
-// SSRF（Server-Side Request Forgery）攻撃を防ぐために使用します。
-func isPrivateIP(ip net.IP) bool {
-	privateRanges := []string{
-		"10.0.0.0/8",
-		"172.16.0.0/12",
-		"192.168.0.0/16",
-		"127.0.0.0/8",
-		"169.254.0.0/16",
-		"::1/128",
-		"fc00::/7",
-		"fe80::/10",
-	}
-
-	for _, cidr := range privateRanges {
-		_, network, err := net.ParseCIDR(cidr)
-		if err != nil {
-			continue
-		}
-		if network.Contains(ip) {
-			return true
-		}
-	}
-
-	// リンクローカルアドレスもブロック
-	return ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast()
 }
 

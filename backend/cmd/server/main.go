@@ -21,6 +21,7 @@ import (
 	"github.com/kobayashikosei/podlog/backend/internal/config"
 	"github.com/kobayashikosei/podlog/backend/internal/external/itunes"
 	"github.com/kobayashikosei/podlog/backend/internal/external/ogp"
+	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
 	"github.com/kobayashikosei/podlog/backend/internal/handler"
 	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
 	"github.com/kobayashikosei/podlog/backend/internal/repository"
@@ -68,6 +69,7 @@ func main() {
 	// 6. 外部APIクライアントを初期化
 	itunesClient := itunes.NewClient()
 	ogpScraper := ogp.NewScraper()
+	rssClient := rss.NewClient()
 
 	// 7. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
 	userRepo := repository.NewUserRepository(db)
@@ -76,13 +78,13 @@ func main() {
 
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
-	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo)
+	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
 
 	handlers := router.Handlers{
 		Health:  handler.NewHealthHandler(),
 		User:    handler.NewUserHandler(userUsecase),
 		Podcast: handler.NewPodcastHandler(podcastUsecase, ogpScraper),
-		Episode: handler.NewEpisodeHandler(episodeUsecase),
+		Episode: handler.NewEpisodeHandler(episodeUsecase, podcastUsecase),
 	}
 
 	// 8. ルーティングを設定

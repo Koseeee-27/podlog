@@ -1,24 +1,31 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
+	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
 	"github.com/kobayashikosei/podlog/backend/internal/response"
 	"github.com/kobayashikosei/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 )
 
 // EpisodeHandler はエピソード関連のHTTPハンドラーです。
+// podcastUsecase は feed_url を持つポッドキャストの取得に使用します。
 type EpisodeHandler struct {
 	episodeUsecase usecase.EpisodeUsecase
+	podcastUsecase usecase.PodcastUsecase
 }
 
 // NewEpisodeHandler は EpisodeHandler を生成します。
-func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase) *EpisodeHandler {
-	return &EpisodeHandler{episodeUsecase: episodeUsecase}
+// podcastUsecase は FetchFromFeed で feed_url を取得するために必要です。
+func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase, podcastUsecase usecase.PodcastUsecase) *EpisodeHandler {
+	return &EpisodeHandler{
+		episodeUsecase: episodeUsecase,
+		podcastUsecase: podcastUsecase,
+	}
 }
 
 // Create はポッドキャストに新しいエピソードを追加するハンドラーです。
@@ -49,7 +56,8 @@ func (h *EpisodeHandler) Create(c echo.Context) error {
 
 	result, err := h.episodeUsecase.Create(c.Request().Context(), podcastID, input)
 	if err != nil {
-		if strings.Contains(err.Error(), "is required") || strings.Contains(err.Error(), "invalid") {
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &validationErr) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to create episode")
@@ -78,7 +86,8 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 
 	episode, err := h.episodeUsecase.GetByID(c.Request().Context(), id)
 	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
 			return response.Error(c, http.StatusNotFound, "episode not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get episode")
@@ -124,4 +133,51 @@ func (h *EpisodeHandler) GetByPodcastID(c echo.Context) error {
 	}
 
 	return response.Success(c, http.StatusOK, episodes)
+}
+
+// FetchFromFeed は RSS フィードからエピソードを自動取得するハンドラーです。
+// ポッドキャストに保存されている feed_url から RSS を取得し、新規エピソードをDBに登録します。
+// @Summary RSSフィードからエピソード取得
+// @Description ポッドキャストのRSSフィードからエピソードを自動取得してDBに登録します。GUIDで重複を検知し、新規のみ追加します。
+// @Tags episodes
+// @Produce json
+// @Param id path string true "ポッドキャストID (UUID)"
+// @Success 200 {object} usecase.FetchFromFeedResult "取得結果（新規・スキップ・失敗件数）"
+// @Failure 400 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Failure 500 {object} map[string]string
+// @Security BearerAuth
+// @Router /podcasts/{id}/episodes/fetch [post]
+func (h *EpisodeHandler) FetchFromFeed(c echo.Context) error {
+	// 1. ポッドキャスト ID をパース
+	podcastID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid podcast ID")
+	}
+
+	// 2. ポッドキャストを取得して feed_url の存在を確認
+	podcast, err := h.podcastUsecase.GetByID(c.Request().Context(), podcastID)
+	if err != nil {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			return response.Error(c, http.StatusNotFound, "podcast not found")
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
+	}
+
+	if podcast.FeedURL == nil || *podcast.FeedURL == "" {
+		return response.Error(c, http.StatusBadRequest, "podcast does not have a feed URL")
+	}
+
+	// 3. RSS フィードからエピソードを取得
+	result, err := h.episodeUsecase.FetchFromFeed(c.Request().Context(), podcastID, *podcast.FeedURL)
+	if err != nil {
+		// SSRF 関連エラー（HTTPS only / プライベート IP ブロック）は 400 を返す
+		if errors.Is(err, rss.ErrSSRFBlocked) {
+			return response.Error(c, http.StatusBadRequest, err.Error())
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to fetch episodes from feed")
+	}
+
+	return response.Success(c, http.StatusOK, result)
 }

@@ -49,4 +49,5 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 
 	// Episodes (認証必要)
 	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
+	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed)
 }

@@ -3,10 +3,12 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
 	"github.com/kobayashikosei/podlog/backend/internal/model"
 	"github.com/kobayashikosei/podlog/backend/internal/repository"
 )
@@ -31,20 +33,35 @@ type CreateEpisodeResult struct {
 	Created bool
 }
 
+// FetchFromFeedResult は FetchFromFeed メソッドの戻り値です。
+// 新規登録件数・スキップ件数・失敗件数を返します。
+type FetchFromFeedResult struct {
+	NewCount     int              `json:"new_count"`
+	SkippedCount int              `json:"skipped_count"`
+	FailedCount  int              `json:"failed_count"`
+	Episodes     []model.Episode  `json:"episodes"`
+}
+
 // EpisodeUsecase はエピソードに関するビジネスロジックです。
 type EpisodeUsecase interface {
 	Create(ctx context.Context, podcastID uuid.UUID, input CreateEpisodeInput) (*CreateEpisodeResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
+	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
 }
 
 type episodeUsecase struct {
 	episodeRepo repository.EpisodeRepository
+	rssFetcher  rss.Fetcher
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
-func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository) EpisodeUsecase {
-	return &episodeUsecase{episodeRepo: episodeRepo}
+// rssFetcher には RSS フィード取得クライアントを渡します。
+func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
+	return &episodeUsecase{
+		episodeRepo: episodeRepo,
+		rssFetcher:  rssFetcher,
+	}
 }
 
 // Create は新しいエピソードを作成してDBに保存します。
@@ -59,7 +76,7 @@ func (u *episodeUsecase) Create(ctx context.Context, podcastID uuid.UUID, input 
 	// 1. バリデーション: タイトルは必須（空白のみも不可）
 	input.Title = strings.TrimSpace(input.Title)
 	if input.Title == "" {
-		return nil, fmt.Errorf("title is required")
+		return nil, &ValidationError{Message: "title is required"}
 	}
 
 	// 2. iTunes Track ID の既存チェック
@@ -79,7 +96,7 @@ func (u *episodeUsecase) Create(ctx context.Context, podcastID uuid.UUID, input 
 	if input.PublishedAt != nil && *input.PublishedAt != "" {
 		t, err := time.Parse(time.RFC3339, *input.PublishedAt)
 		if err != nil {
-			return nil, fmt.Errorf("invalid published_at format (use RFC3339): %w", err)
+			return nil, &ValidationError{Message: fmt.Sprintf("invalid published_at format (use RFC3339): %v", err)}
 		}
 		publishedAt = &t
 	}
@@ -133,7 +150,7 @@ func (u *episodeUsecase) GetByID(ctx context.Context, id uuid.UUID) (*model.Epis
 		return nil, fmt.Errorf("failed to get episode: %w", err)
 	}
 	if episode == nil {
-		return nil, fmt.Errorf("episode not found")
+		return nil, &NotFoundError{Resource: "episode"}
 	}
 	return episode, nil
 }
@@ -152,4 +169,107 @@ func (u *episodeUsecase) GetByPodcastID(ctx context.Context, podcastID uuid.UUID
 		return nil, fmt.Errorf("failed to get episodes: %w", err)
 	}
 	return episodes, nil
+}
+
+// FetchFromFeed は RSS フィードからエピソードを取得してDBに登録します。
+//
+// 処理の流れ:
+//  1. RSS フィードを取得してパース
+//  2. 各アイテムの GUID で重複チェック
+//  3. 新規エピソードのみ DB に保存
+//  4. UNIQUE 違反はスキップとして扱う（並行リクエスト対応）
+func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error) {
+	// 1. RSS フィードを取得
+	items, err := u.rssFetcher.Fetch(ctx, feedURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch RSS feed: %w", err)
+	}
+
+	result := &FetchFromFeedResult{
+		Episodes: make([]model.Episode, 0),
+	}
+
+	// 連続DB失敗のカウンタ（DB障害時の無駄なリトライを防止）
+	// 連続で maxConsecutiveFailures 回失敗したら早期打ち切りする
+	const maxConsecutiveFailures = 3
+	consecutiveFailures := 0
+
+	// 2. 各アイテムを処理
+	for _, item := range items {
+		// タイトルのバリデーション（Create メソッドと同じルール）
+		title := strings.TrimSpace(item.Title)
+		if title == "" {
+			result.SkippedCount++
+			continue
+		}
+
+		// GUID がないアイテムはスキップ（重複検知ができないため）
+		if item.GUID == "" {
+			result.SkippedCount++
+			continue
+		}
+
+		// GUID で既存チェック
+		existing, err := u.episodeRepo.GetByGUID(ctx, podcastID, item.GUID)
+		if err != nil {
+			log.Printf("[FetchFromFeed] failed to check GUID %q for podcast %s: %v", item.GUID, podcastID, err)
+			result.FailedCount++
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
+			}
+			continue
+		}
+		// DB 成功したのでカウンタリセット
+		consecutiveFailures = 0
+
+		if existing != nil {
+			// 既に登録済み
+			result.SkippedCount++
+			continue
+		}
+
+		// 3. 新規エピソードを構築して保存
+		episode := &model.Episode{
+			ID:         uuid.New(),
+			PodcastID:  podcastID,
+			GUID:       &item.GUID,
+			Title:      title,
+			AudioURL:   strPtr(item.AudioURL),
+			ArtworkURL: strPtr(item.ImageURL),
+			SourceURL:  strPtr(item.Link),
+			DurationMs: item.DurationMs,
+			PublishedAt: item.PubDate,
+		}
+
+		// Description はポインタで保持
+		if item.Description != "" {
+			episode.Description = &item.Description
+		}
+
+		if err := u.episodeRepo.Create(ctx, episode); err != nil {
+			// UNIQUE 違反の場合はスキップ（並行リクエストで先に INSERT されたケース）
+			if isUniqueViolation(err) {
+				result.SkippedCount++
+				consecutiveFailures = 0
+				continue
+			}
+			log.Printf("[FetchFromFeed] failed to create episode %q (GUID: %s) for podcast %s: %v", title, item.GUID, podcastID, err)
+			result.FailedCount++
+			consecutiveFailures++
+			if consecutiveFailures >= maxConsecutiveFailures {
+				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
+			}
+			continue
+		}
+
+		// DB 成功したのでカウンタリセット
+		consecutiveFailures = 0
+		result.NewCount++
+		result.Episodes = append(result.Episodes, *episode)
+	}
+
+	return result, nil
 }

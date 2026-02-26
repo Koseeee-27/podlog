@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getEpisodesByPodcast, getEpisode, createEpisode } from "@/lib/api/episodes";
-import type { Episode, EpisodeWithStats, CreateEpisodeRequest } from "@/types/episode";
+import { getEpisodesByPodcast, getEpisode, createEpisode, fetchEpisodesFromFeed } from "@/lib/api/episodes";
+import type { Episode, EpisodeWithStats, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
 
 const PAGE_SIZE = 20;
 
@@ -54,7 +54,22 @@ export function useEpisodes(podcastId: string) {
     }
   }, [podcastId, episodesLength]);
 
-  return { episodes, loading, error, hasMore, loadMore };
+  const refresh = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getEpisodesByPodcast(podcastId, { limit: PAGE_SIZE, offset: 0 });
+      const list = Array.isArray(data) ? data : [];
+      setEpisodes(list);
+      setHasMore(list.length >= PAGE_SIZE);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込み失敗");
+    } finally {
+      setLoading(false);
+    }
+  }, [podcastId]);
+
+  return { episodes, loading, error, hasMore, loadMore, refresh };
 }
 
 export function useEpisode(id: string) {
@@ -108,4 +123,29 @@ export function useCreateEpisode(podcastId: string) {
   );
 
   return { create, loading, error };
+}
+
+export function useFetchFromFeed(podcastId: string) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<FetchFromFeedResult | null>(null);
+
+  const fetchFromFeed = useCallback(async (): Promise<FetchFromFeedResult | null> => {
+    setLoading(true);
+    setError(null);
+    setResult(null);
+    try {
+      const data = await fetchEpisodesFromFeed(podcastId);
+      setResult(data);
+      return data;
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "RSSフィードの取得に失敗しました";
+      setError(message);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [podcastId]);
+
+  return { fetchFromFeed, loading, error, result };
 }

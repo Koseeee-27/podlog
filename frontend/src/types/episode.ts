@@ -2,6 +2,7 @@ export interface Episode {
   id: string;
   podcast_id: string;
   itunes_track_id: number | null;
+  guid: string | null;
   title: string;
   description: string | null;
   audio_url: string | null;
@@ -27,4 +28,11 @@ export interface CreateEpisodeRequest {
   duration_ms?: number | null;
   published_at?: string | null;
   itunes_track_id?: number | null;
+}
+
+export interface FetchFromFeedResult {
+  new_count: number;
+  skipped_count: number;
+  failed_count: number;
+  episodes: Episode[];
 }
