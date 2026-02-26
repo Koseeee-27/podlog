@@ -1,0 +1,44 @@
+# docker-compose.yml
+# ローカル開発環境を定義します。
+# `docker-compose up` で Go サーバーと PostgreSQL を一括起動できます。
+
+services:
+  # PostgreSQL データベース
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: podlog
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      # データを永続化。コンテナを削除してもデータが残る
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Go API サーバー
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+      DATABASE_URL: "postgres://postgres:postgres@db:5432/podlog?sslmode=disable"
+      APP_ENV: "development"
+      CORS_ALLOW_ORIGINS: "http://localhost:3000"
+      SUPABASE_URL: "${SUPABASE_URL}"
+    depends_on:
+      db:
+        condition: service_healthy
+    # ソースコード変更時にコンテナを再ビルドする必要がある
+    # ホットリロードが必要な場合は air などのツールを別途導入
+
+volumes:
+  postgres_data:

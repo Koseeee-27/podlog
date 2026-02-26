@@ -1,0 +1,97 @@
+// Package main はアプリケーションのエントリーポイントです。
+// ここで各コンポーネントの初期化（DI: Dependency Injection）と
+// サーバーの起動を行います。
+
+// @title Podlog API
+// @version 1.0
+// @description お笑いラジオの視聴記録SNS API
+// @host localhost:8080
+// @BasePath /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+
+package main
+
+import (
+	"fmt"
+	"log"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/kobayashikosei/podlog/backend/internal/config"
+	"github.com/kobayashikosei/podlog/backend/internal/external/itunes"
+	"github.com/kobayashikosei/podlog/backend/internal/external/ogp"
+	"github.com/kobayashikosei/podlog/backend/internal/handler"
+	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
+	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/kobayashikosei/podlog/backend/internal/router"
+	"github.com/kobayashikosei/podlog/backend/internal/usecase"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
+
+	_ "github.com/lib/pq"
+
+	_ "github.com/kobayashikosei/podlog/backend/docs"
+	echoSwagger "github.com/swaggo/echo-swagger"
+)
+
+func main() {
+	// 1. 設定を環境変数から読み込み
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("failed to load config: %v", err)
+	}
+
+	// 2. データベースに接続
+	db, err := sqlx.Connect("postgres", cfg.DatabaseURL)
+	if err != nil {
+		log.Fatalf("failed to connect to database: %v", err)
+	}
+	defer db.Close()
+
+	db.SetMaxOpenConns(25)
+	db.SetMaxIdleConns(5)
+
+	log.Println("Connected to database successfully")
+
+	// 3. Echo インスタンスを作成
+	e := echo.New()
+
+	// 4. 基本ミドルウェアを登録
+	e.Use(middleware.Recover())
+	e.Use(middleware.Logger())
+	e.Use(mw.CORS(cfg.CORSAllowOrigins))
+
+	// 5. Swagger UIを登録
+	e.GET("/swagger/*", echoSwagger.WrapHandler)
+
+	// 6. 外部APIクライアントを初期化
+	itunesClient := itunes.NewClient()
+	ogpScraper := ogp.NewScraper()
+
+	// 7. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
+	userRepo := repository.NewUserRepository(db)
+	podcastRepo := repository.NewPodcastRepository(db)
+	episodeRepo := repository.NewEpisodeRepository(db)
+
+	userUsecase := usecase.NewUserUsecase(userRepo)
+	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
+	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo)
+
+	handlers := router.Handlers{
+		Health:  handler.NewHealthHandler(),
+		User:    handler.NewUserHandler(userUsecase),
+		Podcast: handler.NewPodcastHandler(podcastUsecase, ogpScraper),
+		Episode: handler.NewEpisodeHandler(episodeUsecase),
+	}
+
+	// 8. ルーティングを設定
+	router.Setup(e, handlers, cfg.SupabaseURL)
+
+	// 9. サーバーを起動
+	addr := fmt.Sprintf(":%s", cfg.Port)
+	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
+	if err := e.Start(addr); err != nil {
+		log.Fatalf("failed to start server: %v", err)
+	}
+}

@@ -1,0 +1,25 @@
+# Environment files
+.env
+.env.local
+
+# Go
+backend/bin/
+backend/coverage.out
+backend/coverage.html
+
+# Node.js (for frontend later)
+node_modules/
+.next/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Docker
+docker-compose.override.yml
