@@ -21,6 +21,41 @@ func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase) *EpisodeHandler {
 	return &EpisodeHandler{episodeUsecase: episodeUsecase}
 }
 
+// Create はポッドキャストに新しいエピソードを追加するハンドラーです。
+// @Summary エピソード作成
+// @Description ポッドキャストに新しいエピソードを登録します
+// @Tags episodes
+// @Accept json
+// @Produce json
+// @Param id path string true "ポッドキャストID (UUID)"
+// @Param body body usecase.CreateEpisodeInput true "エピソード情報"
+// @Success 201 {object} model.Episode
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Security BearerAuth
+// @Router /podcasts/{id}/episodes [post]
+func (h *EpisodeHandler) Create(c echo.Context) error {
+	podcastID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid podcast ID")
+	}
+
+	var input usecase.CreateEpisodeInput
+	if err := c.Bind(&input); err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	episode, err := h.episodeUsecase.Create(c.Request().Context(), podcastID, input)
+	if err != nil {
+		if strings.Contains(err.Error(), "is required") || strings.Contains(err.Error(), "invalid") {
+			return response.Error(c, http.StatusBadRequest, err.Error())
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to create episode")
+	}
+
+	return response.Success(c, http.StatusCreated, episode)
+}
+
 // GetByID はエピソード詳細を取得するハンドラーです。
 // @Summary エピソード詳細取得
 // @Description エピソードIDから詳細情報を取得します

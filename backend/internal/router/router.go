@@ -46,4 +46,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	// Podcasts (認証必要)
 	auth.GET("/podcasts/search", h.Podcast.Search)
 	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
+
+	// Episodes (認証必要)
+	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
 }
