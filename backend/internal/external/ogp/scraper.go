@@ -94,6 +94,14 @@ func NewScraper() *Scraper {
 		httpClient: &http.Client{
 			Timeout:   5 * time.Second,
 			Transport: transport,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				// リダイレクト先も HTTPS のみ許可（HTTPS→HTTP の迂回を防止）
+				if req.URL.Scheme != "https" {
+					return &SSRFError{Reason: "redirect to non-HTTPS URL is not allowed"}
+				}
+				// ホスト/IP の検証は DialContext で接続時に自動的に行われる
+				return nil
+			},
 		},
 	}
 }
@@ -102,8 +110,9 @@ func NewScraper() *Scraper {
 //
 // セキュリティ考慮事項（SSRF対策）:
 //  1. HTTPS のみ許可（HTTPは拒否）
-//  2. プライベートIPアドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
-//  3. レスポンスサイズを1MBに制限
+//  2. リダイレクト先も HTTPS のみ許可（CheckRedirect で検証）
+//  3. プライベートIPアドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
+//  4. レスポンスサイズを1MBに制限
 func (s *Scraper) Fetch(ctx context.Context, targetURL string) (*OGPData, error) {
 	// 1. URLをパースして安全性を検証
 	parsed, err := url.Parse(targetURL)
