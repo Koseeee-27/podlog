@@ -76,6 +76,11 @@ func (u *userUsecase) CreateProfile(ctx context.Context, userID uuid.UUID, req m
 	}
 
 	if err := u.userRepo.Create(ctx, user); err != nil {
+		// 並行リクエストで同じユーザー名が先に作成された場合（TOCTOU）
+		// DB の UNIQUE 制約違反をキャッチして適切なエラーを返す
+		if isUniqueViolation(err) {
+			return nil, &ConflictError{Message: "username already taken"}
+		}
 		return nil, fmt.Errorf("failed to create profile: %w", err)
 	}
 

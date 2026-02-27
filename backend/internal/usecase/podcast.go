@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/kobayashikosei/podlog/backend/internal/external/itunes"
@@ -77,6 +78,8 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, limit int) ([
 
 		if err := u.podcastRepo.Create(ctx, podcast); err != nil {
 			// 作成失敗してもスキップして続行（並行リクエストでの重複など）
+			log.Printf("[Podcast.Search] failed to create podcast %q (itunesID=%d): %v",
+				result.CollectionName, result.CollectionID, err)
 			continue
 		}
 
