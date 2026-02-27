@@ -1,12 +1,4 @@
-"use client";
-
-import dynamic from "next/dynamic";
-import Loading from "@/components/ui/Loading";
-
-const PublicProfileClient = dynamic(() => import("./PublicProfileClient"), {
-  ssr: false,
-  loading: () => <Loading />,
-});
+import PublicProfileClient from "./PublicProfileClient";
 
 export default function PublicProfilePage() {
   return <PublicProfileClient />;
