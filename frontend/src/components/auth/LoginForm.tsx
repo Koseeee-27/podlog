@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useRef, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import Button from "@/components/ui/Button";
@@ -9,7 +9,7 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 
 export default function LoginForm() {
   const router = useRouter();
-  const supabase = createClient();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -20,7 +20,8 @@ export default function LoginForm() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    const { error } = await supabaseRef.current.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);

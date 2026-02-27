@@ -1,8 +1,4 @@
-"use client";
-
-import dynamic from "next/dynamic";
-
-const Navbar = dynamic(() => import("@/components/layout/Navbar"), { ssr: false });
+import Navbar from "@/components/layout/Navbar";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   return (
