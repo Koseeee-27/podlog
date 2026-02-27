@@ -27,6 +27,11 @@ FROM alpine:3.21
 # タイムゾーンデータとCA証明書（HTTPS通信に必要）をインストール
 RUN apk --no-cache add ca-certificates tzdata
 
+# セキュリティ: 非rootユーザーを作成
+# コンテナ内でroot権限で実行するとホストに影響する脆弱性のリスクが高まるため、
+# 専用のユーザーで実行する
+RUN addgroup -g 1000 appgroup && adduser -D -u 1000 -G appgroup appuser
+
 WORKDIR /app
 
 # builder ステージからバイナリだけをコピー（イメージサイズを最小化）
@@ -34,6 +39,12 @@ COPY --from=builder /app/server .
 
 # マイグレーションファイルもコピー
 COPY --from=builder /app/db/migrations ./db/migrations
+
+# ファイルの所有者を非rootユーザーに変更
+RUN chown -R appuser:appgroup /app
+
+# 非rootユーザーに切り替え
+USER appuser
 
 EXPOSE 8080
 
