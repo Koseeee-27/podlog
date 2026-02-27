@@ -45,7 +45,7 @@ func (c *Config) DatabaseDSN() string {
 		Scheme:   "postgres",
 		User:     url.UserPassword(c.DBUser, c.DBPassword),
 		Host:     fmt.Sprintf("%s:%s", c.DBHost, c.DBPort),
-		Path:     c.DBName,
+		Path:     "/" + c.DBName,
 		RawQuery: fmt.Sprintf("sslmode=%s", url.QueryEscape(c.DBSSLMode)),
 	}
 	return u.String()

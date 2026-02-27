@@ -16,19 +16,10 @@ func TestDatabaseDSN_BasicValues(t *testing.T) {
 	}
 
 	dsn := cfg.DatabaseDSN()
+	expected := "postgres://postgres:postgres@localhost:5432/podlog?sslmode=disable"
 
-	// 基本的な構成要素が含まれていること
-	if !strings.Contains(dsn, "postgres://") {
-		t.Errorf("expected postgres:// scheme, got %s", dsn)
-	}
-	if !strings.Contains(dsn, "localhost:5432") {
-		t.Errorf("expected localhost:5432, got %s", dsn)
-	}
-	if !strings.Contains(dsn, "/podlog") {
-		t.Errorf("expected /podlog path, got %s", dsn)
-	}
-	if !strings.Contains(dsn, "sslmode=disable") {
-		t.Errorf("expected sslmode=disable, got %s", dsn)
+	if dsn != expected {
+		t.Errorf("expected DSN:\n  %s\ngot:\n  %s", expected, dsn)
 	}
 }
 
