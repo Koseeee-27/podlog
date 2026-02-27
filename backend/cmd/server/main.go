@@ -44,7 +44,8 @@ func main() {
 	}
 
 	// 2. データベースに接続
-	db, err := sqlx.Connect("postgres", cfg.DatabaseURL)
+	// DatabaseDSN() は net/url を使ってユーザー名・パスワードを安全にエスケープする
+	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN())
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}

@@ -35,13 +35,11 @@ RUN addgroup -g 1000 appgroup && adduser -D -u 1000 -G appgroup appuser
 WORKDIR /app
 
 # builder ステージからバイナリだけをコピー（イメージサイズを最小化）
-COPY --from=builder /app/server .
+# --chown で所有者を指定し、別途 RUN chown レイヤーを不要にする
+COPY --from=builder --chown=appuser:appgroup /app/server .
 
 # マイグレーションファイルもコピー
-COPY --from=builder /app/db/migrations ./db/migrations
-
-# ファイルの所有者を非rootユーザーに変更
-RUN chown -R appuser:appgroup /app
+COPY --from=builder --chown=appuser:appgroup /app/db/migrations ./db/migrations
 
 # 非rootユーザーに切り替え
 USER appuser

@@ -4,6 +4,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/caarlos0/env/v11"
 )
@@ -14,8 +15,15 @@ type Config struct {
 	// サーバー設定
 	Port string `env:"PORT" envDefault:"8080"`
 
-	// データベース設定
-	DatabaseURL string `env:"DATABASE_URL" envDefault:"postgres://postgres:postgres@localhost:5432/podlog?sslmode=disable"`
+	// データベース設定（個別パラメータ）
+	// パスワードに @ や : 等の特殊文字が含まれても安全に接続できるよう、
+	// DSN 文字列ではなく個別の環境変数で受け取り、DatabaseDSN() で組み立てる。
+	DBHost     string `env:"DB_HOST" envDefault:"localhost"`
+	DBPort     string `env:"DB_PORT" envDefault:"5432"`
+	DBUser     string `env:"DB_USER" envDefault:"postgres"`
+	DBPassword string `env:"DB_PASSWORD" envDefault:"postgres"`
+	DBName     string `env:"DB_NAME" envDefault:"podlog"`
+	DBSSLMode  string `env:"DB_SSLMODE" envDefault:"disable"`
 
 	// Supabase 設定
 	// Supabase プロジェクトURL（例: https://xxx.supabase.co）
@@ -27,6 +35,20 @@ type Config struct {
 
 	// 環境 (development / production)
 	Environment string `env:"APP_ENV" envDefault:"development"`
+}
+
+// DatabaseDSN はデータベース接続用の DSN 文字列を組み立てます。
+// net/url.UserPassword を使用してユーザー名・パスワードを安全にエスケープするため、
+// パスワードに @, :, / 等の URL 予約文字が含まれていても正しく動作します。
+func (c *Config) DatabaseDSN() string {
+	u := &url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(c.DBUser, c.DBPassword),
+		Host:     fmt.Sprintf("%s:%s", c.DBHost, c.DBPort),
+		Path:     c.DBName,
+		RawQuery: fmt.Sprintf("sslmode=%s", url.QueryEscape(c.DBSSLMode)),
+	}
+	return u.String()
 }
 
 // Load は環境変数から Config を読み込みます。
