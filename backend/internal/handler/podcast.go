@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/kobayashikosei/podlog/backend/internal/external/ogp"
@@ -106,7 +105,8 @@ func (h *PodcastHandler) FetchURL(c echo.Context) error {
 
 	data, err := h.ogpScraper.Fetch(c.Request().Context(), req.URL)
 	if err != nil {
-		if strings.Contains(err.Error(), "HTTPS") || strings.Contains(err.Error(), "private IP") {
+		// SSRF 関連エラー（HTTPS only / プライベート IP ブロック）は 400 を返す
+		if errors.Is(err, ogp.ErrSSRFBlocked) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusBadGateway, "failed to fetch URL information")

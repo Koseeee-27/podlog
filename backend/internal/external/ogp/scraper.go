@@ -8,6 +8,7 @@ package ogp
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -18,6 +19,23 @@ import (
 	"github.com/kobayashikosei/podlog/backend/internal/util"
 	"golang.org/x/net/html"
 )
+
+// ErrSSRFBlocked は SSRF 対策でリクエストがブロックされたことを表す sentinel error です。
+var ErrSSRFBlocked = errors.New("SSRF blocked")
+
+// SSRFError は SSRF 対策でブロックされた際の詳細情報を持つエラーです。
+type SSRFError struct {
+	Reason string
+}
+
+func (e *SSRFError) Error() string {
+	return e.Reason
+}
+
+// Unwrap は ErrSSRFBlocked を返すことで errors.Is(err, ErrSSRFBlocked) を可能にします。
+func (e *SSRFError) Unwrap() error {
+	return ErrSSRFBlocked
+}
 
 // OGPData はOGP情報を保持する構造体です。
 type OGPData struct {
@@ -34,13 +52,48 @@ type Scraper struct {
 }
 
 // NewScraper は OGP Scraper を生成します。
-// セキュリティ対策:
-// - タイムアウト5秒: 応答の遅いサーバーに引きずられない
-// - レスポンスサイズ制限（Fetch内で実施）: メモリ枯渇を防止
+// カスタム Transport を使用して、接続時（DialContext）に IP アドレスを検証します。
+// これにより DNS rebinding 攻撃（TOCTOU 脆弱性）を防止します。
+//
+// DNS rebinding 攻撃とは:
+//   - 事前の DNS 解決チェックでは安全な IP が返る
+//   - 実際の HTTP 接続時に DNS が変更され、プライベート IP に接続される
+//
+// DialContext 内で IP を検証することで、接続直前の IP を確認でき、この攻撃を防げます。
 func NewScraper() *Scraper {
+	dialer := &net.Dialer{
+		Timeout: 5 * time.Second,
+	}
+
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			// addr は "host:port" 形式なのでホスト部分を取り出す
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid address: %w", err)
+			}
+
+			// ホスト名を解決して全ての IP をチェック
+			ips, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+			if err != nil {
+				return nil, fmt.Errorf("failed to resolve host: %w", err)
+			}
+
+			for _, ipAddr := range ips {
+				if util.IsPrivateIP(ipAddr.IP) {
+					return nil, &SSRFError{Reason: "access to private IP addresses is not allowed"}
+				}
+			}
+
+			// 検証済みの IP アドレスに直接接続する（DNS を再解決させない）
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].IP.String(), port))
+		},
+	}
+
 	return &Scraper{
 		httpClient: &http.Client{
-			Timeout: 5 * time.Second,
+			Timeout:   5 * time.Second,
+			Transport: transport,
 		},
 	}
 }
@@ -49,7 +102,7 @@ func NewScraper() *Scraper {
 //
 // セキュリティ考慮事項（SSRF対策）:
 //  1. HTTPS のみ許可（HTTPは拒否）
-//  2. プライベートIPアドレスへのリクエストを禁止
+//  2. プライベートIPアドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
 //  3. レスポンスサイズを1MBに制限
 func (s *Scraper) Fetch(ctx context.Context, targetURL string) (*OGPData, error) {
 	// 1. URLをパースして安全性を検証
@@ -60,22 +113,11 @@ func (s *Scraper) Fetch(ctx context.Context, targetURL string) (*OGPData, error)
 
 	// HTTPS のみ許可
 	if parsed.Scheme != "https" {
-		return nil, fmt.Errorf("only HTTPS URLs are allowed")
+		return nil, &SSRFError{Reason: "only HTTPS URLs are allowed"}
 	}
 
-	// 2. ホスト名を解決してプライベートIPでないことを確認
-	host := parsed.Hostname()
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		return nil, fmt.Errorf("failed to resolve host: %w", err)
-	}
-	for _, ip := range ips {
-		if util.IsPrivateIP(ip) {
-			return nil, fmt.Errorf("access to private IP addresses is not allowed")
-		}
-	}
-
-	// 3. HTTP GETリクエストを送信
+	// 2. HTTP GETリクエストを送信
+	// IP 検証は Transport の DialContext 内で接続直前に行われる
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, targetURL, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
@@ -92,11 +134,11 @@ func (s *Scraper) Fetch(ctx context.Context, targetURL string) (*OGPData, error)
 		return nil, fmt.Errorf("URL returned status %d", resp.StatusCode)
 	}
 
-	// 4. レスポンスサイズを1MBに制限（メモリ枯渇防止）
+	// 3. レスポンスサイズを1MBに制限（メモリ枯渇防止）
 	// io.LimitReader は指定バイト数以上読み込まないようにするラッパーです
 	limitedReader := io.LimitReader(resp.Body, 1*1024*1024) // 1MB
 
-	// 5. HTMLをパースしてOGPタグを抽出
+	// 4. HTMLをパースしてOGPタグを抽出
 	return parseOGP(limitedReader)
 }
 
