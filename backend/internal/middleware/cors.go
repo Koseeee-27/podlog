@@ -16,7 +16,13 @@ import (
 //
 // allowOrigins はカンマ区切りの許可オリジン文字列（例: "http://localhost:3000,https://podlog.app"）
 func CORS(allowOrigins string) echo.MiddlewareFunc {
-	origins := strings.Split(allowOrigins, ",")
+	parts := strings.Split(allowOrigins, ",")
+	origins := make([]string, 0, len(parts))
+	for _, o := range parts {
+		if trimmed := strings.TrimSpace(o); trimmed != "" {
+			origins = append(origins, trimmed)
+		}
+	}
 
 	return middleware.CORSWithConfig(middleware.CORSConfig{
 		// 許可するオリジン（フロントエンドのURL）

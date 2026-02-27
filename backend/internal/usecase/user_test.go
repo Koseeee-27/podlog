@@ -2,6 +2,7 @@ package usecase
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 
@@ -151,6 +152,97 @@ func TestCreateProfile_ProfileAlreadyExists(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("expected error for existing profile, got nil")
+	}
+}
+
+// TestCreateProfile_UniqueViolationRace は TOCTOU 競合状態のテストです。
+// ExistsByUsername が false を返した直後に、別のリクエストが同じユーザー名で
+// Insert を完了した場合、DB の UNIQUE 制約違反が発生します。
+// この場合に ConflictError が適切に返されることを検証します。
+func TestCreateProfile_UniqueViolationRace(t *testing.T) {
+	userID := uuid.New()
+	callCount := 0
+
+	repo := &mockUserRepo{
+		existsByUsernameFunc: func(ctx context.Context, username string) (bool, error) {
+			// 競合状態の再現: チェック時点ではユーザー名は未使用
+			return false, nil
+		},
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.User, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, nil // プロフィール未作成
+			}
+			return &model.User{ID: userID, Username: "raceuser", DisplayName: "Race User"}, nil
+		},
+		createFunc: func(ctx context.Context, user *model.User) error {
+			// 競合状態の再現: 別のリクエストが先に同じユーザー名で Insert を完了したため、
+			// UNIQUE 制約違反が発生する
+			return fmt.Errorf("pq: duplicate key value violates unique constraint \"users_username_key\"")
+		},
+	}
+
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.CreateProfile(context.Background(), userID, model.CreateProfileRequest{
+		Username:    "raceuser",
+		DisplayName: "Race User",
+	})
+
+	// エラーが返ること
+	if err == nil {
+		t.Fatal("expected error for unique violation race condition, got nil")
+	}
+
+	// ConflictError 型であること
+	var conflictErr *ConflictError
+	if !errors.As(err, &conflictErr) {
+		t.Fatalf("expected ConflictError, got %T: %v", err, err)
+	}
+
+	// エラーメッセージが「username already taken」であること
+	if conflictErr.Message != "username already taken" {
+		t.Errorf("expected message 'username already taken', got '%s'", conflictErr.Message)
+	}
+}
+
+// TestCreateProfile_CreateDBError は UNIQUE 制約違反以外の DB エラーが
+// そのまま返されることを検証します（ConflictError にならないこと）。
+func TestCreateProfile_CreateDBError(t *testing.T) {
+	userID := uuid.New()
+	callCount := 0
+
+	repo := &mockUserRepo{
+		existsByUsernameFunc: func(ctx context.Context, username string) (bool, error) {
+			return false, nil
+		},
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.User, error) {
+			callCount++
+			if callCount == 1 {
+				return nil, nil
+			}
+			return &model.User{ID: userID}, nil
+		},
+		createFunc: func(ctx context.Context, user *model.User) error {
+			return fmt.Errorf("database connection lost")
+		},
+	}
+
+	uc := NewUserUsecase(repo)
+
+	_, err := uc.CreateProfile(context.Background(), userID, model.CreateProfileRequest{
+		Username:    "testuser",
+		DisplayName: "Test User",
+	})
+
+	if err == nil {
+		t.Fatal("expected error for DB failure, got nil")
+	}
+
+	// ConflictError ではないこと（一般的なDBエラー）
+	var conflictErr *ConflictError
+	if errors.As(err, &conflictErr) {
+		t.Fatal("expected non-ConflictError for general DB failure, but got ConflictError")
 	}
 }
 
