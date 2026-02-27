@@ -20,3 +20,19 @@ export function formatDate(dateString: string | null): string {
     day: "numeric",
   });
 }
+
+/**
+ * URLが安全なプロトコル（http/https）を使用しているか検証する。
+ * javascript: や data: などの危険なプロトコルを防止する。
+ * 前後の空白はトリムして判定する。空文字列（トリム後）は有効として扱う（任意フィールド用）。
+ */
+export function isValidUrl(url: string): boolean {
+  const trimmed = url.trim();
+  if (trimmed === "") return true;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === "https:" || parsed.protocol === "http:";
+  } catch {
+    return false;
+  }
+}
