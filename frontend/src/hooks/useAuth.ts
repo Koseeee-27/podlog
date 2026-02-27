@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { getMyProfile } from "@/lib/api/users";
 import type { User as AppUser } from "@/types/user";
@@ -15,9 +15,14 @@ type AuthState =
 
 export function useAuth() {
   const [state, setState] = useState<AuthState>({ status: "loading" });
-  const supabase = createClient();
+  const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
+  const getSupabase = () => {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    return supabaseRef.current;
+  };
 
   const refreshProfile = useCallback(async () => {
+    const supabase = getSupabase();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setState({ status: "unauthenticated" });
@@ -34,9 +39,11 @@ export function useAuth() {
         setState({ status: "unauthenticated" });
       }
     }
-  }, [supabase.auth]);
+  }, []);
 
   useEffect(() => {
+    const supabase = getSupabase();
+
     // 初回プロフィール取得を非同期で実行（同期的な setState によるカスケードレンダーを回避）
     queueMicrotask(() => { refreshProfile(); });
 
@@ -49,12 +56,13 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, [supabase.auth, refreshProfile]);
+  }, [refreshProfile]);
 
   const signOut = useCallback(async () => {
+    const supabase = getSupabase();
     await supabase.auth.signOut();
     setState({ status: "unauthenticated" });
-  }, [supabase.auth]);
+  }, []);
 
   return { ...state, signOut, refreshProfile };
 }
