@@ -26,7 +26,9 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
     setError("");
     setLoading(true);
 
-    if (avatarUrl && !isValidUrl(avatarUrl)) {
+    const trimmedAvatarUrl = avatarUrl.trim();
+
+    if (trimmedAvatarUrl && !isValidUrl(trimmedAvatarUrl)) {
       setError("アバターURLはhttp://またはhttps://で始まる有効なURLを入力してください");
       setLoading(false);
       return;
@@ -35,7 +37,7 @@ export default function ProfileEditForm({ user, onSave, onCancel }: ProfileEditF
     const data: UpdateProfileRequest = {};
     if (displayName !== user.display_name) data.display_name = displayName;
     if (bio !== (user.bio || "")) data.bio = bio;
-    if (avatarUrl !== (user.avatar_url || "")) data.avatar_url = avatarUrl;
+    if (trimmedAvatarUrl !== (user.avatar_url || "")) data.avatar_url = trimmedAvatarUrl;
 
     try {
       await updateMyProfile(data);

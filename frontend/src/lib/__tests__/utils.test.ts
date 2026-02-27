@@ -55,4 +55,35 @@ describe("isValidUrl", () => {
   it("returns false for invalid URL", () => {
     expect(isValidUrl("not a url")).toBe(false);
   });
+
+  // --- エッジケース ---
+
+  it("returns true for whitespace-only string (treated as empty)", () => {
+    expect(isValidUrl("   ")).toBe(true);
+  });
+
+  it("returns true for URL with leading/trailing whitespace", () => {
+    expect(isValidUrl("  https://example.com  ")).toBe(true);
+  });
+
+  it("handles uppercase protocols (URL constructor normalizes to lowercase)", () => {
+    expect(isValidUrl("HTTPS://example.com")).toBe(true);
+    expect(isValidUrl("HTTP://example.com")).toBe(true);
+  });
+
+  it("returns false for file: protocol", () => {
+    expect(isValidUrl("file:///etc/passwd")).toBe(false);
+  });
+
+  it("returns false for ftp: protocol", () => {
+    expect(isValidUrl("ftp://example.com/file.txt")).toBe(false);
+  });
+
+  it("returns false for blob: protocol", () => {
+    expect(isValidUrl("blob:https://example.com/uuid")).toBe(false);
+  });
+
+  it("returns true for URL with authentication info", () => {
+    expect(isValidUrl("https://user:pass@example.com")).toBe(true);
+  });
 });
