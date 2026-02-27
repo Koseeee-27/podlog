@@ -16,10 +16,14 @@ type AuthState =
 export function useAuth() {
   const [state, setState] = useState<AuthState>({ status: "loading" });
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  if (!supabaseRef.current) supabaseRef.current = createClient();
-  const supabase = supabaseRef.current;
+
+  const getOrCreateClient = useCallback(() => {
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    return supabaseRef.current;
+  }, []);
 
   const refreshProfile = useCallback(async () => {
+    const supabase = getOrCreateClient();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       setState({ status: "unauthenticated" });
@@ -36,9 +40,11 @@ export function useAuth() {
         setState({ status: "unauthenticated" });
       }
     }
-  }, [supabase]);
+  }, [getOrCreateClient]);
 
   useEffect(() => {
+    const supabase = getOrCreateClient();
+
     // 初回プロフィール取得を非同期で実行（同期的な setState によるカスケードレンダーを回避）
     queueMicrotask(() => { refreshProfile(); });
 
@@ -51,12 +57,13 @@ export function useAuth() {
     });
 
     return () => subscription.unsubscribe();
-  }, [refreshProfile, supabase]);
+  }, [refreshProfile, getOrCreateClient]);
 
   const signOut = useCallback(async () => {
+    const supabase = getOrCreateClient();
     await supabase.auth.signOut();
     setState({ status: "unauthenticated" });
-  }, [supabase]);
+  }, [getOrCreateClient]);
 
   return { ...state, signOut, refreshProfile };
 }

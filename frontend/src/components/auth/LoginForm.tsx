@@ -10,8 +10,6 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 export default function LoginForm() {
   const router = useRouter();
   const supabaseRef = useRef<ReturnType<typeof createClient> | null>(null);
-  if (!supabaseRef.current) supabaseRef.current = createClient();
-  const supabase = supabaseRef.current;
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -22,7 +20,8 @@ export default function LoginForm() {
     setError("");
     setLoading(true);
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (!supabaseRef.current) supabaseRef.current = createClient();
+    const { error } = await supabaseRef.current.auth.signInWithPassword({ email, password });
 
     if (error) {
       setError(error.message);
