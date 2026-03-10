@@ -42,31 +42,31 @@
 | POST | `/podcasts/{id}/episodes/fetch` | 必要 | RSS フィードからエピソード取得 | 実装済み |
 | GET | `/episodes/{id}` | 不要 | エピソード詳細取得 | 実装済み |
 
-### Listening Records（聴取記録）— MVP 追加予定
+### Listening Records（聴取記録）
 
 | メソッド | パス | 認証 | 説明 | 状態 |
 |---|---|---|---|---|
-| POST | `/episodes/{id}/listen` | 必要 | 聴取記録を追加 | 未実装 |
-| DELETE | `/episodes/{id}/listen` | 必要 | 聴取記録を削除 | 未実装 |
-| GET | `/episodes/{id}/listen` | 必要 | 自分がこのエピソードを聴いたか確認 | 未実装 |
-| GET | `/users/me/listening-records` | 必要 | 自分の聴取履歴一覧 | 未実装 |
+| POST | `/episodes/{id}/listen` | 必要 | 聴取記録を追加 | 実装済み |
+| DELETE | `/episodes/{id}/listen` | 必要 | 聴取記録を削除 | 実装済み |
+| GET | `/episodes/{id}/listen` | 必要 | 自分がこのエピソードを聴いたか確認 | 実装済み |
+| GET | `/users/me/listening-records` | 必要 | 自分の聴取履歴一覧 | 実装済み |
 
-### Reviews（レビュー）— MVP 追加予定
-
-| メソッド | パス | 認証 | 説明 | 状態 |
-|---|---|---|---|---|
-| POST | `/episodes/{id}/reviews` | 必要 | レビュー投稿 | 未実装 |
-| PUT | `/episodes/{id}/reviews/mine` | 必要 | 自分のレビュー更新 | 未実装 |
-| DELETE | `/episodes/{id}/reviews/mine` | 必要 | 自分のレビュー削除 | 未実装 |
-| GET | `/episodes/{id}/reviews` | 不要 | エピソードのレビュー一覧 | 未実装 |
-| GET | `/podcasts/{id}/rating` | 不要 | ポッドキャストの平均評価 | 未実装 |
-| GET | `/users/me/reviews` | 必要 | 自分のレビュー一覧 | 未実装 |
-
-### Timeline（タイムライン）— MVP 追加予定
+### Reviews（レビュー）
 
 | メソッド | パス | 認証 | 説明 | 状態 |
 |---|---|---|---|---|
-| GET | `/timeline` | 不要 | 最新レビューのタイムライン | 未実装 |
+| POST | `/episodes/{id}/reviews` | 必要 | レビュー投稿 | 実装済み |
+| PUT | `/episodes/{id}/reviews/mine` | 必要 | 自分のレビュー更新 | 実装済み |
+| DELETE | `/episodes/{id}/reviews/mine` | 必要 | 自分のレビュー削除 | 実装済み |
+| GET | `/episodes/{id}/reviews` | 不要 | エピソードのレビュー一覧 | 実装済み |
+| GET | `/podcasts/{id}/rating` | 不要 | ポッドキャストの平均評価 | 実装済み |
+| GET | `/users/me/reviews` | 必要 | 自分のレビュー一覧 | 実装済み |
+
+### Timeline（タイムライン）
+
+| メソッド | パス | 認証 | 説明 | 状態 |
+|---|---|---|---|---|
+| GET | `/timeline` | 不要 | 最新レビューのタイムライン | 実装済み |
 
 ---
 
