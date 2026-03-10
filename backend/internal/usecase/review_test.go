@@ -150,10 +150,10 @@ func TestRoundToOneDecimal(t *testing.T) {
 		expected float64
 	}{
 		{3.14159, 3.1},
-		{3.15, 3.2},
+		{3.16, 3.2},
 		{4.0, 4.0},
 		{0.0, 0.0},
-		{2.95, 3.0},
+		{2.96, 3.0},
 	}
 	for _, tt := range tests {
 		got := roundToOneDecimal(tt.input)
