@@ -54,3 +54,15 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
   });
   return handleResponse<T>(response);
 }
+
+export async function apiDelete(path: string): Promise<void> {
+  const headers = await getAuthHeaders();
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({ error: "Unknown error" }));
+    throw new ApiRequestError(response.status, body.error || "Request failed");
+  }
+}
