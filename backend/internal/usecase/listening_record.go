@@ -107,7 +107,13 @@ func (u *listeningRecordUsecase) Create(ctx context.Context, userID, episodeID u
 		return nil, fmt.Errorf("failed to create listening record: %w", err)
 	}
 
-	return record, nil
+	// DB の created_at を正確に返すために再取得する
+	created, err := u.recordRepo.GetByUserAndEpisode(ctx, userID, episodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get created record: %w", err)
+	}
+
+	return created, nil
 }
 
 // Delete は聴取記録を削除します。

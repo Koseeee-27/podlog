@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
@@ -152,19 +151,7 @@ func (h *ListeningRecordHandler) GetMyRecords(c echo.Context) error {
 		return response.Error(c, http.StatusUnauthorized, "unauthorized")
 	}
 
-	limit := 20
-	offset := 0
-
-	if l := c.QueryParam("limit"); l != "" {
-		if parsed, err := strconv.Atoi(l); err == nil {
-			limit = parsed
-		}
-	}
-	if o := c.QueryParam("offset"); o != "" {
-		if parsed, err := strconv.Atoi(o); err == nil {
-			offset = parsed
-		}
-	}
+	limit, offset := parsePagination(c)
 
 	result, err := h.listeningRecordUsecase.GetByUserID(c.Request().Context(), userID, limit, offset)
 	if err != nil {

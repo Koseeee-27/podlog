@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useState } from "react";
 
 interface ReviewFormProps {
@@ -21,7 +22,7 @@ export default function ReviewForm({
   const [comment, setComment] = useState(initialComment);
   const [hoveredRating, setHoveredRating] = useState(0);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (rating === 0) return;
     await onSubmit(rating, comment);
@@ -39,6 +40,8 @@ export default function ReviewForm({
               onClick={() => setRating(star)}
               onMouseEnter={() => setHoveredRating(star)}
               onMouseLeave={() => setHoveredRating(0)}
+              aria-label={`${star}つ星`}
+              aria-pressed={rating === star}
               className="text-2xl focus:outline-none"
             >
               <span className={

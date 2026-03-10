@@ -177,7 +177,13 @@ func (u *reviewUsecase) Create(ctx context.Context, userID, episodeID uuid.UUID,
 		return nil, fmt.Errorf("failed to create review: %w", err)
 	}
 
-	return review, nil
+	// DB の created_at / updated_at を正確に返すために再取得する
+	created, err := u.reviewRepo.GetByUserAndEpisode(ctx, userID, episodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get created review: %w", err)
+	}
+
+	return created, nil
 }
 
 // Update はレビューを更新します。

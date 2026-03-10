@@ -139,7 +139,7 @@ func (r *reviewRepository) GetByUserAndEpisode(ctx context.Context, userID, epis
 // GetByEpisodeID はエピソードのレビュー一覧をユーザー情報付きで取得します。
 func (r *reviewRepository) GetByEpisodeID(ctx context.Context, episodeID uuid.UUID, limit, offset int) ([]ReviewWithUserRow, int, error) {
 	var total int
-	countQuery := `SELECT COUNT(*) FROM reviews WHERE episode_id = $1`
+	countQuery := `SELECT COUNT(*) FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.episode_id = $1 AND u.deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &total, countQuery, episodeID); err != nil {
 		return nil, 0, fmt.Errorf("failed to count reviews: %w", err)
 	}
@@ -174,7 +174,7 @@ func (r *reviewRepository) GetAverageRatingByEpisodeID(ctx context.Context, epis
 		Average *float64 `db:"average"`
 		Count   int      `db:"count"`
 	}
-	query := `SELECT COALESCE(AVG(rating)::float8, 0) AS average, COUNT(*) AS count FROM reviews WHERE episode_id = $1`
+	query := `SELECT COALESCE(AVG(r.rating)::float8, 0) AS average, COUNT(*) AS count FROM reviews r JOIN users u ON r.user_id = u.id WHERE r.episode_id = $1 AND u.deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &result, query, episodeID); err != nil {
 		return 0, 0, fmt.Errorf("failed to get average rating: %w", err)
 	}
@@ -195,7 +195,8 @@ func (r *reviewRepository) GetAverageRatingByPodcastID(ctx context.Context, podc
 		SELECT COALESCE(AVG(r.rating)::float8, 0) AS average, COUNT(*) AS count
 		FROM reviews r
 		JOIN episodes e ON r.episode_id = e.id
-		WHERE e.podcast_id = $1
+		JOIN users u ON r.user_id = u.id
+		WHERE e.podcast_id = $1 AND u.deleted_at IS NULL
 	`
 	if err := r.db.GetContext(ctx, &result, query, podcastID); err != nil {
 		return 0, 0, fmt.Errorf("failed to get average rating for podcast: %w", err)
@@ -245,7 +246,7 @@ func (r *reviewRepository) GetByUserID(ctx context.Context, userID uuid.UUID, li
 // GetTimeline は全ユーザーの最新レビューをユーザー・エピソード・ポッドキャスト情報付きで取得します。
 func (r *reviewRepository) GetTimeline(ctx context.Context, limit, offset int) ([]TimelineRow, int, error) {
 	var total int
-	countQuery := `SELECT COUNT(*) FROM reviews`
+	countQuery := `SELECT COUNT(*) FROM reviews r JOIN users u ON r.user_id = u.id WHERE u.deleted_at IS NULL`
 	if err := r.db.GetContext(ctx, &total, countQuery); err != nil {
 		return nil, 0, fmt.Errorf("failed to count timeline reviews: %w", err)
 	}
