@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -56,28 +57,6 @@ func (m *mockReviewRepo) GetTimeline(ctx context.Context, limit, offset int) ([]
 	return m.getTimelineFn(ctx, limit, offset)
 }
 
-// ── ヘルパー ──
-
-func newTestEpisode() *model.Episode {
-	return &model.Episode{
-		ID:        uuid.New(),
-		PodcastID: uuid.New(),
-		Title:     "テストエピソード",
-	}
-}
-
-func newTestReview(userID, episodeID uuid.UUID) *model.Review {
-	now := time.Now()
-	return &model.Review{
-		ID:        uuid.New(),
-		UserID:    userID,
-		EpisodeID: episodeID,
-		Rating:    4,
-		CreatedAt: now,
-		UpdatedAt: now,
-	}
-}
-
 // ── テスト: バリデーション ──
 
 func TestValidateReviewInput(t *testing.T) {
@@ -107,12 +86,8 @@ func TestValidateReviewInput(t *testing.T) {
 		}
 	})
 
-	t.Run("comment 1000文字以内は正常", func(t *testing.T) {
-		c := string(make([]byte, 1000))
-		for i := range c {
-			_ = i // fill with zero bytes (valid chars)
-		}
-		comment := strPtr("あ") // 1 char
+	t.Run("comment ちょうど1000文字は正常", func(t *testing.T) {
+		comment := strPtr(strings.Repeat("a", 1000))
 		if err := validateReviewInput(3, comment); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

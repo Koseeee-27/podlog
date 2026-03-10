@@ -35,17 +35,6 @@ func (m *mockListeningRecordRepo) GetByUserID(ctx context.Context, userID uuid.U
 	return m.getByUserIDFn(ctx, userID, limit, offset)
 }
 
-// ── ヘルパー ──
-
-func newTestRecord(userID, episodeID uuid.UUID) *model.ListeningRecord {
-	return &model.ListeningRecord{
-		ID:        uuid.New(),
-		UserID:    userID,
-		EpisodeID: episodeID,
-		CreatedAt: time.Now(),
-	}
-}
-
 // ── テスト: Create ──
 
 func TestListeningRecordUsecase_Create(t *testing.T) {
