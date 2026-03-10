@@ -71,3 +71,22 @@ export const HasMore: Story = {
     onLoadMore: () => {},
   },
 };
+
+export const LoadingMore: Story = {
+  args: {
+    reviews: [
+      {
+        id: "r1",
+        user: { id: "u1", username: "tanaka", display_name: "田中太郎" },
+        rating: 5,
+        comment: "最高！",
+        created_at: "2026-03-01T12:00:00Z",
+      },
+    ],
+    total: 25,
+    averageRating: 4.2,
+    loading: true,
+    hasMore: true,
+    onLoadMore: () => {},
+  },
+};

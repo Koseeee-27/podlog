@@ -73,3 +73,25 @@ export const Submitted: Story = {
     submitted: true,
   },
 };
+
+export const LoadingMore: Story = {
+  args: {
+    reviews: [
+      {
+        id: "r1",
+        user: { id: "u1", username: "tanaka", display_name: "田中太郎" },
+        rating: 5,
+        comment: "最高のエピソードでした！",
+        created_at: "2026-03-01T12:00:00Z",
+      },
+    ],
+    total: 10,
+    averageRating: 4.5,
+    listLoading: true,
+    hasMore: true,
+    onLoadMore: () => {},
+    onSubmit: async () => {},
+    actionLoading: false,
+    submitted: false,
+  },
+};
