@@ -3,7 +3,7 @@ export interface Review {
   user_id: string;
   episode_id: string;
   rating: number;
-  comment: string | null;
+  comment?: string;
   created_at: string;
   updated_at: string;
 }
@@ -22,14 +22,14 @@ export interface ReviewUser {
   id: string;
   username: string;
   display_name: string;
-  avatar_url: string | null;
+  avatar_url?: string;
 }
 
 export interface ReviewItem {
   id: string;
   user: ReviewUser;
   rating: number;
-  comment: string | null;
+  comment?: string;
   created_at: string;
 }
 
@@ -48,13 +48,13 @@ export interface ReviewEpisode {
   id: string;
   title: string;
   podcast_id: string;
-  artwork_url: string | null;
+  artwork_url?: string;
 }
 
 export interface ReviewPodcast {
   id: string;
   title: string;
-  artwork_url: string | null;
+  artwork_url?: string;
 }
 
 export interface UserReviewItem {
@@ -62,7 +62,7 @@ export interface UserReviewItem {
   episode: ReviewEpisode;
   podcast: ReviewPodcast;
   rating: number;
-  comment: string | null;
+  comment?: string;
   created_at: string;
 }
 
@@ -77,7 +77,7 @@ export interface TimelineItem {
   episode: ReviewEpisode;
   podcast: ReviewPodcast;
   rating: number;
-  comment: string | null;
+  comment?: string;
   created_at: string;
 }
 

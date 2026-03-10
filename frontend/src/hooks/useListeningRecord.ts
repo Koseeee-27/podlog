@@ -73,27 +73,28 @@ export function useListeningRecords() {
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     async function fetch() {
       setLoading(true);
       setError(null);
       try {
         const data = await getMyListeningRecords({ limit: PAGE_SIZE, offset: 0 });
-        if (!cancelled) {
-          setRecords(data.records ?? []);
-          setTotal(data.total);
-          setHasMore((data.records ?? []).length >= PAGE_SIZE);
-        }
+        if (controller.signal.aborted) return;
+        const list = data.records ?? [];
+        setRecords(list);
+        setTotal(data.total);
+        setHasMore(list.length < data.total);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetch();
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, []);
 
   const recordsLength = records.length;
@@ -107,7 +108,7 @@ export function useListeningRecords() {
       const list = data.records ?? [];
       setRecords((prev) => [...prev, ...list]);
       setTotal(data.total);
-      setHasMore(list.length >= PAGE_SIZE);
+      setHasMore(recordsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {

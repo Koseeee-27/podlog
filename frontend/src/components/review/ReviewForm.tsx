@@ -42,7 +42,7 @@ export default function ReviewForm({
               onMouseLeave={() => setHoveredRating(0)}
               aria-label={`${star}つ星`}
               aria-pressed={rating === star}
-              className="text-2xl focus:outline-none"
+              className="text-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:rounded"
             >
               <span className={
                 star <= (hoveredRating || rating)

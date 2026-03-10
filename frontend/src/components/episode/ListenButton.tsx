@@ -25,6 +25,7 @@ export default function ListenButton({ episodeId }: ListenButtonProps) {
       <button
         onClick={toggle}
         disabled={toggling}
+        aria-pressed={listened}
         className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
           listened
             ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"

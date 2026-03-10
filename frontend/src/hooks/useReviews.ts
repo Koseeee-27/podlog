@@ -31,46 +31,30 @@ export function useEpisodeReviews(episodeId: string) {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
 
-  const fetchReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async (signal?: AbortSignal) => {
     setLoading(true);
     setError(null);
     try {
       const data = await getEpisodeReviews(episodeId, { limit: PAGE_SIZE, offset: 0 });
-      setReviews(data.reviews ?? []);
+      if (signal?.aborted) return;
+      const list = data.reviews ?? [];
+      setReviews(list);
       setTotal(data.total);
       setAverageRating(data.average_rating);
-      setHasMore((data.reviews ?? []).length >= PAGE_SIZE);
+      setHasMore(list.length < data.total);
     } catch (err) {
+      if (signal?.aborted) return;
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {
-      setLoading(false);
+      if (!signal?.aborted) setLoading(false);
     }
   }, [episodeId]);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getEpisodeReviews(episodeId, { limit: PAGE_SIZE, offset: 0 });
-        if (!cancelled) {
-          setReviews(data.reviews ?? []);
-          setTotal(data.total);
-          setAverageRating(data.average_rating);
-          setHasMore((data.reviews ?? []).length >= PAGE_SIZE);
-        }
-      } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { cancelled = true; };
-  }, [episodeId]);
+    const controller = new AbortController();
+    fetchReviews(controller.signal);
+    return () => { controller.abort(); };
+  }, [fetchReviews]);
 
   const reviewsLength = reviews.length;
   const loadMore = useCallback(async () => {
@@ -81,9 +65,12 @@ export function useEpisodeReviews(episodeId: string) {
         offset: reviewsLength,
       });
       const list = data.reviews ?? [];
-      setReviews((prev) => [...prev, ...list]);
+      setReviews((prev) => {
+        const next = [...prev, ...list];
+        return next;
+      });
       setTotal(data.total);
-      setHasMore(list.length >= PAGE_SIZE);
+      setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {
@@ -157,27 +144,28 @@ export function useMyReviews() {
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     async function fetch() {
       setLoading(true);
       setError(null);
       try {
         const data = await getMyReviews({ limit: PAGE_SIZE, offset: 0 });
-        if (!cancelled) {
-          setReviews(data.reviews ?? []);
-          setTotal(data.total);
-          setHasMore((data.reviews ?? []).length >= PAGE_SIZE);
-        }
+        if (controller.signal.aborted) return;
+        const list = data.reviews ?? [];
+        setReviews(list);
+        setTotal(data.total);
+        setHasMore(list.length < data.total);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetch();
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, []);
 
   const reviewsLength = reviews.length;
@@ -191,7 +179,7 @@ export function useMyReviews() {
       const list = data.reviews ?? [];
       setReviews((prev) => [...prev, ...list]);
       setTotal(data.total);
-      setHasMore(list.length >= PAGE_SIZE);
+      setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {
@@ -213,27 +201,28 @@ export function useTimeline() {
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    const controller = new AbortController();
 
     async function fetch() {
       setLoading(true);
       setError(null);
       try {
         const data = await getTimeline({ limit: PAGE_SIZE, offset: 0 });
-        if (!cancelled) {
-          setReviews(data.reviews ?? []);
-          setTotal(data.total);
-          setHasMore((data.reviews ?? []).length >= PAGE_SIZE);
-        }
+        if (controller.signal.aborted) return;
+        const list = data.reviews ?? [];
+        setReviews(list);
+        setTotal(data.total);
+        setHasMore(list.length < data.total);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!controller.signal.aborted) setLoading(false);
       }
     }
 
     fetch();
-    return () => { cancelled = true; };
+    return () => { controller.abort(); };
   }, []);
 
   const reviewsLength = reviews.length;
@@ -247,7 +236,7 @@ export function useTimeline() {
       const list = data.reviews ?? [];
       setReviews((prev) => [...prev, ...list]);
       setTotal(data.total);
-      setHasMore(list.length >= PAGE_SIZE);
+      setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {

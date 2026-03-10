@@ -14,14 +14,14 @@ export interface ListeningRecordEpisode {
   id: string;
   title: string;
   podcast_id: string;
-  artwork_url: string | null;
-  published_at: string | null;
+  artwork_url?: string;
+  published_at?: string;
 }
 
 export interface ListeningRecordPodcast {
   id: string;
   title: string;
-  artwork_url: string | null;
+  artwork_url?: string;
 }
 
 export interface ListeningRecordItem {
