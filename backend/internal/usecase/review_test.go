@@ -464,7 +464,10 @@ func TestReviewUsecase_GetByEpisodeID(t *testing.T) {
 		)
 
 		// limit が負 → 20 に補正
-		_, _ = uc.GetByEpisodeID(ctx, episodeID, -5, -10)
+		_, err := uc.GetByEpisodeID(ctx, episodeID, -5, -10)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
@@ -473,7 +476,10 @@ func TestReviewUsecase_GetByEpisodeID(t *testing.T) {
 		}
 
 		// limit > 100 → 20 に補正
-		_, _ = uc.GetByEpisodeID(ctx, episodeID, 200, 0)
+		_, err = uc.GetByEpisodeID(ctx, episodeID, 200, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
@@ -559,7 +565,10 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 		)
 
 		// limit が負 → 20 に補正
-		_, _ = uc.GetByUserID(ctx, userID, -5, -10)
+		_, err := uc.GetByUserID(ctx, userID, -5, -10)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
@@ -568,7 +577,10 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 		}
 
 		// limit > 100 → 20 に補正
-		_, _ = uc.GetByUserID(ctx, userID, 200, 0)
+		_, err = uc.GetByUserID(ctx, userID, 200, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}

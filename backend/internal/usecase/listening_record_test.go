@@ -304,7 +304,10 @@ func TestListeningRecordUsecase_GetByUserID(t *testing.T) {
 		)
 
 		// limit が負 → 20 に補正、offset が負 → 0 に補正
-		_, _ = uc.GetByUserID(ctx, userID, -1, -5)
+		_, err := uc.GetByUserID(ctx, userID, -1, -5)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
@@ -313,7 +316,10 @@ func TestListeningRecordUsecase_GetByUserID(t *testing.T) {
 		}
 
 		// limit > 100 → 20 に補正
-		_, _ = uc.GetByUserID(ctx, userID, 150, 0)
+		_, err = uc.GetByUserID(ctx, userID, 150, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
