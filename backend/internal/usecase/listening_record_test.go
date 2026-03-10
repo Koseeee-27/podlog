@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -23,15 +24,27 @@ type mockListeningRecordRepo struct {
 }
 
 func (m *mockListeningRecordRepo) Create(ctx context.Context, record *model.ListeningRecord) error {
+	if m.createFn == nil {
+		return fmt.Errorf("mockListeningRecordRepo.Create: not implemented")
+	}
 	return m.createFn(ctx, record)
 }
 func (m *mockListeningRecordRepo) Delete(ctx context.Context, userID, episodeID uuid.UUID) error {
+	if m.deleteFn == nil {
+		return fmt.Errorf("mockListeningRecordRepo.Delete: not implemented")
+	}
 	return m.deleteFn(ctx, userID, episodeID)
 }
 func (m *mockListeningRecordRepo) GetByUserAndEpisode(ctx context.Context, userID, episodeID uuid.UUID) (*model.ListeningRecord, error) {
+	if m.getByUserAndEpisodeFn == nil {
+		return nil, fmt.Errorf("mockListeningRecordRepo.GetByUserAndEpisode: not implemented")
+	}
 	return m.getByUserAndEpisodeFn(ctx, userID, episodeID)
 }
 func (m *mockListeningRecordRepo) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
+	if m.getByUserIDFn == nil {
+		return nil, 0, fmt.Errorf("mockListeningRecordRepo.GetByUserID: not implemented")
+	}
 	return m.getByUserIDFn(ctx, userID, limit, offset)
 }
 

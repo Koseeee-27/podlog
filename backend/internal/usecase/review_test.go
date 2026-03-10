@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"fmt"
+	"math"
 	"strings"
 	"testing"
 	"time"
@@ -30,30 +32,57 @@ type mockReviewRepo struct {
 }
 
 func (m *mockReviewRepo) Create(ctx context.Context, review *model.Review) error {
+	if m.createFn == nil {
+		return fmt.Errorf("mockReviewRepo.Create: not implemented")
+	}
 	return m.createFn(ctx, review)
 }
 func (m *mockReviewRepo) Update(ctx context.Context, review *model.Review) error {
+	if m.updateFn == nil {
+		return fmt.Errorf("mockReviewRepo.Update: not implemented")
+	}
 	return m.updateFn(ctx, review)
 }
 func (m *mockReviewRepo) Delete(ctx context.Context, userID, episodeID uuid.UUID) error {
+	if m.deleteFn == nil {
+		return fmt.Errorf("mockReviewRepo.Delete: not implemented")
+	}
 	return m.deleteFn(ctx, userID, episodeID)
 }
 func (m *mockReviewRepo) GetByUserAndEpisode(ctx context.Context, userID, episodeID uuid.UUID) (*model.Review, error) {
+	if m.getByUserAndEpisodeFn == nil {
+		return nil, fmt.Errorf("mockReviewRepo.GetByUserAndEpisode: not implemented")
+	}
 	return m.getByUserAndEpisodeFn(ctx, userID, episodeID)
 }
 func (m *mockReviewRepo) GetByEpisodeID(ctx context.Context, episodeID uuid.UUID, limit, offset int) ([]repository.ReviewWithUserRow, int, error) {
+	if m.getByEpisodeIDFn == nil {
+		return nil, 0, fmt.Errorf("mockReviewRepo.GetByEpisodeID: not implemented")
+	}
 	return m.getByEpisodeIDFn(ctx, episodeID, limit, offset)
 }
 func (m *mockReviewRepo) GetAverageRatingByEpisodeID(ctx context.Context, episodeID uuid.UUID) (float64, int, error) {
+	if m.getAverageRatingByEpisodeFn == nil {
+		return 0, 0, fmt.Errorf("mockReviewRepo.GetAverageRatingByEpisodeID: not implemented")
+	}
 	return m.getAverageRatingByEpisodeFn(ctx, episodeID)
 }
 func (m *mockReviewRepo) GetAverageRatingByPodcastID(ctx context.Context, podcastID uuid.UUID) (float64, int, error) {
+	if m.getAverageRatingByPodcastFn == nil {
+		return 0, 0, fmt.Errorf("mockReviewRepo.GetAverageRatingByPodcastID: not implemented")
+	}
 	return m.getAverageRatingByPodcastFn(ctx, podcastID)
 }
 func (m *mockReviewRepo) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
+	if m.getByUserIDFn == nil {
+		return nil, 0, fmt.Errorf("mockReviewRepo.GetByUserID: not implemented")
+	}
 	return m.getByUserIDFn(ctx, userID, limit, offset)
 }
 func (m *mockReviewRepo) GetTimeline(ctx context.Context, limit, offset int) ([]repository.TimelineRow, int, error) {
+	if m.getTimelineFn == nil {
+		return nil, 0, fmt.Errorf("mockReviewRepo.GetTimeline: not implemented")
+	}
 	return m.getTimelineFn(ctx, limit, offset)
 }
 
@@ -128,7 +157,7 @@ func TestRoundToOneDecimal(t *testing.T) {
 	}
 	for _, tt := range tests {
 		got := roundToOneDecimal(tt.input)
-		if got != tt.expected {
+		if math.Abs(got-tt.expected) > 1e-9 {
 			t.Errorf("roundToOneDecimal(%f) = %f, want %f", tt.input, got, tt.expected)
 		}
 	}
