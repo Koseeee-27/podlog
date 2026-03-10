@@ -1,5 +1,3 @@
-"use client";
-
 import type { ReviewItem } from "@/types/review";
 import ReviewForm from "./ReviewForm";
 import ReviewCard from "./ReviewCard";
