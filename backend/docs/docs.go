@@ -53,6 +53,438 @@ const docTemplate = `{
                 }
             }
         },
+        "/episodes/{id}/listen": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーがそのエピソードを聴いたかどうか確認します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listening-records"
+                ],
+                "summary": "聴取状態確認",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが指定エピソードを「聴いた」として記録します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listening-records"
+                ],
+                "summary": "聴取記録追加",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.ListeningRecord"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーの聴取記録を削除します",
+                "tags": [
+                    "listening-records"
+                ],
+                "summary": "聴取記録削除",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/episodes/{id}/reviews": {
+            "get": {
+                "description": "エピソードに投稿されたレビュー一覧を取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "エピソードのレビュー一覧",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ReviewListResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーがエピソードにレビューを投稿します",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "レビュー投稿",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "レビュー内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreateReviewInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Review"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/episodes/{id}/reviews/mine": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーの自分のレビューを更新します",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "レビュー更新",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "レビュー内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UpdateReviewInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Review"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーの自分のレビューを削除します",
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "レビュー削除",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "サーバーの稼働状態を確認します",
@@ -399,6 +831,80 @@ const docTemplate = `{
                 }
             }
         },
+        "/podcasts/{id}/rating": {
+            "get": {
+                "description": "ポッドキャストの全エピソードの平均評価を取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "ポッドキャスト平均評価",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ポッドキャストID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.PodcastRatingResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/timeline": {
+            "get": {
+                "description": "全ユーザーの最新レビューを時系列で取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "timeline"
+                ],
+                "summary": "タイムライン",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.TimelineResult"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -496,6 +1002,106 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/listening-records": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーの聴取履歴をエピソード・ポッドキャスト情報付きで取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listening-records"
+                ],
+                "summary": "聴取履歴一覧",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ListeningRecordListResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/reviews": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーのレビュー一覧をエピソード・ポッドキャスト情報付きで取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "reviews"
+                ],
+                "summary": "自分のレビュー一覧",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UserReviewListResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -677,6 +1283,23 @@ const docTemplate = `{
                 }
             }
         },
+        "model.ListeningRecord": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "episode_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Podcast": {
             "type": "object",
             "properties": {
@@ -717,6 +1340,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Review": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -833,6 +1482,17 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.CreateReviewInput": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                }
+            }
+        },
         "usecase.FetchFromFeedResult": {
             "type": "object",
             "properties": {
@@ -849,6 +1509,255 @@ const docTemplate = `{
                     "type": "integer"
                 },
                 "skipped_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.ListeningRecordEpisodeInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast_id": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.ListeningRecordItem": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "episode": {
+                    "$ref": "#/definitions/usecase.ListeningRecordEpisodeInfo"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.ListeningRecordPodcastInfo"
+                }
+            }
+        },
+        "usecase.ListeningRecordListResult": {
+            "type": "object",
+            "properties": {
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.ListeningRecordItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.ListeningRecordPodcastInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.PodcastRatingResult": {
+            "type": "object",
+            "properties": {
+                "average_rating": {
+                    "type": "number"
+                },
+                "total_reviews": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.ReviewEpisodeInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.ReviewItem": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/usecase.ReviewUserInfo"
+                }
+            }
+        },
+        "usecase.ReviewListResult": {
+            "type": "object",
+            "properties": {
+                "average_rating": {
+                    "type": "number"
+                },
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.ReviewItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.ReviewPodcastInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.ReviewUserInfo": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.TimelineItem": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode": {
+                    "$ref": "#/definitions/usecase.ReviewEpisodeInfo"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.ReviewPodcastInfo"
+                },
+                "rating": {
+                    "type": "integer"
+                },
+                "user": {
+                    "$ref": "#/definitions/usecase.ReviewUserInfo"
+                }
+            }
+        },
+        "usecase.TimelineResult": {
+            "type": "object",
+            "properties": {
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.TimelineItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.UpdateReviewInput": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "rating": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.UserReviewItem": {
+            "type": "object",
+            "properties": {
+                "comment": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode": {
+                    "$ref": "#/definitions/usecase.ReviewEpisodeInfo"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.ReviewPodcastInfo"
+                },
+                "rating": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.UserReviewListResult": {
+            "type": "object",
+            "properties": {
+                "reviews": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.UserReviewItem"
+                    }
+                },
+                "total": {
                     "type": "integer"
                 }
             }
