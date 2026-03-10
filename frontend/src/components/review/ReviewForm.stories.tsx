@@ -12,17 +12,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    onSubmit: async (rating: number, comment: string) => {
-      console.log("Submit:", { rating, comment });
-    },
+    onSubmit: async () => {},
   },
 };
 
 export const WithInitialValues: Story = {
   args: {
-    onSubmit: async (rating: number, comment: string) => {
-      console.log("Submit:", { rating, comment });
-    },
+    onSubmit: async () => {},
     initialRating: 4,
     initialComment: "とても面白いエピソードでした！",
     submitLabel: "更新する",

@@ -1,3 +1,5 @@
+"use client";
+
 export interface ListenButtonViewProps {
   listened: boolean;
   loading: boolean;

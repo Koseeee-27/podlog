@@ -1,3 +1,5 @@
+"use client";
+
 import type { ReviewItem } from "@/types/review";
 import ReviewCard from "./ReviewCard";
 
