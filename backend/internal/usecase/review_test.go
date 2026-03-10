@@ -251,6 +251,33 @@ func TestReviewUsecase_Create(t *testing.T) {
 		}
 	})
 
+	t.Run("UNIQUE制約違反 → ConflictError（並行リクエスト）", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.Review, error) {
+					return nil, nil // 重複なし（事前チェック通過）
+				},
+				createFn: func(_ context.Context, _ *model.Review) error {
+					return errors.New("duplicate key value violates unique constraint \"23505\"")
+				},
+			},
+			&mockEpisodeRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.Episode, error) {
+					return episode, nil
+				},
+			},
+		)
+
+		_, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 4})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ce *ConflictError
+		if !errors.As(err, &ce) {
+			t.Fatalf("expected ConflictError, got %T: %v", err, err)
+		}
+	})
+
 	t.Run("rating 0 → ValidationError", func(t *testing.T) {
 		uc := NewReviewUsecase(&mockReviewRepo{}, &mockEpisodeRepo{})
 
@@ -478,6 +505,72 @@ func TestReviewUsecase_GetPodcastRating(t *testing.T) {
 		}
 		if result.TotalReviews != 3 {
 			t.Errorf("total_reviews = %d, want 3", result.TotalReviews)
+		}
+	})
+}
+
+// ── テスト: GetByUserID ──
+
+func TestReviewUsecase_GetByUserID(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+
+	t.Run("正常系: ユーザーのレビュー一覧取得", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
+					if limit != 20 {
+						t.Errorf("limit = %d, want 20", limit)
+					}
+					return []repository.ReviewWithDetailsRow{
+						{
+							ID: uuid.New(), Rating: 4, EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
+							PodcastID: uuid.New(), PodcastTitle: "Podcast1", CreatedAt: time.Now(),
+						},
+					}, 1, nil
+				},
+			},
+			&mockEpisodeRepo{},
+		)
+
+		result, err := uc.GetByUserID(ctx, userID, 0, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Reviews) != 1 {
+			t.Errorf("reviews count = %d, want 1", len(result.Reviews))
+		}
+		if result.Total != 1 {
+			t.Errorf("total = %d, want 1", result.Total)
+		}
+	})
+
+	t.Run("limit/offset の補正", func(t *testing.T) {
+		var capturedLimit, capturedOffset int
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
+					capturedLimit = limit
+					capturedOffset = offset
+					return nil, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+		)
+
+		// limit が負 → 20 に補正
+		_, _ = uc.GetByUserID(ctx, userID, -5, -10)
+		if capturedLimit != 20 {
+			t.Errorf("corrected limit = %d, want 20", capturedLimit)
+		}
+		if capturedOffset != 0 {
+			t.Errorf("corrected offset = %d, want 0", capturedOffset)
+		}
+
+		// limit > 100 → 20 に補正
+		_, _ = uc.GetByUserID(ctx, userID, 200, 0)
+		if capturedLimit != 20 {
+			t.Errorf("corrected limit = %d, want 20", capturedLimit)
 		}
 	})
 }

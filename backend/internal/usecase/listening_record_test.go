@@ -132,6 +132,33 @@ func TestListeningRecordUsecase_Create(t *testing.T) {
 			t.Fatalf("expected ConflictError, got %T: %v", err, err)
 		}
 	})
+
+	t.Run("UNIQUE制約違反 → ConflictError（並行リクエスト）", func(t *testing.T) {
+		uc := NewListeningRecordUsecase(
+			&mockListeningRecordRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.ListeningRecord, error) {
+					return nil, nil // 重複なし（事前チェック通過）
+				},
+				createFn: func(_ context.Context, _ *model.ListeningRecord) error {
+					return errors.New("duplicate key value violates unique constraint \"23505\"")
+				},
+			},
+			&mockEpisodeRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.Episode, error) {
+					return episode, nil
+				},
+			},
+		)
+
+		_, err := uc.Create(ctx, userID, episode.ID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ce *ConflictError
+		if !errors.As(err, &ce) {
+			t.Fatalf("expected ConflictError, got %T: %v", err, err)
+		}
+	})
 }
 
 // ── テスト: Delete ──
