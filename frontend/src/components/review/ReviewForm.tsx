@@ -1,0 +1,85 @@
+"use client";
+
+import { useState } from "react";
+
+interface ReviewFormProps {
+  onSubmit: (rating: number, comment: string) => Promise<void>;
+  initialRating?: number;
+  initialComment?: string;
+  submitLabel?: string;
+  loading?: boolean;
+}
+
+export default function ReviewForm({
+  onSubmit,
+  initialRating = 0,
+  initialComment = "",
+  submitLabel = "投稿する",
+  loading = false,
+}: ReviewFormProps) {
+  const [rating, setRating] = useState(initialRating);
+  const [comment, setComment] = useState(initialComment);
+  const [hoveredRating, setHoveredRating] = useState(0);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (rating === 0) return;
+    await onSubmit(rating, comment);
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">評価</label>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              onClick={() => setRating(star)}
+              onMouseEnter={() => setHoveredRating(star)}
+              onMouseLeave={() => setHoveredRating(0)}
+              className="text-2xl focus:outline-none"
+            >
+              <span className={
+                star <= (hoveredRating || rating)
+                  ? "text-yellow-400"
+                  : "text-gray-300"
+              }>
+                ★
+              </span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div>
+        <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-1">
+          コメント（任意）
+        </label>
+        <textarea
+          id="comment"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          maxLength={1000}
+          rows={3}
+          placeholder="感想を書いてみましょう..."
+          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+        />
+        <p className="mt-1 text-xs text-gray-400">{comment.length}/1000</p>
+      </div>
+
+      <button
+        type="submit"
+        disabled={rating === 0 || loading}
+        className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
+          rating === 0 || loading
+            ? "bg-gray-300 cursor-not-allowed"
+            : "bg-indigo-600 hover:bg-indigo-700"
+        }`}
+      >
+        {loading ? "送信中..." : submitLabel}
+      </button>
+    </form>
+  );
+}

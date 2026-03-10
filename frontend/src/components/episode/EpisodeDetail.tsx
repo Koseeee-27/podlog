@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { EpisodeWithStats } from "@/types/episode";
 import { formatDuration, formatDate } from "@/lib/utils";
+import ListenButton from "./ListenButton";
+import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 
 interface EpisodeDetailProps {
   episode: EpisodeWithStats;
@@ -19,6 +21,10 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
             {episode.average_rating.toFixed(1)} ({episode.review_count}件のレビュー)
           </span>
         )}
+      </div>
+
+      <div className="mt-4">
+        <ListenButton episodeId={episode.id} />
       </div>
 
       <div className="mt-2">
@@ -62,6 +68,10 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
           </a>
         </div>
       )}
+
+      <hr className="my-8 border-gray-200" />
+
+      <EpisodeReviewSection episodeId={episode.id} />
     </div>
   );
 }
