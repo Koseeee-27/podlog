@@ -31,9 +31,7 @@ export const WithInitialValues: Story = {
 
 export const Loading: Story = {
   args: {
-    onSubmit: async () => {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-    },
+    onSubmit: async () => {},
     loading: true,
   },
 };
