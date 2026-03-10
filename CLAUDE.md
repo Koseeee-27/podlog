@@ -68,6 +68,7 @@ podlog/
 - エラーハンドリングは必ず行う（`if err != nil` を省略しない）
 - APIを追加・変更したら **Swagger コメント** を更新する（`swag generate` を忘れずに）
 - テーブルを追加・変更したら **DB 仕様書** (`backend/docs/database.md`) を更新する
+- API を追加・変更したら **API 設計書** (`backend/docs/api-design.md`) も更新する
 - Go初学者のため、Claude は Go の書き方を丁寧に説明すること
 
 ### API設計
