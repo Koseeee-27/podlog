@@ -10,10 +10,12 @@ import (
 
 // Handlers は全ハンドラーをまとめた構造体です。
 type Handlers struct {
-	Health  *handler.HealthHandler
-	User    *handler.UserHandler
-	Podcast *handler.PodcastHandler
-	Episode *handler.EpisodeHandler
+	Health          *handler.HealthHandler
+	User            *handler.UserHandler
+	Podcast         *handler.PodcastHandler
+	Episode         *handler.EpisodeHandler
+	ListeningRecord *handler.ListeningRecordHandler
+	Review          *handler.ReviewHandler
 }
 
 // Setup は全ルートを Echo インスタンスに登録します。
@@ -34,6 +36,13 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 
 	// Episodes (公開)
 	v1.GET("/episodes/:id", h.Episode.GetByID)
+	v1.GET("/episodes/:id/reviews", h.Review.GetByEpisodeID)
+
+	// Podcasts 評価 (公開)
+	v1.GET("/podcasts/:id/rating", h.Review.GetPodcastRating)
+
+	// Timeline (公開)
+	v1.GET("/timeline", h.Review.GetTimeline)
 
 	// ── 認証が必要なルート ──
 	auth := v1.Group("", mw.JWTAuth(supabaseURL))
@@ -50,4 +59,16 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	// Episodes (認証必要)
 	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
 	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed)
+
+	// Listening Records (認証必要)
+	auth.POST("/episodes/:id/listen", h.ListeningRecord.Create)
+	auth.DELETE("/episodes/:id/listen", h.ListeningRecord.Delete)
+	auth.GET("/episodes/:id/listen", h.ListeningRecord.GetStatus)
+	auth.GET("/users/me/listening-records", h.ListeningRecord.GetMyRecords)
+
+	// Reviews (認証必要)
+	auth.POST("/episodes/:id/reviews", h.Review.Create)
+	auth.PUT("/episodes/:id/reviews/mine", h.Review.Update)
+	auth.DELETE("/episodes/:id/reviews/mine", h.Review.Delete)
+	auth.GET("/users/me/reviews", h.Review.GetMyReviews)
 }

@@ -76,16 +76,22 @@ func main() {
 	userRepo := repository.NewUserRepository(db)
 	podcastRepo := repository.NewPodcastRepository(db)
 	episodeRepo := repository.NewEpisodeRepository(db)
+	listeningRecordRepo := repository.NewListeningRecordRepository(db)
+	reviewRepo := repository.NewReviewRepository(db)
 
 	userUsecase := usecase.NewUserUsecase(userRepo)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
+	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo)
+	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo)
 
 	handlers := router.Handlers{
-		Health:  handler.NewHealthHandler(),
-		User:    handler.NewUserHandler(userUsecase),
-		Podcast: handler.NewPodcastHandler(podcastUsecase, ogpScraper),
-		Episode: handler.NewEpisodeHandler(episodeUsecase, podcastUsecase),
+		Health:          handler.NewHealthHandler(),
+		User:            handler.NewUserHandler(userUsecase),
+		Podcast:         handler.NewPodcastHandler(podcastUsecase, ogpScraper),
+		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase),
+		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
+		Review:          handler.NewReviewHandler(reviewUsecase),
 	}
 
 	// 8. ルーティングを設定

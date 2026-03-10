@@ -43,6 +43,17 @@ definitions:
       updated_at:
         type: string
     type: object
+  model.ListeningRecord:
+    properties:
+      created_at:
+        type: string
+      episode_id:
+        type: string
+      id:
+        type: string
+      user_id:
+        type: string
+    type: object
   model.Podcast:
     properties:
       artwork_url:
@@ -70,6 +81,23 @@ definitions:
       title:
         type: string
       updated_at:
+        type: string
+    type: object
+  model.Review:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      episode_id:
+        type: string
+      id:
+        type: string
+      rating:
+        type: integer
+      updated_at:
+        type: string
+      user_id:
         type: string
     type: object
   model.UpdateProfileRequest:
@@ -145,6 +173,13 @@ definitions:
       title:
         type: string
     type: object
+  usecase.CreateReviewInput:
+    properties:
+      comment:
+        type: string
+      rating:
+        type: integer
+    type: object
   usecase.FetchFromFeedResult:
     properties:
       episodes:
@@ -156,6 +191,167 @@ definitions:
       new_count:
         type: integer
       skipped_count:
+        type: integer
+    type: object
+  usecase.ListeningRecordEpisodeInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      podcast_id:
+        type: string
+      published_at:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.ListeningRecordItem:
+    properties:
+      created_at:
+        type: string
+      episode:
+        $ref: '#/definitions/usecase.ListeningRecordEpisodeInfo'
+      id:
+        type: string
+      podcast:
+        $ref: '#/definitions/usecase.ListeningRecordPodcastInfo'
+    type: object
+  usecase.ListeningRecordListResult:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/usecase.ListeningRecordItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  usecase.ListeningRecordPodcastInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.PodcastRatingResult:
+    properties:
+      average_rating:
+        type: number
+      total_reviews:
+        type: integer
+    type: object
+  usecase.ReviewEpisodeInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      podcast_id:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.ReviewItem:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      rating:
+        type: integer
+      user:
+        $ref: '#/definitions/usecase.ReviewUserInfo'
+    type: object
+  usecase.ReviewListResult:
+    properties:
+      average_rating:
+        type: number
+      reviews:
+        items:
+          $ref: '#/definitions/usecase.ReviewItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  usecase.ReviewPodcastInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.ReviewUserInfo:
+    properties:
+      avatar_url:
+        type: string
+      display_name:
+        type: string
+      id:
+        type: string
+      username:
+        type: string
+    type: object
+  usecase.TimelineItem:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      episode:
+        $ref: '#/definitions/usecase.ReviewEpisodeInfo'
+      id:
+        type: string
+      podcast:
+        $ref: '#/definitions/usecase.ReviewPodcastInfo'
+      rating:
+        type: integer
+      user:
+        $ref: '#/definitions/usecase.ReviewUserInfo'
+    type: object
+  usecase.TimelineResult:
+    properties:
+      reviews:
+        items:
+          $ref: '#/definitions/usecase.TimelineItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  usecase.UpdateReviewInput:
+    properties:
+      comment:
+        type: string
+      rating:
+        type: integer
+    type: object
+  usecase.UserReviewItem:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      episode:
+        $ref: '#/definitions/usecase.ReviewEpisodeInfo'
+      id:
+        type: string
+      podcast:
+        $ref: '#/definitions/usecase.ReviewPodcastInfo'
+      rating:
+        type: integer
+    type: object
+  usecase.UserReviewListResult:
+    properties:
+      reviews:
+        items:
+          $ref: '#/definitions/usecase.UserReviewItem'
+        type: array
+      total:
         type: integer
     type: object
 host: localhost:8080
@@ -190,6 +386,286 @@ paths:
       summary: エピソード詳細取得
       tags:
       - episodes
+  /episodes/{id}/listen:
+    delete:
+      description: 認証ユーザーの聴取記録を削除します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 聴取記録削除
+      tags:
+      - listening-records
+    get:
+      description: 認証ユーザーがそのエピソードを聴いたかどうか確認します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 聴取状態確認
+      tags:
+      - listening-records
+    post:
+      description: 認証ユーザーが指定エピソードを「聴いた」として記録します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.ListeningRecord'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 聴取記録追加
+      tags:
+      - listening-records
+  /episodes/{id}/reviews:
+    get:
+      description: エピソードに投稿されたレビュー一覧を取得します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.ReviewListResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: エピソードのレビュー一覧
+      tags:
+      - reviews
+    post:
+      consumes:
+      - application/json
+      description: 認証ユーザーがエピソードにレビューを投稿します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: レビュー内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.CreateReviewInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/model.Review'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "409":
+          description: Conflict
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: レビュー投稿
+      tags:
+      - reviews
+  /episodes/{id}/reviews/mine:
+    delete:
+      description: 認証ユーザーの自分のレビューを削除します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: レビュー削除
+      tags:
+      - reviews
+    put:
+      consumes:
+      - application/json
+      description: 認証ユーザーの自分のレビューを更新します
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: レビュー内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.UpdateReviewInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Review'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: レビュー更新
+      tags:
+      - reviews
   /health:
     get:
       description: サーバーの稼働状態を確認します
@@ -350,6 +826,31 @@ paths:
       summary: RSSフィードからエピソード取得
       tags:
       - episodes
+  /podcasts/{id}/rating:
+    get:
+      description: ポッドキャストの全エピソードの平均評価を取得します
+      parameters:
+      - description: ポッドキャストID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.PodcastRatingResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: ポッドキャスト平均評価
+      tags:
+      - reviews
   /podcasts/fetch-url:
     post:
       consumes:
@@ -414,6 +915,30 @@ paths:
       summary: ポッドキャスト検索
       tags:
       - podcasts
+  /timeline:
+    get:
+      description: 全ユーザーの最新レビューを時系列で取得します
+      parameters:
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.TimelineResult'
+      summary: タイムライン
+      tags:
+      - timeline
   /users/{username}:
     get:
       description: ユーザー名から公開プロフィールを取得します
@@ -507,6 +1032,70 @@ paths:
       summary: プロフィール更新
       tags:
       - users
+  /users/me/listening-records:
+    get:
+      description: 認証ユーザーの聴取履歴をエピソード・ポッドキャスト情報付きで取得します
+      parameters:
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.ListeningRecordListResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 聴取履歴一覧
+      tags:
+      - listening-records
+  /users/me/reviews:
+    get:
+      description: 認証ユーザーのレビュー一覧をエピソード・ポッドキャスト情報付きで取得します
+      parameters:
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.UserReviewListResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 自分のレビュー一覧
+      tags:
+      - reviews
   /users/profile:
     post:
       consumes:
