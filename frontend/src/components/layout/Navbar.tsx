@@ -12,47 +12,61 @@ export default function Navbar() {
   const auth = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navLinks = [
-    { href: "/search", label: "検索" },
-  ];
-
   const profile = auth.status === "authenticated" ? auth.profile : null;
+  const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
 
   return (
     <>
       <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
+            {/* 左側: ロゴ + 検索リンク */}
             <div className="flex items-center gap-6">
               <Link href="/" className="text-lg font-bold text-indigo-600">
-                podlog
+                PodLog
               </Link>
               <div className="hidden sm:flex items-center gap-1">
-                {navLinks.map((link) => (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      pathname === link.href
-                        ? "bg-indigo-50 text-indigo-700"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-                    }`}
-                  >
-                    {link.label}
-                  </Link>
-                ))}
+                <Link
+                  href="/search"
+                  className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    pathname === "/search"
+                      ? "bg-indigo-50 text-indigo-700"
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                  }`}
+                >
+                  検索
+                </Link>
               </div>
             </div>
 
+            {/* 右側: デスクトップ表示 */}
             <div className="hidden sm:flex items-center gap-3">
-              {profile && (
-                <Link href="/profile" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+              {profile ? (
+                <Link
+                  href={`/users/${profile.username}`}
+                  className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+                >
                   <Avatar src={profile.avatar_url} alt={profile.display_name} size="sm" />
                   <span className="text-sm font-medium text-gray-700">{profile.display_name}</span>
                 </Link>
-              )}
+              ) : auth.status === "no_profile" ? (
+                <Link
+                  href="/profile/setup"
+                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  プロフィール設定
+                </Link>
+              ) : !isLoggedIn && auth.status !== "loading" ? (
+                <Link
+                  href="/login"
+                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  ログイン
+                </Link>
+              ) : null}
             </div>
 
+            {/* ハンバーガーメニュー: モバイル */}
             <button
               className="sm:hidden p-2 text-gray-600 hover:text-gray-900"
               onClick={() => setMobileOpen(true)}
@@ -69,6 +83,8 @@ export default function Navbar() {
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
         profile={profile}
+        isLoggedIn={isLoggedIn}
+        isLoading={auth.status === "loading"}
         onSignOut={auth.signOut}
       />
     </>
