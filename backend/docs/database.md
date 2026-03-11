@@ -17,7 +17,7 @@ erDiagram
 
     podcasts {
         UUID id PK
-        BIGINT itunes_id UK
+        BIGINT itunes_id "部分ユニークインデックス"
         VARCHAR(500) title
         VARCHAR(300) author
         TEXT description
@@ -34,7 +34,7 @@ erDiagram
     episodes {
         UUID id PK
         UUID podcast_id FK
-        BIGINT itunes_track_id UK
+        BIGINT itunes_track_id "部分ユニークインデックス"
         VARCHAR(500) title
         TEXT description
         TEXT audio_url
