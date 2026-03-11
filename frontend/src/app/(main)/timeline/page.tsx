@@ -1,5 +1,5 @@
-import TimelinePageClient from "./TimelinePageClient";
+import { redirect } from "next/navigation";
 
 export default function TimelinePage() {
-  return <TimelinePageClient />;
+  redirect("/");
 }
