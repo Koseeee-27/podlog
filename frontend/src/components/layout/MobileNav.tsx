@@ -52,7 +52,7 @@ export default function MobileNav({ open, onClose, profile, onSignOut }: MobileN
         )}
 
         <nav className="p-4 space-y-1">
-          <NavLink href="/dashboard" onClick={onClose}>検索</NavLink>
+          <NavLink href="/search" onClick={onClose}>検索</NavLink>
           <NavLink href="/profile" onClick={onClose}>プロフィール</NavLink>
           <NavLink href="/settings" onClick={onClose}>設定</NavLink>
         </nav>

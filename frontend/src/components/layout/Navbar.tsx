@@ -13,7 +13,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   const navLinks = [
-    { href: "/dashboard", label: "検索" },
+    { href: "/search", label: "検索" },
   ];
 
   const profile = auth.status === "authenticated" ? auth.profile : null;
@@ -24,7 +24,7 @@ export default function Navbar() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-6">
-              <Link href="/dashboard" className="text-lg font-bold text-indigo-600">
+              <Link href="/" className="text-lg font-bold text-indigo-600">
                 podlog
               </Link>
               <div className="hidden sm:flex items-center gap-1">

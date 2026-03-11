@@ -14,7 +14,7 @@ export default function ProfileSetupClient() {
     if (auth.status === "unauthenticated") {
       router.push("/login");
     } else if (auth.status === "authenticated") {
-      router.push("/dashboard");
+      router.push("/");
     }
   }, [auth.status, router]);
 

@@ -37,7 +37,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
         bio: bio || undefined,
       });
       onComplete();
-      router.push("/dashboard");
+      router.push("/");
       router.refresh();
     } catch (err) {
       if (err instanceof Error) {
