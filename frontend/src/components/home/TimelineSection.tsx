@@ -1,33 +1,15 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
 import { useTimeline } from "@/hooks/useReviews";
-import WelcomeSection from "@/components/home/WelcomeSection";
 import TimelineCard from "@/components/timeline/TimelineCard";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
-export default function TopPageClient() {
-  const auth = useAuth();
+export default function TimelineSection() {
   const { reviews, loading, error, hasMore, loadMore } = useTimeline();
-
-  const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
-  const showWelcome = auth.status !== "loading" && !isLoggedIn;
 
   return (
     <div>
-      {showWelcome && (
-        <div className="mb-8">
-          <WelcomeSection />
-        </div>
-      )}
-
-      <div className="mb-6">
-        <h2 className="text-lg font-bold text-gray-900">
-          みんなのレビュー
-        </h2>
-      </div>
-
       {loading && reviews.length === 0 && <Loading />}
       {error && <ErrorMessage message={error} />}
 
