@@ -31,7 +31,11 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
   return (
     <div className="fixed inset-0 z-50 sm:hidden">
       {/* オーバーレイ */}
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+      <button
+        className="absolute inset-0 bg-black/50"
+        onClick={onClose}
+        aria-label="メニューを閉じる"
+      />
 
       {/* サイドバー */}
       <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
@@ -67,6 +71,10 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
               <NavLink href={`/users/${profile.username}`} onClick={onClose}>マイページ</NavLink>
               <NavLink href="/settings" onClick={onClose}>設定</NavLink>
             </>
+          )}
+
+          {isLoggedIn && !profile && (
+            <NavLink href="/profile/setup" onClick={onClose}>プロフィール設定</NavLink>
           )}
 
           {!isLoggedIn && !isLoading && (

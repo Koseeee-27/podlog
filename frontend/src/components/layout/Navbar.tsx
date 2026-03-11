@@ -49,6 +49,13 @@ export default function Navbar() {
                   <Avatar src={profile.avatar_url} alt={profile.display_name} size="sm" />
                   <span className="text-sm font-medium text-gray-700">{profile.display_name}</span>
                 </Link>
+              ) : auth.status === "no_profile" ? (
+                <Link
+                  href="/profile/setup"
+                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                >
+                  プロフィール設定
+                </Link>
               ) : !isLoggedIn && auth.status !== "loading" ? (
                 <Link
                   href="/login"
