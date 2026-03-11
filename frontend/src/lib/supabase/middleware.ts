@@ -37,27 +37,29 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // 認証不要なパスの定義
-  const publicPaths = ["/", "/login", "/signup", "/callback"];
-  const isPublicPath =
-    publicPaths.includes(request.nextUrl.pathname) ||
-    request.nextUrl.pathname.startsWith("/users/");
+  // 認証が必要なパスの定義（フルオープン型: 書き込み系のみ認証必須）
+  const protectedPaths = ["/profile/setup", "/settings"];
+  const isProtectedPath = protectedPaths.some(
+    (path) =>
+      request.nextUrl.pathname === path ||
+      request.nextUrl.pathname.startsWith(path + "/")
+  );
 
   // 未認証ユーザーを保護されたルートからログインへリダイレクト
-  if (!user && !isPublicPath) {
+  if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
 
-  // 認証済みユーザーが /login, /signup にアクセスしたらダッシュボードへ
+  // 認証済みユーザーが /login, /signup にアクセスしたらトップへ
   if (
     user &&
     (request.nextUrl.pathname === "/login" ||
       request.nextUrl.pathname === "/signup")
   ) {
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/";
     return NextResponse.redirect(url);
   }
 
