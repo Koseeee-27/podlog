@@ -11,7 +11,7 @@ interface MobileNavProps {
   profile: User | null;
   isLoggedIn: boolean;
   isLoading: boolean;
-  onSignOut: () => void;
+  onSignOut: () => Promise<void>;
 }
 
 export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoading, onSignOut }: MobileNavProps) {
@@ -32,6 +32,7 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
     <div className="fixed inset-0 z-50 sm:hidden">
       {/* オーバーレイ */}
       <button
+        type="button"
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
         aria-label="メニューを閉じる"
@@ -86,8 +87,8 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
         {isLoggedIn && (
           <div className="p-4 border-t border-gray-200">
             <button
-              onClick={() => {
-                onSignOut();
+              onClick={async () => {
+                await onSignOut();
                 onClose();
               }}
               className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"

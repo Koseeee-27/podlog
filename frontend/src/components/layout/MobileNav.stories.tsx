@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import MobileNav from "./MobileNav";
 
 const noop = () => {};
+const asyncNoop = async () => {};
 
 const meta = {
   title: "Layout/MobileNav",
@@ -13,7 +14,7 @@ const meta = {
   },
   args: {
     onClose: noop,
-    onSignOut: noop,
+    onSignOut: asyncNoop,
   },
 } satisfies Meta<typeof MobileNav>;
 
