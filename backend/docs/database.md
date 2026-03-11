@@ -183,7 +183,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | id | UUID | NO | gen_random_uuid() | PK |
 | user_id | UUID | NO | - | FK → users.id（CASCADE DELETE） |
 | podcast_id | UUID | NO | - | FK → podcasts.id（CASCADE DELETE） |
-| position | SMALLINT | NO | 0 | 表示順序（0始まり）。ユーザーが並べた順を保持する |
+| position | SMALLINT | NO | - | 表示順序（0始まり）。ユーザーが並べた順を保持する（常に明示的に指定する） |
 | created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
 
 ### podcast_requests

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS favorite_podcasts (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     podcast_id UUID NOT NULL REFERENCES podcasts(id) ON DELETE CASCADE,
-    position SMALLINT NOT NULL DEFAULT 0 CHECK (position >= 0),
+    position SMALLINT NOT NULL CHECK (position >= 0),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
