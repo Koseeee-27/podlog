@@ -214,7 +214,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | episodes | idx_episodes_published_at | published_at DESC | 通常 | - |
 | episodes | idx_episodes_podcast_published | (podcast_id, published_at DESC) | 通常 | - |
 | episodes | idx_episodes_itunes_track_id | itunes_track_id | 部分ユニーク | WHERE itunes_track_id IS NOT NULL |
-| episodes | idx_episodes_podcast_id_guid | (podcast_id, guid) | ユニーク部分 | WHERE guid IS NOT NULL |
+| episodes | idx_episodes_podcast_id_guid | (podcast_id, guid) | 部分ユニーク | WHERE guid IS NOT NULL |
 | listening_records | idx_listening_records_user_episode | (user_id, episode_id) | ユニーク | - |
 | listening_records | idx_listening_records_user_id_created_at | (user_id, created_at DESC) | 通常 | - |
 | listening_records | idx_listening_records_episode_id | episode_id | 通常 | - |
@@ -223,7 +223,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | reviews | idx_reviews_user_id_created_at | (user_id, created_at DESC) | 通常 | - |
 | reviews | idx_reviews_created_at | created_at DESC | 通常 | - |
 | favorite_podcasts | idx_favorite_podcasts_user_podcast | (user_id, podcast_id) | ユニーク | - |
-| favorite_podcasts | idx_favorite_podcasts_user_position | (user_id, position) | 通常 | - |
+| favorite_podcasts | idx_favorite_podcasts_user_position | (user_id, position) | ユニーク | - |
 | podcast_requests | idx_podcast_requests_user_id | user_id | 通常 | - |
 | podcast_requests | idx_podcast_requests_status | status | 通常 | - |
 

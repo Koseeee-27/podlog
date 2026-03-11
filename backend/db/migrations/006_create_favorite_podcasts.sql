@@ -13,4 +13,4 @@ CREATE TABLE IF NOT EXISTS favorite_podcasts (
 CREATE UNIQUE INDEX idx_favorite_podcasts_user_podcast ON favorite_podcasts (user_id, podcast_id);
 
 -- ユーザーごとに表示順で取得する用
-CREATE INDEX idx_favorite_podcasts_user_position ON favorite_podcasts (user_id, position);
+CREATE UNIQUE INDEX idx_favorite_podcasts_user_position ON favorite_podcasts (user_id, position);
