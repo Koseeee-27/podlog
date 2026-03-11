@@ -9,10 +9,12 @@ interface MobileNavProps {
   open: boolean;
   onClose: () => void;
   profile: User | null;
+  isLoggedIn: boolean;
+  isLoading: boolean;
   onSignOut: () => void;
 }
 
-export default function MobileNav({ open, onClose, profile, onSignOut }: MobileNavProps) {
+export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoading, onSignOut }: MobileNavProps) {
   useEffect(() => {
     if (open) {
       document.body.style.overflow = "hidden";
@@ -28,10 +30,14 @@ export default function MobileNav({ open, onClose, profile, onSignOut }: MobileN
 
   return (
     <div className="fixed inset-0 z-50 sm:hidden">
+      {/* オーバーレイ */}
       <div className="absolute inset-0 bg-black/50" onClick={onClose} />
-      <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl">
+
+      {/* サイドバー */}
+      <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
+        {/* ヘッダー */}
         <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <span className="font-bold text-indigo-600">podlog</span>
+          <span className="font-bold text-indigo-600">PodLog</span>
           <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-700" aria-label="メニューを閉じる">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -39,6 +45,7 @@ export default function MobileNav({ open, onClose, profile, onSignOut }: MobileN
           </button>
         </div>
 
+        {/* ログイン済み: ユーザー情報 */}
         {profile && (
           <div className="p-4 border-b border-gray-200">
             <div className="flex items-center gap-3">
@@ -51,23 +58,36 @@ export default function MobileNav({ open, onClose, profile, onSignOut }: MobileN
           </div>
         )}
 
-        <nav className="p-4 space-y-1">
+        {/* ナビゲーションリンク */}
+        <nav className="p-4 space-y-1 flex-1">
           <NavLink href="/search" onClick={onClose}>検索</NavLink>
-          <NavLink href="/profile" onClick={onClose}>プロフィール</NavLink>
-          <NavLink href="/settings" onClick={onClose}>設定</NavLink>
+
+          {profile && (
+            <>
+              <NavLink href={`/users/${profile.username}`} onClick={onClose}>マイページ</NavLink>
+              <NavLink href="/settings" onClick={onClose}>設定</NavLink>
+            </>
+          )}
+
+          {!isLoggedIn && !isLoading && (
+            <NavLink href="/login" onClick={onClose}>ログイン</NavLink>
+          )}
         </nav>
 
-        <div className="p-4 border-t border-gray-200">
-          <button
-            onClick={() => {
-              onSignOut();
-              onClose();
-            }}
-            className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
-          >
-            ログアウト
-          </button>
-        </div>
+        {/* ログアウトボタン（ログイン済みのみ） */}
+        {isLoggedIn && (
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={() => {
+                onSignOut();
+                onClose();
+              }}
+              className="w-full text-left px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md"
+            >
+              ログアウト
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
