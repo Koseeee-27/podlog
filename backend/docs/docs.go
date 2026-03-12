@@ -617,11 +617,6 @@ const docTemplate = `{
         },
         "/podcasts/search": {
             "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "iTunes API を使ってポッドキャストを検索します",
                 "produces": [
                     "application/json"

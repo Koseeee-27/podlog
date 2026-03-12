@@ -31,6 +31,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	v1.GET("/users/:username", h.User.GetPublicProfile)
 
 	// Podcasts (公開)
+	v1.GET("/podcasts/search", h.Podcast.Search)
 	v1.GET("/podcasts/:id", h.Podcast.GetByID)
 	v1.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
 
@@ -53,7 +54,6 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	auth.PUT("/users/me", h.User.UpdateMyProfile)
 
 	// Podcasts (認証必要)
-	auth.GET("/podcasts/search", h.Podcast.Search)
 	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
 
 	// Episodes (認証必要)

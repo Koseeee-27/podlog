@@ -961,8 +961,6 @@ paths:
             additionalProperties:
               type: string
             type: object
-      security:
-      - BearerAuth: []
       summary: ポッドキャスト検索
       tags:
       - podcasts
