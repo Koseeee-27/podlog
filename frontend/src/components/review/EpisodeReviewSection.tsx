@@ -6,9 +6,10 @@ import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
+  isLoggedIn: boolean;
 }
 
-export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSectionProps) {
+export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeReviewSectionProps) {
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
@@ -38,6 +39,7 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
       actionError={actionError}
       listError={listError}
       submitted={submitted}
+      isLoggedIn={isLoggedIn}
     />
   );
 }

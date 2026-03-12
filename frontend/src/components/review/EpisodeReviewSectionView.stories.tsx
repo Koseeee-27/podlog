@@ -35,6 +35,7 @@ export const WithReviews: Story = {
     onSubmit: async () => {},
     actionLoading: false,
     submitted: false,
+    isLoggedIn: true,
   },
 };
 
@@ -49,6 +50,7 @@ export const Empty: Story = {
     onSubmit: async () => {},
     actionLoading: false,
     submitted: false,
+    isLoggedIn: true,
   },
 };
 
@@ -71,6 +73,7 @@ export const Submitted: Story = {
     onSubmit: async () => {},
     actionLoading: false,
     submitted: true,
+    isLoggedIn: true,
   },
 };
 
@@ -93,5 +96,44 @@ export const LoadingMore: Story = {
     onSubmit: async () => {},
     actionLoading: false,
     submitted: false,
+    isLoggedIn: true,
+  },
+};
+
+export const NotLoggedIn: Story = {
+  args: {
+    reviews: [
+      {
+        id: "r1",
+        user: { id: "u1", username: "tanaka", display_name: "田中太郎" },
+        rating: 5,
+        comment: "最高のエピソードでした！",
+        created_at: "2026-03-01T12:00:00Z",
+      },
+    ],
+    total: 1,
+    averageRating: 5.0,
+    listLoading: false,
+    hasMore: false,
+    onLoadMore: () => {},
+    onSubmit: async () => {},
+    actionLoading: false,
+    submitted: false,
+    isLoggedIn: false,
+  },
+};
+
+export const NotLoggedInEmpty: Story = {
+  args: {
+    reviews: [],
+    total: 0,
+    averageRating: 0,
+    listLoading: false,
+    hasMore: false,
+    onLoadMore: () => {},
+    onSubmit: async () => {},
+    actionLoading: false,
+    submitted: false,
+    isLoggedIn: false,
   },
 };

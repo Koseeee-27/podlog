@@ -1,15 +1,20 @@
 "use client";
 
-import { useParams } from "next/navigation";
 import { useEpisode } from "@/hooks/useEpisodes";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import EpisodeDetail from "@/components/episode/EpisodeDetail";
 
-export default function EpisodePageClient() {
-  const params = useParams();
-  const id = params.id as string;
-  const { episode, loading, error } = useEpisode(id);
+interface EpisodePageClientProps {
+  episodeId: string;
+  isLoggedIn: boolean;
+}
+
+export default function EpisodePageClient({
+  episodeId,
+  isLoggedIn,
+}: EpisodePageClientProps) {
+  const { episode, loading, error } = useEpisode(episodeId);
 
   if (loading) {
     return <Loading />;
@@ -23,5 +28,5 @@ export default function EpisodePageClient() {
     return <ErrorMessage message="エピソードが見つかりません" />;
   }
 
-  return <EpisodeDetail episode={episode} />;
+  return <EpisodeDetail episode={episode} isLoggedIn={isLoggedIn} />;
 }
