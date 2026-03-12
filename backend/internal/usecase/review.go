@@ -34,6 +34,7 @@ type ReviewUsecase interface {
 	GetByEpisodeID(ctx context.Context, episodeID uuid.UUID, limit, offset int) (*ReviewListResult, error)
 	GetPodcastRating(ctx context.Context, podcastID uuid.UUID) (*PodcastRatingResult, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*UserReviewListResult, error)
+	GetByUsername(ctx context.Context, username string, limit, offset int) (*UserReviewListResult, error)
 	GetTimeline(ctx context.Context, limit, offset int) (*TimelineResult, error)
 }
 
@@ -91,6 +92,7 @@ type UserReviewItem struct {
 	Rating    int                   `json:"rating"`
 	Comment   *string               `json:"comment,omitempty"`
 	CreatedAt string                `json:"created_at"`
+	UpdatedAt string                `json:"updated_at"`
 }
 
 // ReviewEpisodeInfo はレビューに含まれるエピソード情報です。
@@ -128,16 +130,20 @@ type TimelineItem struct {
 type reviewUsecase struct {
 	reviewRepo  repository.ReviewRepository
 	episodeRepo repository.EpisodeRepository
+	userRepo    repository.UserRepository
 }
 
 // NewReviewUsecase は ReviewUsecase の新しいインスタンスを生成します。
+// userRepo はユーザー名からの公開レビュー取得時の存在チェックに使用します。
 func NewReviewUsecase(
 	reviewRepo repository.ReviewRepository,
 	episodeRepo repository.EpisodeRepository,
+	userRepo repository.UserRepository,
 ) ReviewUsecase {
 	return &reviewUsecase{
 		reviewRepo:  reviewRepo,
 		episodeRepo: episodeRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -350,6 +356,59 @@ func (u *reviewUsecase) GetByUserID(ctx context.Context, userID uuid.UUID, limit
 			Rating:    row.Rating,
 			Comment:   row.Comment,
 			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: row.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	return &UserReviewListResult{
+		Reviews: items,
+		Total:   total,
+	}, nil
+}
+
+// GetByUsername はユーザー名を指定して公開のレビュー一覧を取得します。
+// ユーザーが存在しない場合は NotFoundError を返します。
+func (u *reviewUsecase) GetByUsername(ctx context.Context, username string, limit, offset int) (*UserReviewListResult, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// ユーザーの存在チェック（全カラム取得不要なので ExistsByUsername を使用）
+	exists, err := u.userRepo.ExistsByUsername(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check user existence: %w", err)
+	}
+	if !exists {
+		return nil, &NotFoundError{Resource: "user"}
+	}
+
+	rows, total, err := u.reviewRepo.GetByUsername(ctx, username, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get reviews: %w", err)
+	}
+
+	items := make([]UserReviewItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, UserReviewItem{
+			ID: row.ID,
+			Episode: ReviewEpisodeInfo{
+				ID:         row.EpisodeID,
+				Title:      row.EpisodeTitle,
+				PodcastID:  row.PodcastID,
+				ArtworkURL: row.EpisodeArtworkURL,
+			},
+			Podcast: ReviewPodcastInfo{
+				ID:         row.PodcastID,
+				Title:      row.PodcastTitle,
+				ArtworkURL: row.PodcastArtworkURL,
+			},
+			Rating:    row.Rating,
+			Comment:   row.Comment,
+			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt: row.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
 

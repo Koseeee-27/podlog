@@ -28,6 +28,7 @@ type mockReviewRepo struct {
 	getAverageRatingByEpisodeFn func(ctx context.Context, episodeID uuid.UUID) (float64, int, error)
 	getAverageRatingByPodcastFn func(ctx context.Context, podcastID uuid.UUID) (float64, int, error)
 	getByUserIDFn               func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error)
+	getByUsernameFn             func(ctx context.Context, username string, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error)
 	getTimelineFn               func(ctx context.Context, limit, offset int) ([]repository.TimelineRow, int, error)
 }
 
@@ -78,6 +79,12 @@ func (m *mockReviewRepo) GetByUserID(ctx context.Context, userID uuid.UUID, limi
 		return nil, 0, fmt.Errorf("mockReviewRepo.GetByUserID: not implemented")
 	}
 	return m.getByUserIDFn(ctx, userID, limit, offset)
+}
+func (m *mockReviewRepo) GetByUsername(ctx context.Context, username string, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
+	if m.getByUsernameFn == nil {
+		return nil, 0, fmt.Errorf("mockReviewRepo.GetByUsername: not implemented")
+	}
+	return m.getByUsernameFn(ctx, username, limit, offset)
 }
 func (m *mockReviewRepo) GetTimeline(ctx context.Context, limit, offset int) ([]repository.TimelineRow, int, error) {
 	if m.getTimelineFn == nil {
@@ -192,6 +199,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil,
 		)
 
 		result, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 4})
@@ -214,6 +222,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 					return nil, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, uuid.New(), CreateReviewInput{Rating: 3})
@@ -239,6 +248,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 3})
@@ -266,6 +276,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 4})
@@ -279,7 +290,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("rating 0 → ValidationError", func(t *testing.T) {
-		uc := NewReviewUsecase(&mockReviewRepo{}, &mockEpisodeRepo{})
+		uc := NewReviewUsecase(&mockReviewRepo{}, &mockEpisodeRepo{}, nil)
 
 		_, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 0})
 		if err == nil {
@@ -292,7 +303,7 @@ func TestReviewUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("rating 6 → ValidationError", func(t *testing.T) {
-		uc := NewReviewUsecase(&mockReviewRepo{}, &mockEpisodeRepo{})
+		uc := NewReviewUsecase(&mockReviewRepo{}, &mockEpisodeRepo{}, nil)
 
 		_, err := uc.Create(ctx, userID, episode.ID, CreateReviewInput{Rating: 6})
 		if err == nil {
@@ -333,6 +344,7 @@ func TestReviewUsecase_Update(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.Update(ctx, userID, episodeID, UpdateReviewInput{Rating: 5})
@@ -352,6 +364,7 @@ func TestReviewUsecase_Update(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		_, err := uc.Update(ctx, userID, episodeID, UpdateReviewInput{Rating: 3})
@@ -380,6 +393,7 @@ func TestReviewUsecase_Delete(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		if err := uc.Delete(ctx, userID, episodeID); err != nil {
@@ -395,6 +409,7 @@ func TestReviewUsecase_Delete(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		err := uc.Delete(ctx, userID, episodeID)
@@ -430,6 +445,7 @@ func TestReviewUsecase_GetByEpisodeID(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetByEpisodeID(ctx, episodeID, 0, 0)
@@ -461,6 +477,7 @@ func TestReviewUsecase_GetByEpisodeID(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		// limit が負 → 20 に補正
@@ -500,6 +517,7 @@ func TestReviewUsecase_GetPodcastRating(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetPodcastRating(ctx, podcastID)
@@ -522,6 +540,7 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 	userID := uuid.New()
 
 	t.Run("正常系: ユーザーのレビュー一覧取得", func(t *testing.T) {
+		now := time.Now()
 		uc := NewReviewUsecase(
 			&mockReviewRepo{
 				getByUserIDFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
@@ -531,12 +550,14 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 					return []repository.ReviewWithDetailsRow{
 						{
 							ID: uuid.New(), Rating: 4, EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
-							PodcastID: uuid.New(), PodcastTitle: "Podcast1", CreatedAt: time.Now(),
+							PodcastID: uuid.New(), PodcastTitle: "Podcast1",
+							CreatedAt: now, UpdatedAt: now,
 						},
 					}, 1, nil
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetByUserID(ctx, userID, 0, 0)
@@ -548,6 +569,9 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 		}
 		if result.Total != 1 {
 			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if result.Reviews[0].UpdatedAt == "" {
+			t.Error("expected updated_at to be set")
 		}
 	})
 
@@ -562,6 +586,7 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		// limit が負 → 20 に補正
@@ -606,6 +631,7 @@ func TestReviewUsecase_GetTimeline(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetTimeline(ctx, 20, 0)
@@ -640,6 +666,7 @@ func TestReviewUsecase_GetMyReview(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetMyReview(ctx, userID, episodeID)
@@ -671,6 +698,7 @@ func TestReviewUsecase_GetMyReview(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		_, err := uc.GetMyReview(ctx, userID, episodeID)
@@ -691,6 +719,7 @@ func TestReviewUsecase_GetMyReview(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		_, err := uc.GetMyReview(ctx, userID, episodeID)
@@ -701,6 +730,132 @@ func TestReviewUsecase_GetMyReview(t *testing.T) {
 		var nfe *NotFoundError
 		if errors.As(err, &nfe) {
 			t.Fatal("expected general error, not NotFoundError")
+		}
+	})
+}
+
+// ── テスト: GetByUsername ──
+
+func TestReviewUsecase_GetByUsername(t *testing.T) {
+	ctx := context.Background()
+	username := "testuser"
+
+	t.Run("正常系: ユーザーのレビュー一覧を取得", func(t *testing.T) {
+		now := time.Now()
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ReviewWithDetailsRow, int, error) {
+					return []repository.ReviewWithDetailsRow{
+						{
+							ID: uuid.New(), Rating: 4, EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
+							PodcastID: uuid.New(), PodcastTitle: "Podcast1",
+							CreatedAt: now, UpdatedAt: now,
+						},
+					}, 1, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
+				},
+			},
+		)
+
+		result, err := uc.GetByUsername(ctx, username, 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Reviews) != 1 {
+			t.Errorf("reviews count = %d, want 1", len(result.Reviews))
+		}
+		if result.Total != 1 {
+			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if result.Reviews[0].Rating != 4 {
+			t.Errorf("rating = %d, want 4", result.Reviews[0].Rating)
+		}
+		if result.Reviews[0].UpdatedAt == "" {
+			t.Error("expected updated_at to be set")
+		}
+	})
+
+	t.Run("ユーザーが存在しない → NotFoundError", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return false, nil // ユーザーが見つからない
+				},
+			},
+		)
+
+		_, err := uc.GetByUsername(ctx, "nonexistent", 20, 0)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("レビューが空 → 空のリストを返す", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ReviewWithDetailsRow, int, error) {
+					return []repository.ReviewWithDetailsRow{}, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
+				},
+			},
+		)
+
+		result, err := uc.GetByUsername(ctx, username, 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Reviews) != 0 {
+			t.Errorf("reviews count = %d, want 0", len(result.Reviews))
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0", result.Total)
+		}
+	})
+
+	t.Run("limit/offset の補正", func(t *testing.T) {
+		var capturedLimit, capturedOffset int
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUsernameFn: func(_ context.Context, _ string, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
+					capturedLimit = limit
+					capturedOffset = offset
+					return nil, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
+				},
+			},
+		)
+
+		// limit が負 → 20 に補正、offset が負 → 0 に補正
+		_, err := uc.GetByUsername(ctx, username, -1, -5)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if capturedLimit != 20 {
+			t.Errorf("corrected limit = %d, want 20", capturedLimit)
+		}
+		if capturedOffset != 0 {
+			t.Errorf("corrected offset = %d, want 0", capturedOffset)
 		}
 	})
 }

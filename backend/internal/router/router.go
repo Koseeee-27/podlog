@@ -30,6 +30,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	// Users (公開)
 	v1.GET("/users/:username", h.User.GetPublicProfile)
 	v1.GET("/users/:username/listening-records", h.ListeningRecord.GetUserListeningRecords)
+	v1.GET("/users/:username/reviews", h.Review.GetUserReviews)
 
 	// Podcasts (公開)
 	v1.GET("/podcasts/search", h.Podcast.Search)
