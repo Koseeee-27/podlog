@@ -18,9 +18,9 @@ export default async function TopPage() {
       )}
 
       <div className="mb-6">
-        <h2 className="text-lg font-bold text-gray-900">
+        <h1 className="text-lg font-bold text-gray-900">
           みんなのレビュー
-        </h2>
+        </h1>
       </div>
 
       <TimelineSection />
