@@ -30,10 +30,21 @@ type ReviewUsecase interface {
 	Create(ctx context.Context, userID, episodeID uuid.UUID, input CreateReviewInput) (*model.Review, error)
 	Update(ctx context.Context, userID, episodeID uuid.UUID, input UpdateReviewInput) (*model.Review, error)
 	Delete(ctx context.Context, userID, episodeID uuid.UUID) error
+	GetMyReview(ctx context.Context, userID, episodeID uuid.UUID) (*MyReviewResult, error)
 	GetByEpisodeID(ctx context.Context, episodeID uuid.UUID, limit, offset int) (*ReviewListResult, error)
 	GetPodcastRating(ctx context.Context, podcastID uuid.UUID) (*PodcastRatingResult, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*UserReviewListResult, error)
 	GetTimeline(ctx context.Context, limit, offset int) (*TimelineResult, error)
+}
+
+// MyReviewResult は自分のレビュー取得のレスポンスです。
+// API 仕様に従い、user_id や episode_id は含めず、レビュー内容のみ返します。
+type MyReviewResult struct {
+	ID        uuid.UUID `json:"id"`
+	Rating    int       `json:"rating"`
+	Comment   *string   `json:"comment,omitempty"`
+	CreatedAt string    `json:"created_at"`
+	UpdatedAt string    `json:"updated_at"`
 }
 
 // ReviewListResult はエピソードのレビュー一覧のレスポンスです。
@@ -184,6 +195,30 @@ func (u *reviewUsecase) Create(ctx context.Context, userID, episodeID uuid.UUID,
 	}
 
 	return created, nil
+}
+
+// GetMyReview は指定エピソードに対する自分のレビューを取得します。
+//
+// 処理の流れ:
+//  1. リポジトリの GetByUserAndEpisode で該当レビューを検索
+//  2. 見つからなければ NotFoundError を返す（フロントは 404 を受け取って「未投稿」と判定）
+//  3. 見つかれば MyReviewResult に変換して返す
+func (u *reviewUsecase) GetMyReview(ctx context.Context, userID, episodeID uuid.UUID) (*MyReviewResult, error) {
+	review, err := u.reviewRepo.GetByUserAndEpisode(ctx, userID, episodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get review: %w", err)
+	}
+	if review == nil {
+		return nil, &NotFoundError{Resource: "review"}
+	}
+
+	return &MyReviewResult{
+		ID:        review.ID,
+		Rating:    review.Rating,
+		Comment:   review.Comment,
+		CreatedAt: review.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		UpdatedAt: review.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}, nil
 }
 
 // Update はレビューを更新します。

@@ -80,7 +80,7 @@
 | メソッド   | パス                            | 認証  | 説明           | 状態   |
 | ------ | ----------------------------- | --- | ------------ | ---- |
 | POST   | `/episodes/{id}/reviews`      | 必要  | レビュー投稿       | 実装済み |
-| GET    | `/episodes/{id}/reviews/mine` | 必要  | 自分のレビュー取得    | 未実装  |
+| GET    | `/episodes/{id}/reviews/mine` | 必要  | 自分のレビュー取得    | 実装済み |
 | PUT    | `/episodes/{id}/reviews/mine` | 必要  | 自分のレビュー更新    | 実装済み |
 | DELETE | `/episodes/{id}/reviews/mine` | 必要  | 自分のレビュー削除    | 実装済み |
 | GET    | `/episodes/{id}/reviews`      | 不要  | エピソードのレビュー一覧 | 実装済み |

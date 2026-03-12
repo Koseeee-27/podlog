@@ -235,6 +235,19 @@ definitions:
       title:
         type: string
     type: object
+  usecase.MyReviewResult:
+    properties:
+      comment:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      rating:
+        type: integer
+      updated_at:
+        type: string
+    type: object
   usecase.PodcastRatingResult:
     properties:
       average_rating:
@@ -618,6 +631,44 @@ paths:
       security:
       - BearerAuth: []
       summary: レビュー削除
+      tags:
+      - reviews
+    get:
+      description: 認証ユーザーが指定エピソードに投稿したレビューを取得します。未投稿の場合は 404 を返します。
+      parameters:
+      - description: エピソードID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.MyReviewResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 自分のレビュー取得
       tags:
       - reviews
     put:
