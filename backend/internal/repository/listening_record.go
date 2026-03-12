@@ -123,3 +123,4 @@ func (r *listeningRecordRepository) GetByUserID(ctx context.Context, userID uuid
 
 	return rows, total, nil
 }
+

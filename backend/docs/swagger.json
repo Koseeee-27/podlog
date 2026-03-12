@@ -1264,6 +1264,58 @@
                 }
             }
         },
+        "/users/{username}/listening-records": {
+            "get": {
+                "description": "ユーザー名を指定して聴取履歴をエピソード・ポッドキャスト情報付きで取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "listening-records"
+                ],
+                "summary": "ユーザーの聴取履歴一覧（公開）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ユーザー名",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.ListeningRecordListResult"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/{username}/reviews": {
             "get": {
                 "description": "ユーザー名を指定してレビュー一覧をエピソード・ポッドキャスト情報付きで取得します",

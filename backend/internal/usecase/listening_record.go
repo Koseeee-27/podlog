@@ -17,6 +17,7 @@ type ListeningRecordUsecase interface {
 	Delete(ctx context.Context, userID, episodeID uuid.UUID) error
 	GetStatus(ctx context.Context, userID, episodeID uuid.UUID) (bool, *model.ListeningRecord, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*ListeningRecordListResult, error)
+	GetByUsername(ctx context.Context, username string, limit, offset int) (*ListeningRecordListResult, error)
 }
 
 // ListeningRecordListResult は聴取履歴一覧のレスポンスを表す構造体です。
@@ -52,17 +53,20 @@ type ListeningRecordPodcastInfo struct {
 type listeningRecordUsecase struct {
 	recordRepo  repository.ListeningRecordRepository
 	episodeRepo repository.EpisodeRepository
+	userRepo    repository.UserRepository
 }
 
 // NewListeningRecordUsecase は ListeningRecordUsecase の新しいインスタンスを生成します。
-// episodeRepo はエピソードの存在チェックに使用します。
+// episodeRepo はエピソードの存在チェック、userRepo はユーザーの存在チェックに使用します。
 func NewListeningRecordUsecase(
 	recordRepo repository.ListeningRecordRepository,
 	episodeRepo repository.EpisodeRepository,
+	userRepo repository.UserRepository,
 ) ListeningRecordUsecase {
 	return &listeningRecordUsecase{
 		recordRepo:  recordRepo,
 		episodeRepo: episodeRepo,
+		userRepo:    userRepo,
 	}
 }
 
@@ -140,21 +144,9 @@ func (u *listeningRecordUsecase) GetStatus(ctx context.Context, userID, episodeI
 	return true, record, nil
 }
 
-// GetByUserID はユーザーの聴取履歴一覧を取得します。
-func (u *listeningRecordUsecase) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*ListeningRecordListResult, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	rows, total, err := u.recordRepo.GetByUserID(ctx, userID, limit, offset)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get listening records: %w", err)
-	}
-
-	// repository.ListeningRecordRow → usecase のレスポンス構造体に変換
+// toListeningRecordItems は repository.ListeningRecordRow のスライスを
+// usecase のレスポンス構造体に変換する共通関数です。
+func toListeningRecordItems(rows []repository.ListeningRecordRow) []ListeningRecordItem {
 	items := make([]ListeningRecordItem, 0, len(rows))
 	for _, row := range rows {
 		var publishedAt *string
@@ -180,9 +172,57 @@ func (u *listeningRecordUsecase) GetByUserID(ctx context.Context, userID uuid.UU
 			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 		})
 	}
+	return items
+}
+
+// GetByUserID はユーザーの聴取履歴一覧を取得します。
+func (u *listeningRecordUsecase) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*ListeningRecordListResult, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, total, err := u.recordRepo.GetByUserID(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get listening records: %w", err)
+	}
 
 	return &ListeningRecordListResult{
-		Records: items,
+		Records: toListeningRecordItems(rows),
+		Total:   total,
+	}, nil
+}
+
+// GetByUsername はユーザー名を指定して公開の聴取履歴一覧を取得します。
+// userRepo.GetByUsername() で取得した user.ID を使い、既存の recordRepo.GetByUserID() を再利用します。
+// ユーザーが存在しない場合は NotFoundError を返します。
+func (u *listeningRecordUsecase) GetByUsername(ctx context.Context, username string, limit, offset int) (*ListeningRecordListResult, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// ユーザーの存在チェック & ID 取得
+	user, err := u.userRepo.GetByUsername(ctx, username)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get user: %w", err)
+	}
+	if user == nil {
+		return nil, &NotFoundError{Resource: "user"}
+	}
+
+	// 取得した user.ID を使って既存の GetByUserID を再利用
+	rows, total, err := u.recordRepo.GetByUserID(ctx, user.ID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get listening records: %w", err)
+	}
+
+	return &ListeningRecordListResult{
+		Records: toListeningRecordItems(rows),
 		Total:   total,
 	}, nil
 }

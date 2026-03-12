@@ -30,7 +30,7 @@
 | PUT  | `/users/me`                           | 必要  | プロフィール更新（表示名・自己紹介） | 実装済み |
 | POST | `/users/me/avatar`                    | 必要  | アバター画像アップロード       | 未実装  |
 | GET  | `/users/{username}`                   | 不要  | 公開プロフィール取得         | 実装済み |
-| GET  | `/users/{username}/listening-records` | 不要  | ユーザーの聴取履歴一覧（公開）    | 未実装  |
+| GET  | `/users/{username}/listening-records` | 不要  | ユーザーの聴取履歴一覧（公開）    | 実装済み |
 | GET  | `/users/{username}/reviews`           | 不要  | ユーザーのレビュー一覧（公開）    | 実装済み |
 
 

@@ -160,3 +160,35 @@ func (h *ListeningRecordHandler) GetMyRecords(c echo.Context) error {
 
 	return response.Success(c, http.StatusOK, result)
 }
+
+// GetUserListeningRecords はユーザー名で指定したユーザーの聴取履歴一覧を取得するハンドラーです。
+// 認証不要の公開 API です。
+// @Summary ユーザーの聴取履歴一覧（公開）
+// @Description ユーザー名を指定して聴取履歴をエピソード・ポッドキャスト情報付きで取得します
+// @Tags listening-records
+// @Produce json
+// @Param username path string true "ユーザー名"
+// @Param limit query int false "最大取得件数" default(20)
+// @Param offset query int false "スキップ件数" default(0)
+// @Success 200 {object} usecase.ListeningRecordListResult
+// @Failure 404 {object} map[string]string
+// @Router /users/{username}/listening-records [get]
+func (h *ListeningRecordHandler) GetUserListeningRecords(c echo.Context) error {
+	username := c.Param("username")
+	if username == "" {
+		return response.Error(c, http.StatusBadRequest, "username is required")
+	}
+
+	limit, offset := parsePagination(c)
+
+	result, err := h.listeningRecordUsecase.GetByUsername(c.Request().Context(), username, limit, offset)
+	if err != nil {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			return response.Error(c, http.StatusNotFound, "user not found")
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to get listening records")
+	}
+
+	return response.Success(c, http.StatusOK, result)
+}
