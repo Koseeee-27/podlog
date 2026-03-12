@@ -540,6 +540,7 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 	userID := uuid.New()
 
 	t.Run("正常系: ユーザーのレビュー一覧取得", func(t *testing.T) {
+		now := time.Now()
 		uc := NewReviewUsecase(
 			&mockReviewRepo{
 				getByUserIDFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]repository.ReviewWithDetailsRow, int, error) {
@@ -549,7 +550,8 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 					return []repository.ReviewWithDetailsRow{
 						{
 							ID: uuid.New(), Rating: 4, EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
-							PodcastID: uuid.New(), PodcastTitle: "Podcast1", CreatedAt: time.Now(),
+							PodcastID: uuid.New(), PodcastTitle: "Podcast1",
+							CreatedAt: now, UpdatedAt: now,
 						},
 					}, 1, nil
 				},
@@ -567,6 +569,9 @@ func TestReviewUsecase_GetByUserID(t *testing.T) {
 		}
 		if result.Total != 1 {
 			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if result.Reviews[0].UpdatedAt == "" {
+			t.Error("expected updated_at to be set")
 		}
 	})
 
