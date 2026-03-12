@@ -3,12 +3,14 @@ import type { EpisodeWithStats } from "@/types/episode";
 import { formatDuration, formatDate } from "@/lib/utils";
 import ListenButton from "./ListenButton";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
+import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
 interface EpisodeDetailProps {
   episode: EpisodeWithStats;
+  isLoggedIn: boolean;
 }
 
-export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
+export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
   return (
     <div>
       <h1 className="text-2xl font-bold text-gray-900">{episode.title}</h1>
@@ -24,7 +26,11 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
       </div>
 
       <div className="mt-4">
-        <ListenButton episodeId={episode.id} />
+        {isLoggedIn ? (
+          <ListenButton episodeId={episode.id} />
+        ) : (
+          <LoginPromptButton label="ログインして記録する" />
+        )}
       </div>
 
       <div className="mt-2">
@@ -71,7 +77,7 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
 
       <hr className="my-8 border-gray-200" />
 
-      <EpisodeReviewSection episodeId={episode.id} />
+      <EpisodeReviewSection episodeId={episode.id} isLoggedIn={isLoggedIn} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { ReviewItem } from "@/types/review";
 import ReviewForm from "./ReviewForm";
 import ReviewCard from "./ReviewCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
 export interface EpisodeReviewSectionViewProps {
   reviews: ReviewItem[];
@@ -15,6 +16,7 @@ export interface EpisodeReviewSectionViewProps {
   actionError?: string | null;
   listError?: string | null;
   submitted: boolean;
+  isLoggedIn: boolean;
 }
 
 export default function EpisodeReviewSectionView({
@@ -29,6 +31,7 @@ export default function EpisodeReviewSectionView({
   actionError,
   listError,
   submitted,
+  isLoggedIn,
 }: EpisodeReviewSectionViewProps) {
   return (
     <div className="space-y-6">
@@ -41,16 +44,24 @@ export default function EpisodeReviewSectionView({
         )}
       </div>
 
-      {!submitted && (
-        <div className="rounded-lg border border-gray-200 p-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-3">レビューを書く</h3>
-          {actionError && <ErrorMessage message={actionError} />}
-          <ReviewForm onSubmit={onSubmit} loading={actionLoading} />
-        </div>
-      )}
+      {isLoggedIn ? (
+        <>
+          {!submitted && (
+            <div className="rounded-lg border border-gray-200 p-4">
+              <h3 className="text-sm font-medium text-gray-700 mb-3">レビューを書く</h3>
+              {actionError && <ErrorMessage message={actionError} />}
+              <ReviewForm onSubmit={onSubmit} loading={actionLoading} />
+            </div>
+          )}
 
-      {submitted && (
-        <p className="text-sm text-green-600">レビューを投稿しました！</p>
+          {submitted && (
+            <p className="text-sm text-green-600">レビューを投稿しました！</p>
+          )}
+        </>
+      ) : (
+        <div className="rounded-lg border border-gray-200 p-4">
+          <LoginPromptButton label="ログインしてレビューを書く" />
+        </div>
       )}
 
       {listError && <ErrorMessage message={listError} />}
