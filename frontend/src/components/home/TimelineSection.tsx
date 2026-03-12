@@ -5,18 +5,11 @@ import TimelineCard from "@/components/timeline/TimelineCard";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
-export default function TimelinePageClient() {
-  const { reviews, total, loading, error, hasMore, loadMore } = useTimeline();
+export default function TimelineSection() {
+  const { reviews, loading, error, hasMore, loadMore } = useTimeline();
 
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">タイムライン</h1>
-        {total > 0 && (
-          <p className="mt-1 text-sm text-gray-500">{total}件のレビュー</p>
-        )}
-      </div>
-
       {loading && reviews.length === 0 && <Loading />}
       {error && <ErrorMessage message={error} />}
 
