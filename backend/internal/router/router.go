@@ -27,8 +27,9 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	// ── 認証不要のルート ──
 	v1.GET("/health", h.Health.Check)
 
-	// Users
+	// Users (公開)
 	v1.GET("/users/:username", h.User.GetPublicProfile)
+	v1.GET("/users/:username/listening-records", h.ListeningRecord.GetUserListeningRecords)
 
 	// Podcasts (公開)
 	v1.GET("/podcasts/search", h.Podcast.Search)

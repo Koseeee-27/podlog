@@ -21,6 +21,7 @@ type mockListeningRecordRepo struct {
 	deleteFn              func(ctx context.Context, userID, episodeID uuid.UUID) error
 	getByUserAndEpisodeFn func(ctx context.Context, userID, episodeID uuid.UUID) (*model.ListeningRecord, error)
 	getByUserIDFn         func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.ListeningRecordRow, int, error)
+	getByUsernameFn       func(ctx context.Context, username string, limit, offset int) ([]repository.ListeningRecordRow, int, error)
 }
 
 func (m *mockListeningRecordRepo) Create(ctx context.Context, record *model.ListeningRecord) error {
@@ -46,6 +47,12 @@ func (m *mockListeningRecordRepo) GetByUserID(ctx context.Context, userID uuid.U
 		return nil, 0, fmt.Errorf("mockListeningRecordRepo.GetByUserID: not implemented")
 	}
 	return m.getByUserIDFn(ctx, userID, limit, offset)
+}
+func (m *mockListeningRecordRepo) GetByUsername(ctx context.Context, username string, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
+	if m.getByUsernameFn == nil {
+		return nil, 0, fmt.Errorf("mockListeningRecordRepo.GetByUsername: not implemented")
+	}
+	return m.getByUsernameFn(ctx, username, limit, offset)
 }
 
 // ── テスト: Create ──
@@ -77,6 +84,7 @@ func TestListeningRecordUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil, // userRepo は Create では使わない
 		)
 
 		result, err := uc.Create(ctx, userID, episode.ID)
@@ -96,6 +104,7 @@ func TestListeningRecordUsecase_Create(t *testing.T) {
 					return nil, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, uuid.New())
@@ -121,6 +130,7 @@ func TestListeningRecordUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, episode.ID)
@@ -148,6 +158,7 @@ func TestListeningRecordUsecase_Create(t *testing.T) {
 					return episode, nil
 				},
 			},
+			nil,
 		)
 
 		_, err := uc.Create(ctx, userID, episode.ID)
@@ -176,6 +187,7 @@ func TestListeningRecordUsecase_Delete(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		if err := uc.Delete(ctx, userID, episodeID); err != nil {
@@ -191,6 +203,7 @@ func TestListeningRecordUsecase_Delete(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		err := uc.Delete(ctx, userID, episodeID)
@@ -220,6 +233,7 @@ func TestListeningRecordUsecase_GetStatus(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		listened, rec, err := uc.GetStatus(ctx, userID, episodeID)
@@ -242,6 +256,7 @@ func TestListeningRecordUsecase_GetStatus(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		listened, rec, err := uc.GetStatus(ctx, userID, episodeID)
@@ -276,6 +291,7 @@ func TestListeningRecordUsecase_GetByUserID(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		result, err := uc.GetByUserID(ctx, userID, 20, 0)
@@ -301,6 +317,7 @@ func TestListeningRecordUsecase_GetByUserID(t *testing.T) {
 				},
 			},
 			&mockEpisodeRepo{},
+			nil,
 		)
 
 		// limit が負 → 20 に補正、offset が負 → 0 に補正
@@ -322,6 +339,131 @@ func TestListeningRecordUsecase_GetByUserID(t *testing.T) {
 		}
 		if capturedLimit != 20 {
 			t.Errorf("corrected limit = %d, want 20", capturedLimit)
+		}
+	})
+}
+
+// ── テスト: GetByUsername ──
+
+func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
+	ctx := context.Background()
+	username := "testuser"
+
+	t.Run("正常系: ユーザーの聴取履歴を取得", func(t *testing.T) {
+		podcastID := uuid.New()
+		publishedAt := time.Now()
+
+		uc := NewListeningRecordUsecase(
+			&mockListeningRecordRepo{
+				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ListeningRecordRow, int, error) {
+					return []repository.ListeningRecordRow{
+						{
+							ID: uuid.New(), EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
+							PodcastID: podcastID, PodcastTitle: "Podcast1",
+							PublishedAt: &publishedAt, CreatedAt: time.Now(),
+						},
+					}, 1, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
+					return &model.User{ID: uuid.New(), Username: username}, nil
+				},
+			},
+		)
+
+		result, err := uc.GetByUsername(ctx, username, 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Records) != 1 {
+			t.Errorf("records count = %d, want 1", len(result.Records))
+		}
+		if result.Total != 1 {
+			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if result.Records[0].Episode.PublishedAt == nil {
+			t.Error("expected published_at to be set")
+		}
+	})
+
+	t.Run("ユーザーが存在しない → NotFoundError", func(t *testing.T) {
+		uc := NewListeningRecordUsecase(
+			&mockListeningRecordRepo{},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
+					return nil, nil // ユーザーが見つからない
+				},
+			},
+		)
+
+		_, err := uc.GetByUsername(ctx, "nonexistent", 20, 0)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("聴取履歴が空 → 空のリストを返す", func(t *testing.T) {
+		uc := NewListeningRecordUsecase(
+			&mockListeningRecordRepo{
+				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ListeningRecordRow, int, error) {
+					return []repository.ListeningRecordRow{}, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
+					return &model.User{ID: uuid.New(), Username: username}, nil
+				},
+			},
+		)
+
+		result, err := uc.GetByUsername(ctx, username, 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Records) != 0 {
+			t.Errorf("records count = %d, want 0", len(result.Records))
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0", result.Total)
+		}
+	})
+
+	t.Run("limit/offset の補正", func(t *testing.T) {
+		var capturedLimit, capturedOffset int
+		uc := NewListeningRecordUsecase(
+			&mockListeningRecordRepo{
+				getByUsernameFn: func(_ context.Context, _ string, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
+					capturedLimit = limit
+					capturedOffset = offset
+					return nil, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			&mockUserRepo{
+				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
+					return &model.User{ID: uuid.New(), Username: username}, nil
+				},
+			},
+		)
+
+		// limit が負 → 20 に補正、offset が負 → 0 に補正
+		_, err := uc.GetByUsername(ctx, username, -1, -5)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if capturedLimit != 20 {
+			t.Errorf("corrected limit = %d, want 20", capturedLimit)
+		}
+		if capturedOffset != 0 {
+			t.Errorf("corrected offset = %d, want 0", capturedOffset)
 		}
 	})
 }
