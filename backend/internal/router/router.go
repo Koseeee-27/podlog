@@ -68,6 +68,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 
 	// Reviews (認証必要)
 	auth.POST("/episodes/:id/reviews", h.Review.Create)
+	auth.GET("/episodes/:id/reviews/mine", h.Review.GetMyReview)
 	auth.PUT("/episodes/:id/reviews/mine", h.Review.Update)
 	auth.DELETE("/episodes/:id/reviews/mine", h.Review.Delete)
 	auth.GET("/users/me/reviews", h.Review.GetMyReviews)

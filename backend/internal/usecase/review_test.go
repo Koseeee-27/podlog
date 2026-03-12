@@ -620,3 +620,87 @@ func TestReviewUsecase_GetTimeline(t *testing.T) {
 		}
 	})
 }
+
+// ── テスト: GetMyReview ──
+
+func TestReviewUsecase_GetMyReview(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+	episodeID := uuid.New()
+
+	t.Run("正常系: 自分のレビューが存在する", func(t *testing.T) {
+		existing := newTestReview(userID, episodeID)
+		comment := "テストコメント"
+		existing.Comment = &comment
+
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.Review, error) {
+					return existing, nil
+				},
+			},
+			&mockEpisodeRepo{},
+		)
+
+		result, err := uc.GetMyReview(ctx, userID, episodeID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.ID != existing.ID {
+			t.Errorf("id = %v, want %v", result.ID, existing.ID)
+		}
+		if result.Rating != existing.Rating {
+			t.Errorf("rating = %d, want %d", result.Rating, existing.Rating)
+		}
+		if result.Comment == nil || *result.Comment != comment {
+			t.Errorf("comment = %v, want %v", result.Comment, comment)
+		}
+		if result.CreatedAt == "" {
+			t.Error("created_at should not be empty")
+		}
+		if result.UpdatedAt == "" {
+			t.Error("updated_at should not be empty")
+		}
+	})
+
+	t.Run("レビューが存在しない → NotFoundError", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.Review, error) {
+					return nil, nil
+				},
+			},
+			&mockEpisodeRepo{},
+		)
+
+		_, err := uc.GetMyReview(ctx, userID, episodeID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("リポジトリエラー → エラー伝播", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.Review, error) {
+					return nil, fmt.Errorf("db connection error")
+				},
+			},
+			&mockEpisodeRepo{},
+		)
+
+		_, err := uc.GetMyReview(ctx, userID, episodeID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		// NotFoundError ではなく一般的なエラーであること
+		var nfe *NotFoundError
+		if errors.As(err, &nfe) {
+			t.Fatal("expected general error, not NotFoundError")
+		}
+	})
+}

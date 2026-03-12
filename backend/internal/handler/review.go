@@ -63,6 +63,37 @@ func (h *ReviewHandler) Create(c echo.Context) error {
 	return response.Success(c, http.StatusCreated, review)
 }
 
+// GetMyReview は指定エピソードに対する自分のレビューを取得するハンドラーです。
+// @Summary 自分のレビュー取得
+// @Description 認証ユーザーが指定エピソードに投稿したレビューを取得します。未投稿の場合は 404 を返します。
+// @Tags reviews
+// @Produce json
+// @Param id path string true "エピソードID (UUID)"
+// @Success 200 {object} usecase.MyReviewResult
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /episodes/{id}/reviews/mine [get]
+func (h *ReviewHandler) GetMyReview(c echo.Context) error {
+	userID, err := mw.GetUserID(c)
+	if err != nil {
+		return response.Error(c, http.StatusUnauthorized, "unauthorized")
+	}
+
+	episodeID, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid episode ID")
+	}
+
+	result, err := h.reviewUsecase.GetMyReview(c.Request().Context(), userID, episodeID)
+	if err != nil {
+		return handleReviewError(c, err)
+	}
+
+	return response.Success(c, http.StatusOK, result)
+}
+
 // Update はレビューを更新するハンドラーです。
 // @Summary レビュー更新
 // @Description 認証ユーザーの自分のレビューを更新します
