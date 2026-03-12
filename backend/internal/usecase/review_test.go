@@ -751,8 +751,8 @@ func TestReviewUsecase_GetByUsername(t *testing.T) {
 			},
 			&mockEpisodeRepo{},
 			&mockUserRepo{
-				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
 				},
 			},
 		)
@@ -780,8 +780,8 @@ func TestReviewUsecase_GetByUsername(t *testing.T) {
 			&mockReviewRepo{},
 			&mockEpisodeRepo{},
 			&mockUserRepo{
-				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return nil, nil // ユーザーが見つからない
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return false, nil // ユーザーが見つからない
 				},
 			},
 		)
@@ -805,8 +805,8 @@ func TestReviewUsecase_GetByUsername(t *testing.T) {
 			},
 			&mockEpisodeRepo{},
 			&mockUserRepo{
-				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
 				},
 			},
 		)
@@ -835,8 +835,8 @@ func TestReviewUsecase_GetByUsername(t *testing.T) {
 			},
 			&mockEpisodeRepo{},
 			&mockUserRepo{
-				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+				existsByUsernameFunc: func(_ context.Context, _ string) (bool, error) {
+					return true, nil
 				},
 			},
 		)

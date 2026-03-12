@@ -249,6 +249,7 @@ func (h *ReviewHandler) GetMyReviews(c echo.Context) error {
 // @Param limit query int false "最大取得件数" default(20)
 // @Param offset query int false "スキップ件数" default(0)
 // @Success 200 {object} usecase.UserReviewListResult
+// @Failure 400 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Router /users/{username}/reviews [get]
 func (h *ReviewHandler) GetUserReviews(c echo.Context) error {

@@ -1041,6 +1041,12 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/usecase.UserReviewListResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "404":
           description: Not Found
           schema:

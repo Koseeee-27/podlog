@@ -376,12 +376,12 @@ func (u *reviewUsecase) GetByUsername(ctx context.Context, username string, limi
 		offset = 0
 	}
 
-	// ユーザーの存在チェック
-	user, err := u.userRepo.GetByUsername(ctx, username)
+	// ユーザーの存在チェック（全カラム取得不要なので ExistsByUsername を使用）
+	exists, err := u.userRepo.ExistsByUsername(ctx, username)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get user: %w", err)
+		return nil, fmt.Errorf("failed to check user existence: %w", err)
 	}
-	if user == nil {
+	if !exists {
 		return nil, &NotFoundError{Resource: "user"}
 	}
 

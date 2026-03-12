@@ -1310,6 +1310,15 @@ const docTemplate = `{
                             "$ref": "#/definitions/usecase.UserReviewListResult"
                         }
                     },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
                     "404": {
                         "description": "Not Found",
                         "schema": {
