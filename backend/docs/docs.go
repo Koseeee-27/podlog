@@ -1270,6 +1270,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/{username}/favorite-podcasts": {
+            "get": {
+                "description": "ユーザー名を指定して好きな番組一覧を取得します。ユーザーページの「好きな番組」セクションで使用します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorite-podcasts"
+                ],
+                "summary": "ユーザーの好きな番組一覧（公開）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ユーザー名",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.FavoritePodcastListResult"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/{username}/listening-records": {
             "get": {
                 "description": "ユーザー名を指定して聴取履歴をエピソード・ポッドキャスト情報付きで取得します",
@@ -1657,6 +1695,31 @@ const docTemplate = `{
                 },
                 "rating": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.FavoritePodcastItem": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.FavoritePodcastListResult": {
+            "type": "object",
+            "properties": {
+                "podcasts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.FavoritePodcastItem"
+                    }
                 }
             }
         },
