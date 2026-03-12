@@ -18,7 +18,6 @@ type ListeningRecordRepository interface {
 	Delete(ctx context.Context, userID, episodeID uuid.UUID) error
 	GetByUserAndEpisode(ctx context.Context, userID, episodeID uuid.UUID) (*model.ListeningRecord, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]ListeningRecordRow, int, error)
-	GetByUsername(ctx context.Context, username string, limit, offset int) ([]ListeningRecordRow, int, error)
 }
 
 // ListeningRecordRow は聴取履歴一覧の JOIN クエリ結果を受け取る構造体です。
@@ -125,47 +124,3 @@ func (r *listeningRecordRepository) GetByUserID(ctx context.Context, userID uuid
 	return rows, total, nil
 }
 
-// GetByUsername はユーザー名を指定して聴取履歴一覧を取得します。
-// username から users テーブルを経由して user_id を特定し、
-// エピソード・ポッドキャスト情報を JOIN して返します。
-// ユーザーが見つからない場合は空のスライスと total=0 を返します。
-func (r *listeningRecordRepository) GetByUsername(ctx context.Context, username string, limit, offset int) ([]ListeningRecordRow, int, error) {
-	// 総件数を取得（users テーブルと JOIN して username で絞り込む）
-	var total int
-	countQuery := `
-		SELECT COUNT(*)
-		FROM listening_records lr
-		JOIN users u ON lr.user_id = u.id
-		WHERE u.username = $1 AND u.deleted_at IS NULL
-	`
-	if err := r.db.GetContext(ctx, &total, countQuery, username); err != nil {
-		return nil, 0, fmt.Errorf("failed to count listening records by username: %w", err)
-	}
-
-	// エピソード・ポッドキャスト情報を JOIN して取得
-	query := `
-		SELECT
-			lr.id,
-			lr.created_at,
-			e.id AS episode_id,
-			e.title AS episode_title,
-			e.podcast_id,
-			e.artwork_url AS episode_artwork_url,
-			e.published_at,
-			p.title AS podcast_title,
-			p.artwork_url AS podcast_artwork_url
-		FROM listening_records lr
-		JOIN users u ON lr.user_id = u.id
-		JOIN episodes e ON lr.episode_id = e.id
-		JOIN podcasts p ON e.podcast_id = p.id
-		WHERE u.username = $1 AND u.deleted_at IS NULL
-		ORDER BY lr.created_at DESC
-		LIMIT $2 OFFSET $3
-	`
-	var rows []ListeningRecordRow
-	if err := r.db.SelectContext(ctx, &rows, query, username, limit, offset); err != nil {
-		return nil, 0, fmt.Errorf("failed to get listening records by username: %w", err)
-	}
-
-	return rows, total, nil
-}

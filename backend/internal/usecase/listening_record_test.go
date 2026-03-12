@@ -21,7 +21,6 @@ type mockListeningRecordRepo struct {
 	deleteFn              func(ctx context.Context, userID, episodeID uuid.UUID) error
 	getByUserAndEpisodeFn func(ctx context.Context, userID, episodeID uuid.UUID) (*model.ListeningRecord, error)
 	getByUserIDFn         func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.ListeningRecordRow, int, error)
-	getByUsernameFn       func(ctx context.Context, username string, limit, offset int) ([]repository.ListeningRecordRow, int, error)
 }
 
 func (m *mockListeningRecordRepo) Create(ctx context.Context, record *model.ListeningRecord) error {
@@ -47,12 +46,6 @@ func (m *mockListeningRecordRepo) GetByUserID(ctx context.Context, userID uuid.U
 		return nil, 0, fmt.Errorf("mockListeningRecordRepo.GetByUserID: not implemented")
 	}
 	return m.getByUserIDFn(ctx, userID, limit, offset)
-}
-func (m *mockListeningRecordRepo) GetByUsername(ctx context.Context, username string, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
-	if m.getByUsernameFn == nil {
-		return nil, 0, fmt.Errorf("mockListeningRecordRepo.GetByUsername: not implemented")
-	}
-	return m.getByUsernameFn(ctx, username, limit, offset)
 }
 
 // ── テスト: Create ──
@@ -352,10 +345,11 @@ func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
 	t.Run("正常系: ユーザーの聴取履歴を取得", func(t *testing.T) {
 		podcastID := uuid.New()
 		publishedAt := time.Now()
+		userID := uuid.New()
 
 		uc := NewListeningRecordUsecase(
 			&mockListeningRecordRepo{
-				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ListeningRecordRow, int, error) {
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]repository.ListeningRecordRow, int, error) {
 					return []repository.ListeningRecordRow{
 						{
 							ID: uuid.New(), EpisodeID: uuid.New(), EpisodeTitle: "Ep1",
@@ -368,7 +362,7 @@ func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
 			&mockEpisodeRepo{},
 			&mockUserRepo{
 				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+					return &model.User{ID: userID, Username: username}, nil
 				},
 			},
 		)
@@ -410,16 +404,18 @@ func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
 	})
 
 	t.Run("聴取履歴が空 → 空のリストを返す", func(t *testing.T) {
+		userID := uuid.New()
+
 		uc := NewListeningRecordUsecase(
 			&mockListeningRecordRepo{
-				getByUsernameFn: func(_ context.Context, _ string, _, _ int) ([]repository.ListeningRecordRow, int, error) {
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID, _, _ int) ([]repository.ListeningRecordRow, int, error) {
 					return []repository.ListeningRecordRow{}, 0, nil
 				},
 			},
 			&mockEpisodeRepo{},
 			&mockUserRepo{
 				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+					return &model.User{ID: userID, Username: username}, nil
 				},
 			},
 		)
@@ -438,9 +434,11 @@ func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
 
 	t.Run("limit/offset の補正", func(t *testing.T) {
 		var capturedLimit, capturedOffset int
+		userID := uuid.New()
+
 		uc := NewListeningRecordUsecase(
 			&mockListeningRecordRepo{
-				getByUsernameFn: func(_ context.Context, _ string, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID, limit, offset int) ([]repository.ListeningRecordRow, int, error) {
 					capturedLimit = limit
 					capturedOffset = offset
 					return nil, 0, nil
@@ -449,7 +447,7 @@ func TestListeningRecordUsecase_GetByUsername(t *testing.T) {
 			&mockEpisodeRepo{},
 			&mockUserRepo{
 				getByUsernameFunc: func(_ context.Context, _ string) (*model.User, error) {
-					return &model.User{ID: uuid.New(), Username: username}, nil
+					return &model.User{ID: userID, Username: username}, nil
 				},
 			},
 		)

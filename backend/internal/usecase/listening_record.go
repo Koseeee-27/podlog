@@ -144,6 +144,37 @@ func (u *listeningRecordUsecase) GetStatus(ctx context.Context, userID, episodeI
 	return true, record, nil
 }
 
+// toListeningRecordItems は repository.ListeningRecordRow のスライスを
+// usecase のレスポンス構造体に変換する共通関数です。
+func toListeningRecordItems(rows []repository.ListeningRecordRow) []ListeningRecordItem {
+	items := make([]ListeningRecordItem, 0, len(rows))
+	for _, row := range rows {
+		var publishedAt *string
+		if row.PublishedAt != nil {
+			s := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
+			publishedAt = &s
+		}
+
+		items = append(items, ListeningRecordItem{
+			ID: row.ID,
+			Episode: ListeningRecordEpisodeInfo{
+				ID:          row.EpisodeID,
+				Title:       row.EpisodeTitle,
+				PodcastID:   row.PodcastID,
+				ArtworkURL:  row.EpisodeArtworkURL,
+				PublishedAt: publishedAt,
+			},
+			Podcast: ListeningRecordPodcastInfo{
+				ID:         row.PodcastID,
+				Title:      row.PodcastTitle,
+				ArtworkURL: row.PodcastArtworkURL,
+			},
+			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+	return items
+}
+
 // GetByUserID はユーザーの聴取履歴一覧を取得します。
 func (u *listeningRecordUsecase) GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*ListeningRecordListResult, error) {
 	if limit <= 0 || limit > 100 {
@@ -158,40 +189,14 @@ func (u *listeningRecordUsecase) GetByUserID(ctx context.Context, userID uuid.UU
 		return nil, fmt.Errorf("failed to get listening records: %w", err)
 	}
 
-	// repository.ListeningRecordRow → usecase のレスポンス構造体に変換
-	items := make([]ListeningRecordItem, 0, len(rows))
-	for _, row := range rows {
-		var publishedAt *string
-		if row.PublishedAt != nil {
-			s := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
-			publishedAt = &s
-		}
-
-		items = append(items, ListeningRecordItem{
-			ID: row.ID,
-			Episode: ListeningRecordEpisodeInfo{
-				ID:          row.EpisodeID,
-				Title:       row.EpisodeTitle,
-				PodcastID:   row.PodcastID,
-				ArtworkURL:  row.EpisodeArtworkURL,
-				PublishedAt: publishedAt,
-			},
-			Podcast: ListeningRecordPodcastInfo{
-				ID:         row.PodcastID,
-				Title:      row.PodcastTitle,
-				ArtworkURL: row.PodcastArtworkURL,
-			},
-			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		})
-	}
-
 	return &ListeningRecordListResult{
-		Records: items,
+		Records: toListeningRecordItems(rows),
 		Total:   total,
 	}, nil
 }
 
 // GetByUsername はユーザー名を指定して公開の聴取履歴一覧を取得します。
+// userRepo.GetByUsername() で取得した user.ID を使い、既存の recordRepo.GetByUserID() を再利用します。
 // ユーザーが存在しない場合は NotFoundError を返します。
 func (u *listeningRecordUsecase) GetByUsername(ctx context.Context, username string, limit, offset int) (*ListeningRecordListResult, error) {
 	if limit <= 0 || limit > 100 {
@@ -201,7 +206,7 @@ func (u *listeningRecordUsecase) GetByUsername(ctx context.Context, username str
 		offset = 0
 	}
 
-	// ユーザーの存在チェック
+	// ユーザーの存在チェック & ID 取得
 	user, err := u.userRepo.GetByUsername(ctx, username)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get user: %w", err)
@@ -210,40 +215,14 @@ func (u *listeningRecordUsecase) GetByUsername(ctx context.Context, username str
 		return nil, &NotFoundError{Resource: "user"}
 	}
 
-	rows, total, err := u.recordRepo.GetByUsername(ctx, username, limit, offset)
+	// 取得した user.ID を使って既存の GetByUserID を再利用
+	rows, total, err := u.recordRepo.GetByUserID(ctx, user.ID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get listening records: %w", err)
 	}
 
-	// repository.ListeningRecordRow → usecase のレスポンス構造体に変換
-	items := make([]ListeningRecordItem, 0, len(rows))
-	for _, row := range rows {
-		var publishedAt *string
-		if row.PublishedAt != nil {
-			s := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
-			publishedAt = &s
-		}
-
-		items = append(items, ListeningRecordItem{
-			ID: row.ID,
-			Episode: ListeningRecordEpisodeInfo{
-				ID:          row.EpisodeID,
-				Title:       row.EpisodeTitle,
-				PodcastID:   row.PodcastID,
-				ArtworkURL:  row.EpisodeArtworkURL,
-				PublishedAt: publishedAt,
-			},
-			Podcast: ListeningRecordPodcastInfo{
-				ID:         row.PodcastID,
-				Title:      row.PodcastTitle,
-				ArtworkURL: row.PodcastArtworkURL,
-			},
-			CreatedAt: row.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
-		})
-	}
-
 	return &ListeningRecordListResult{
-		Records: items,
+		Records: toListeningRecordItems(rows),
 		Total:   total,
 	}, nil
 }
