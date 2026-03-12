@@ -22,6 +22,7 @@ type ReviewRepository interface {
 	GetAverageRatingByEpisodeID(ctx context.Context, episodeID uuid.UUID) (float64, int, error)
 	GetAverageRatingByPodcastID(ctx context.Context, podcastID uuid.UUID) (float64, int, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]ReviewWithDetailsRow, int, error)
+	GetByUsername(ctx context.Context, username string, limit, offset int) ([]ReviewWithDetailsRow, int, error)
 	GetTimeline(ctx context.Context, limit, offset int) ([]TimelineRow, int, error)
 }
 
@@ -43,6 +44,7 @@ type ReviewWithDetailsRow struct {
 	Rating            int        `db:"rating"`
 	Comment           *string    `db:"comment"`
 	CreatedAt         time.Time  `db:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at"`
 	EpisodeID         uuid.UUID  `db:"episode_id"`
 	EpisodeTitle      string     `db:"episode_title"`
 	PodcastID         uuid.UUID  `db:"podcast_id"`
@@ -222,6 +224,7 @@ func (r *reviewRepository) GetByUserID(ctx context.Context, userID uuid.UUID, li
 			r.rating,
 			r.comment,
 			r.created_at,
+			r.updated_at,
 			e.id AS episode_id,
 			e.title AS episode_title,
 			e.podcast_id,
@@ -278,6 +281,49 @@ func (r *reviewRepository) GetTimeline(ctx context.Context, limit, offset int) (
 	var rows []TimelineRow
 	if err := r.db.SelectContext(ctx, &rows, query, limit, offset); err != nil {
 		return nil, 0, fmt.Errorf("failed to get timeline: %w", err)
+	}
+
+	return rows, total, nil
+}
+
+// GetByUsername はユーザー名を指定してレビュー一覧をエピソード・ポッドキャスト情報付きで取得します。
+// username から users テーブルを経由して絞り込みます。
+func (r *reviewRepository) GetByUsername(ctx context.Context, username string, limit, offset int) ([]ReviewWithDetailsRow, int, error) {
+	var total int
+	countQuery := `
+		SELECT COUNT(*)
+		FROM reviews r
+		JOIN users u ON r.user_id = u.id
+		WHERE u.username = $1 AND u.deleted_at IS NULL
+	`
+	if err := r.db.GetContext(ctx, &total, countQuery, username); err != nil {
+		return nil, 0, fmt.Errorf("failed to count reviews by username: %w", err)
+	}
+
+	query := `
+		SELECT
+			r.id,
+			r.rating,
+			r.comment,
+			r.created_at,
+			r.updated_at,
+			e.id AS episode_id,
+			e.title AS episode_title,
+			e.podcast_id,
+			e.artwork_url AS episode_artwork_url,
+			p.title AS podcast_title,
+			p.artwork_url AS podcast_artwork_url
+		FROM reviews r
+		JOIN users u ON r.user_id = u.id
+		JOIN episodes e ON r.episode_id = e.id
+		JOIN podcasts p ON e.podcast_id = p.id
+		WHERE u.username = $1 AND u.deleted_at IS NULL
+		ORDER BY r.created_at DESC
+		LIMIT $2 OFFSET $3
+	`
+	var rows []ReviewWithDetailsRow
+	if err := r.db.SelectContext(ctx, &rows, query, username, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("failed to get reviews by username: %w", err)
 	}
 
 	return rows, total, nil

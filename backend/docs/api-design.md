@@ -31,7 +31,7 @@
 | POST | `/users/me/avatar`                    | 必要  | アバター画像アップロード       | 未実装  |
 | GET  | `/users/{username}`                   | 不要  | 公開プロフィール取得         | 実装済み |
 | GET  | `/users/{username}/listening-records` | 不要  | ユーザーの聴取履歴一覧（公開）    | 未実装  |
-| GET  | `/users/{username}/reviews`           | 不要  | ユーザーのレビュー一覧（公開）    | 未実装  |
+| GET  | `/users/{username}/reviews`           | 不要  | ユーザーのレビュー一覧（公開）    | 実装済み |
 
 
 ### Favorite Podcasts（好きな番組）
