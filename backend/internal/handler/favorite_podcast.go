@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 
+	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
 	"github.com/kobayashikosei/podlog/backend/internal/response"
 	"github.com/kobayashikosei/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -44,6 +45,45 @@ func (h *FavoritePodcastHandler) GetUserFavoritePodcasts(c echo.Context) error {
 			return response.Error(c, http.StatusNotFound, "user not found")
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get favorite podcasts")
+	}
+
+	return response.Success(c, http.StatusOK, result)
+}
+
+// UpdateFavoritePodcasts は好きな番組を一括更新するハンドラーです。
+// 認証が必要です。既存のリストを全て置き換えます。
+// @Summary 好きな番組を一括更新
+// @Description プロフィール編集画面で好きな番組リストを保存します。既存のリストを全て置き換えます。
+// @Tags favorite-podcasts
+// @Accept json
+// @Produce json
+// @Param body body usecase.UpdateFavoritePodcastsInput true "好きな番組の podcast_id リスト"
+// @Success 200 {object} usecase.FavoritePodcastListResult
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Security BearerAuth
+// @Router /users/me/favorite-podcasts [put]
+func (h *FavoritePodcastHandler) UpdateFavoritePodcasts(c echo.Context) error {
+	// 1. JWT から認証ユーザー ID を取得
+	userID, err := mw.GetUserID(c)
+	if err != nil {
+		return response.Error(c, http.StatusUnauthorized, "unauthorized")
+	}
+
+	// 2. リクエストボディをバインド（JSON → 構造体）
+	var input usecase.UpdateFavoritePodcastsInput
+	if err := c.Bind(&input); err != nil {
+		return response.Error(c, http.StatusBadRequest, "invalid request body")
+	}
+
+	// 3. ユースケースを呼び出して一括更新
+	result, err := h.favPodcastUsecase.UpdateFavorites(c.Request().Context(), userID, input.PodcastIDs)
+	if err != nil {
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &validationErr) {
+			return response.Error(c, http.StatusBadRequest, err.Error())
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to update favorite podcasts")
 	}
 
 	return response.Success(c, http.StatusOK, result)

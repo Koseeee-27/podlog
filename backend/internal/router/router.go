@@ -76,4 +76,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	auth.PUT("/episodes/:id/reviews/mine", h.Review.Update)
 	auth.DELETE("/episodes/:id/reviews/mine", h.Review.Delete)
 	auth.GET("/users/me/reviews", h.Review.GetMyReviews)
+
+	// Favorite Podcasts (認証必要)
+	auth.PUT("/users/me/favorite-podcasts", h.FavoritePodcast.UpdateFavoritePodcasts)
 }

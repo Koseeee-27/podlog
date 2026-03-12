@@ -1066,6 +1066,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/favorite-podcasts": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "プロフィール編集画面で好きな番組リストを保存します。既存のリストを全て置き換えます。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorite-podcasts"
+                ],
+                "summary": "好きな番組を一括更新",
+                "parameters": [
+                    {
+                        "description": "好きな番組の podcast_id リスト",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UpdateFavoritePodcastsInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.FavoritePodcastListResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/listening-records": {
             "get": {
                 "security": [
@@ -1961,6 +2018,17 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.UpdateFavoritePodcastsInput": {
+            "type": "object",
+            "properties": {
+                "podcast_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },

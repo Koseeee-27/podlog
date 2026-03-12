@@ -13,6 +13,16 @@ type FavoritePodcastUsecase interface {
 	// GetByUsername はユーザー名を指定して好きな番組一覧を取得します。
 	// ユーザーが存在しない場合は NotFoundError を返します。
 	GetByUsername(ctx context.Context, username string) (*FavoritePodcastListResult, error)
+
+	// UpdateFavorites はユーザーの好きな番組を一括更新します。
+	// 既存のリストを全て置き換え、更新後のリストを返します。
+	// podcast_id が存在しない場合は ValidationError を返します。
+	UpdateFavorites(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) (*FavoritePodcastListResult, error)
+}
+
+// UpdateFavoritePodcastsInput は好きな番組一括更新のリクエストボディです。
+type UpdateFavoritePodcastsInput struct {
+	PodcastIDs []uuid.UUID `json:"podcast_ids"`
 }
 
 // FavoritePodcastListResult は好きな番組一覧のレスポンスです。
@@ -32,17 +42,20 @@ type FavoritePodcastItem struct {
 type favoritePodcastUsecase struct {
 	favPodcastRepo repository.FavoritePodcastRepository
 	userRepo       repository.UserRepository
+	podcastRepo    repository.PodcastRepository
 }
 
 // NewFavoritePodcastUsecase は FavoritePodcastUsecase の新しいインスタンスを生成します。
-// userRepo はユーザーの存在チェックに使用します。
+// userRepo はユーザーの存在チェック、podcastRepo は podcast_id の存在確認に使用します。
 func NewFavoritePodcastUsecase(
 	favPodcastRepo repository.FavoritePodcastRepository,
 	userRepo repository.UserRepository,
+	podcastRepo repository.PodcastRepository,
 ) FavoritePodcastUsecase {
 	return &favoritePodcastUsecase{
 		favPodcastRepo: favPodcastRepo,
 		userRepo:       userRepo,
+		podcastRepo:    podcastRepo,
 	}
 }
 
@@ -69,8 +82,58 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 	}
 
 	// 3. レスポンス形式に変換
-	// make で長さ 0、容量 len(rows) のスライスを作成。
-	// 空配列の場合も JSON で [] として返されるようにする。
+	return &FavoritePodcastListResult{
+		Podcasts: rowsToFavoritePodcastItems(rows),
+	}, nil
+}
+
+// UpdateFavorites はユーザーの好きな番組を一括更新します。
+//
+// 処理の流れ:
+//  1. podcast_id の重複チェック
+//  2. podcast_id がDBに存在するかバリデーション
+//  3. トランザクションで全削除 → 再挿入
+//  4. 更新後のリストを取得して返す
+func (u *favoritePodcastUsecase) UpdateFavorites(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) (*FavoritePodcastListResult, error) {
+	// 1. 重複チェック: 同じ podcast_id が複数指定されていないか
+	seen := make(map[uuid.UUID]bool, len(podcastIDs))
+	for _, id := range podcastIDs {
+		if seen[id] {
+			return nil, &ValidationError{Message: fmt.Sprintf("duplicate podcast_id: %s", id)}
+		}
+		seen[id] = true
+	}
+
+	// 2. podcast_id の存在確認（空配列の場合はスキップ）
+	if len(podcastIDs) > 0 {
+		missingIDs, err := u.podcastRepo.ExistsByIDs(ctx, podcastIDs)
+		if err != nil {
+			return nil, fmt.Errorf("failed to validate podcast ids: %w", err)
+		}
+		if len(missingIDs) > 0 {
+			return nil, &ValidationError{Message: fmt.Sprintf("podcast not found: %s", missingIDs[0])}
+		}
+	}
+
+	// 3. 一括更新（トランザクション内で DELETE + INSERT）
+	if err := u.favPodcastRepo.ReplaceAll(ctx, userID, podcastIDs); err != nil {
+		return nil, fmt.Errorf("failed to update favorite podcasts: %w", err)
+	}
+
+	// 4. 更新後のリストを取得して返す
+	rows, err := u.favPodcastRepo.GetByUserID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get updated favorite podcasts: %w", err)
+	}
+
+	return &FavoritePodcastListResult{
+		Podcasts: rowsToFavoritePodcastItems(rows),
+	}, nil
+}
+
+// rowsToFavoritePodcastItems は DB の行データをレスポンス用の構造体に変換します。
+// make で長さ 0、容量 len(rows) のスライスを作成し、空配列の場合も JSON で [] を返します。
+func rowsToFavoritePodcastItems(rows []repository.FavoritePodcastRow) []FavoritePodcastItem {
 	items := make([]FavoritePodcastItem, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, FavoritePodcastItem{
@@ -79,8 +142,5 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 			ArtworkURL: row.ArtworkURL,
 		})
 	}
-
-	return &FavoritePodcastListResult{
-		Podcasts: items,
-	}, nil
+	return items
 }
