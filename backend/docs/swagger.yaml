@@ -357,6 +357,8 @@ definitions:
         $ref: '#/definitions/usecase.ReviewPodcastInfo'
       rating:
         type: integer
+      updated_at:
+        type: string
     type: object
   usecase.UserReviewListResult:
     properties:
@@ -1013,6 +1015,47 @@ paths:
       summary: 公開プロフィール取得
       tags:
       - users
+  /users/{username}/reviews:
+    get:
+      description: ユーザー名を指定してレビュー一覧をエピソード・ポッドキャスト情報付きで取得します
+      parameters:
+      - description: ユーザー名
+        in: path
+        name: username
+        required: true
+        type: string
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.UserReviewListResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: ユーザーのレビュー一覧（公開）
+      tags:
+      - reviews
   /users/me:
     get:
       description: 認証済みユーザー自身のプロフィールを取得します
