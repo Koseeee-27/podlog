@@ -34,7 +34,6 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, ogpScraper *ogp.Sc
 // @Param limit query int false "最大取得件数" default(20)
 // @Success 200 {array} model.Podcast
 // @Failure 400 {object} map[string]string
-// @Security BearerAuth
 // @Router /podcasts/search [get]
 func (h *PodcastHandler) Search(c echo.Context) error {
 	query := c.QueryParam("q")
