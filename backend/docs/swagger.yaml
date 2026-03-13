@@ -180,6 +180,22 @@ definitions:
       rating:
         type: integer
     type: object
+  usecase.FavoritePodcastItem:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.FavoritePodcastListResult:
+    properties:
+      podcasts:
+        items:
+          $ref: '#/definitions/usecase.FavoritePodcastItem'
+        type: array
+    type: object
   usecase.FetchFromFeedResult:
     properties:
       episodes:
@@ -1015,6 +1031,31 @@ paths:
       summary: 公開プロフィール取得
       tags:
       - users
+  /users/{username}/favorite-podcasts:
+    get:
+      description: ユーザー名を指定して好きな番組一覧を取得します。ユーザーページの「好きな番組」セクションで使用します。
+      parameters:
+      - description: ユーザー名
+        in: path
+        name: username
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.FavoritePodcastListResult'
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: ユーザーの好きな番組一覧（公開）
+      tags:
+      - favorite-podcasts
   /users/{username}/listening-records:
     get:
       description: ユーザー名を指定して聴取履歴をエピソード・ポッドキャスト情報付きで取得します
