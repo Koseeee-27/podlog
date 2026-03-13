@@ -134,6 +134,64 @@ func (h *UserHandler) UpdateMyProfile(c echo.Context) error {
 	return response.Success(c, http.StatusOK, user.ToPublicProfile())
 }
 
+// UploadAvatar はアバター画像をアップロードするハンドラーです。
+// multipart/form-data で送信された画像ファイルを受け取り、ストレージにアップロードします。
+// @Summary アバター画像アップロード
+// @Description 認証済みユーザーのアバター画像をアップロードします。JPEG/PNG、最大2MB。
+// @Tags users
+// @Accept multipart/form-data
+// @Produce json
+// @Param avatar formData file true "アバター画像（JPEG/PNG、最大2MB）"
+// @Success 200 {object} model.AvatarUploadResponse
+// @Failure 400 {object} map[string]string
+// @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
+// @Security BearerAuth
+// @Router /users/me/avatar [post]
+func (h *UserHandler) UploadAvatar(c echo.Context) error {
+	// 1. 認証ユーザーの ID を取得
+	userID, err := mw.GetUserID(c)
+	if err != nil {
+		return response.Error(c, http.StatusUnauthorized, "unauthorized")
+	}
+
+	// 2. multipart/form-data からファイルを取得
+	// c.FormFile はリクエストの "avatar" フィールドからアップロードされたファイルを取得する
+	fileHeader, err := c.FormFile("avatar")
+	if err != nil {
+		return response.Error(c, http.StatusBadRequest, "avatar file is required")
+	}
+
+	// 3. ファイルを開く
+	file, err := fileHeader.Open()
+	if err != nil {
+		return response.Error(c, http.StatusBadRequest, "failed to read avatar file")
+	}
+	defer file.Close()
+
+	// 4. Content-Type を取得（ブラウザがファイルと一緒に送信する MIME タイプ）
+	contentType := fileHeader.Header.Get("Content-Type")
+
+	// 5. usecase を呼び出してバリデーション + アップロード + DB 更新を実行
+	avatarURL, err := h.userUsecase.UploadAvatar(c.Request().Context(), userID, file, fileHeader.Size, contentType)
+	if err != nil {
+		var notFoundErr *usecase.NotFoundError
+		var validationErr *usecase.ValidationError
+		if errors.As(err, &notFoundErr) {
+			return response.Error(c, http.StatusNotFound, "profile not found")
+		}
+		if errors.As(err, &validationErr) {
+			return response.Error(c, http.StatusBadRequest, err.Error())
+		}
+		return response.Error(c, http.StatusInternalServerError, "failed to upload avatar")
+	}
+
+	// 6. アップロード後の URL を返す
+	return response.Success(c, http.StatusOK, model.AvatarUploadResponse{
+		AvatarURL: avatarURL,
+	})
+}
+
 // GetPublicProfile は公開プロフィールを取得するハンドラーです。
 // @Summary 公開プロフィール取得
 // @Description ユーザー名から公開プロフィールを取得します

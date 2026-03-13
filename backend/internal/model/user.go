@@ -51,6 +51,11 @@ type UserPublicProfile struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
+// AvatarUploadResponse はアバターアップロード API のレスポンス構造体です。
+type AvatarUploadResponse struct {
+	AvatarURL string `json:"avatar_url"`
+}
+
 // ToPublicProfile は User から公開用プロフィールに変換します。
 func (u *User) ToPublicProfile() UserPublicProfile {
 	return UserPublicProfile{

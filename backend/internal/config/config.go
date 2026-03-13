@@ -30,6 +30,10 @@ type Config struct {
 	// JWKS エンドポイント（/.well-known/jwks.json）から公開鍵を取得して JWT を検証する
 	SupabaseURL string `env:"SUPABASE_URL" envDefault:""`
 
+	// Supabase サービスロールキー（Storage API へのアクセスに使用）
+	// サーバーサイドからのみ使用し、フロントエンドには公開しない
+	SupabaseServiceKey string `env:"SUPABASE_SERVICE_KEY" envDefault:""`
+
 	// CORS 設定
 	CORSAllowOrigins string `env:"CORS_ALLOW_ORIGINS" envDefault:"http://localhost:3000"`
 

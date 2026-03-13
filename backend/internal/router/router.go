@@ -57,6 +57,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	auth.POST("/users/profile", h.User.CreateProfile)
 	auth.GET("/users/me", h.User.GetMyProfile)
 	auth.PUT("/users/me", h.User.UpdateMyProfile)
+	auth.POST("/users/me/avatar", h.User.UploadAvatar)
 
 	// Podcasts (認証必要)
 	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL)

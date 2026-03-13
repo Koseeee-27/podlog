@@ -6,16 +6,30 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"io"
 	"regexp"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/storage"
 )
 
 // usernameRegex はユーザー名のバリデーションに使う正規表現です。
 // 英数字とアンダースコアのみ、3〜30文字を許可します。
 var usernameRegex = regexp.MustCompile(`^[a-zA-Z0-9_]{3,30}$`)
+
+// avatarMaxSize はアバター画像の最大サイズ（2MB）です。
+const avatarMaxSize = 2 * 1024 * 1024
+
+// avatarBucket はアバター画像を保存する Supabase Storage のバケット名です。
+const avatarBucket = "avatars"
+
+// allowedContentTypes はアップロード可能な画像の MIME タイプです。
+var allowedContentTypes = map[string]string{
+	"image/jpeg": ".jpg",
+	"image/png":  ".png",
+}
 
 // UserUsecase はユーザーに関するビジネスロジックのインターフェースです。
 type UserUsecase interface {
@@ -23,16 +37,19 @@ type UserUsecase interface {
 	GetMyProfile(ctx context.Context, userID uuid.UUID) (*model.User, error)
 	UpdateMyProfile(ctx context.Context, userID uuid.UUID, req model.UpdateProfileRequest) (*model.User, error)
 	GetPublicProfile(ctx context.Context, username string) (*model.User, error)
+	UploadAvatar(ctx context.Context, userID uuid.UUID, file io.Reader, fileSize int64, contentType string) (string, error)
 }
 
 // userUsecase は UserUsecase の実装です。
 type userUsecase struct {
-	userRepo repository.UserRepository
+	userRepo    repository.UserRepository
+	fileStorage storage.FileStorage
 }
 
 // NewUserUsecase は UserUsecase の新しいインスタンスを生成します。
-func NewUserUsecase(userRepo repository.UserRepository) UserUsecase {
-	return &userUsecase{userRepo: userRepo}
+// fileStorage はアバター画像のアップロードに使用します。
+func NewUserUsecase(userRepo repository.UserRepository, fileStorage storage.FileStorage) UserUsecase {
+	return &userUsecase{userRepo: userRepo, fileStorage: fileStorage}
 }
 
 // CreateProfile はプロフィールを新規作成します。
@@ -154,4 +171,49 @@ func (u *userUsecase) GetPublicProfile(ctx context.Context, username string) (*m
 		return nil, &NotFoundError{Resource: "user"}
 	}
 	return user, nil
+}
+
+// UploadAvatar はアバター画像をアップロードし、ユーザーの avatar_url を更新して公開 URL を返します。
+// バリデーション:
+//   - ファイルサイズ: 2MB 以下
+//   - ファイル形式: JPEG または PNG のみ
+//
+// ストレージのパスは "{userID}/avatar{拡張子}" の形式で保存されます。
+// 同じユーザーが再度アップロードすると、既存ファイルが上書きされます。
+func (u *userUsecase) UploadAvatar(ctx context.Context, userID uuid.UUID, file io.Reader, fileSize int64, contentType string) (string, error) {
+	// 1. プロフィールの存在確認
+	user, err := u.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("failed to get profile: %w", err)
+	}
+	if user == nil {
+		return "", &NotFoundError{Resource: "profile"}
+	}
+
+	// 2. ファイルサイズのバリデーション
+	if fileSize > avatarMaxSize {
+		return "", &ValidationError{Message: "file must be JPEG or PNG, max 2MB"}
+	}
+
+	// 3. Content-Type のバリデーション（JPEG / PNG のみ許可）
+	ext, ok := allowedContentTypes[contentType]
+	if !ok {
+		return "", &ValidationError{Message: "file must be JPEG or PNG, max 2MB"}
+	}
+
+	// 4. ストレージにアップロード
+	// パス例: "550e8400-e29b-41d4-a716-446655440000/avatar.jpg"
+	path := fmt.Sprintf("%s/avatar%s", userID.String(), ext)
+	avatarURL, err := u.fileStorage.Upload(ctx, avatarBucket, path, file, contentType)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload avatar: %w", err)
+	}
+
+	// 5. ユーザーの avatar_url を更新
+	user.AvatarURL = &avatarURL
+	if err := u.userRepo.Update(ctx, user); err != nil {
+		return "", fmt.Errorf("failed to update avatar_url: %w", err)
+	}
+
+	return avatarURL, nil
 }

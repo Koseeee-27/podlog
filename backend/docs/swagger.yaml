@@ -1,5 +1,10 @@
 basePath: /api/v1
 definitions:
+  model.AvatarUploadResponse:
+    properties:
+      avatar_url:
+        type: string
+    type: object
   model.CreateProfileRequest:
     properties:
       avatar_url:
@@ -1263,6 +1268,47 @@ paths:
       security:
       - BearerAuth: []
       summary: プロフィール更新
+      tags:
+      - users
+  /users/me/avatar:
+    post:
+      consumes:
+      - multipart/form-data
+      description: 認証済みユーザーのアバター画像をアップロードします。JPEG/PNG、最大2MB。
+      parameters:
+      - description: アバター画像（JPEG/PNG、最大2MB）
+        in: formData
+        name: avatar
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.AvatarUploadResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: アバター画像アップロード
       tags:
       - users
   /users/me/favorite-podcasts:
