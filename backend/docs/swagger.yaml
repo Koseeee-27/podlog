@@ -173,6 +173,15 @@ definitions:
       title:
         type: string
     type: object
+  usecase.CreatePodcastRequestInput:
+    properties:
+      title:
+        description: '必須: 番組名'
+        type: string
+      url:
+        description: '任意: Apple Podcasts や Spotify の URL'
+        type: string
+    type: object
   usecase.CreateReviewInput:
     properties:
       comment:
@@ -270,6 +279,19 @@ definitions:
         type: number
       total_reviews:
         type: integer
+    type: object
+  usecase.PodcastRequestResult:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+      url:
+        type: string
     type: object
   usecase.ReviewEpisodeInfo:
     properties:
@@ -957,6 +979,42 @@ paths:
       summary: URL情報取得
       tags:
       - podcasts
+  /podcasts/request:
+    post:
+      consumes:
+      - application/json
+      description: 認証ユーザーが番組の追加をリクエストします
+      parameters:
+      - description: リクエスト内容
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.CreatePodcastRequestInput'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/usecase.PodcastRequestResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 番組追加リクエスト
+      tags:
+      - podcast-requests
   /podcasts/search:
     get:
       description: iTunes API を使ってポッドキャストを検索します

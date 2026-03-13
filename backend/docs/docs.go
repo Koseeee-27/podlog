@@ -615,6 +615,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/podcasts/request": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが番組の追加をリクエストします",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "podcast-requests"
+                ],
+                "summary": "番組追加リクエスト",
+                "parameters": [
+                    {
+                        "description": "リクエスト内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreatePodcastRequestInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.PodcastRequestResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/podcasts/search": {
             "get": {
                 "description": "iTunes API を使ってポッドキャストを検索します",
@@ -1744,6 +1801,19 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.CreatePodcastRequestInput": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "description": "必須: 番組名",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "任意: Apple Podcasts や Spotify の URL",
+                    "type": "string"
+                }
+            }
+        },
         "usecase.CreateReviewInput": {
             "type": "object",
             "properties": {
@@ -1893,6 +1963,26 @@ const docTemplate = `{
                 },
                 "total_reviews": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.PodcastRequestResult": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
                 }
             }
         },
