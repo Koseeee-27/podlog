@@ -25,14 +25,15 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, ogpScraper *ogp.Sc
 	}
 }
 
-// Search は iTunes API 経由でポッドキャストを検索するハンドラーです。
+// Search はアプリ内 DB でポッドキャストをキーワード検索するハンドラーです。
 // @Summary ポッドキャスト検索
-// @Description iTunes API を使ってポッドキャストを検索します
+// @Description アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。
 // @Tags podcasts
 // @Produce json
 // @Param q query string true "検索キーワード"
 // @Param limit query int false "最大取得件数" default(20)
-// @Success 200 {array} model.Podcast
+// @Param offset query int false "オフセット" default(0)
+// @Success 200 {object} usecase.PodcastSearchResult
 // @Failure 400 {object} map[string]string
 // @Router /podcasts/search [get]
 func (h *PodcastHandler) Search(c echo.Context) error {
@@ -41,14 +42,14 @@ func (h *PodcastHandler) Search(c echo.Context) error {
 		return response.Error(c, http.StatusBadRequest, "query parameter 'q' is required")
 	}
 
-	limit := 20 // デフォルト値
+	limit, offset := parsePagination(c)
 
-	podcasts, err := h.podcastUsecase.Search(c.Request().Context(), query, limit)
+	result, err := h.podcastUsecase.Search(c.Request().Context(), query, limit, offset)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to search podcasts")
 	}
 
-	return response.Success(c, http.StatusOK, podcasts)
+	return response.Success(c, http.StatusOK, result)
 }
 
 // GetByID はポッドキャスト詳細を取得するハンドラーです。

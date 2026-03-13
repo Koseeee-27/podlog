@@ -298,6 +298,30 @@ definitions:
       url:
         type: string
     type: object
+  usecase.PodcastSearchItem:
+    properties:
+      artwork_url:
+        type: string
+      author:
+        type: string
+      average_rating:
+        type: number
+      id:
+        type: string
+      title:
+        type: string
+      total_reviews:
+        type: integer
+    type: object
+  usecase.PodcastSearchResult:
+    properties:
+      podcasts:
+        items:
+          $ref: '#/definitions/usecase.PodcastSearchItem'
+        type: array
+      total:
+        type: integer
+    type: object
   usecase.ReviewEpisodeInfo:
     properties:
       artwork_url:
@@ -1022,7 +1046,7 @@ paths:
       - podcast-requests
   /podcasts/search:
     get:
-      description: iTunes API を使ってポッドキャストを検索します
+      description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。
       parameters:
       - description: 検索キーワード
         in: query
@@ -1034,15 +1058,18 @@ paths:
         in: query
         name: limit
         type: integer
+      - default: 0
+        description: オフセット
+        in: query
+        name: offset
+        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Podcast'
-            type: array
+            $ref: '#/definitions/usecase.PodcastSearchResult'
         "400":
           description: Bad Request
           schema:
