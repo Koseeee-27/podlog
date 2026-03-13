@@ -668,7 +668,7 @@
         },
         "/podcasts/search": {
             "get": {
-                "description": "iTunes API を使ってポッドキャストを検索します",
+                "description": "アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -690,16 +690,20 @@
                         "description": "最大取得件数",
                         "name": "limit",
                         "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "オフセット",
+                        "name": "offset",
+                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Podcast"
-                            }
+                            "$ref": "#/definitions/usecase.PodcastSearchResult"
                         }
                     },
                     "400": {
@@ -2058,6 +2062,43 @@
                 },
                 "url": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.PodcastSearchItem": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "average_rating": {
+                    "type": "number"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_reviews": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.PodcastSearchResult": {
+            "type": "object",
+            "properties": {
+                "podcasts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.PodcastSearchItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
