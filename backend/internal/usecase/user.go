@@ -214,9 +214,9 @@ func (u *userUsecase) UploadAvatar(ctx context.Context, userID uuid.UUID, file i
 		return "", fmt.Errorf("failed to upload avatar: %w", err)
 	}
 
-	// 5. ユーザーの avatar_url を更新
-	user.AvatarURL = &avatarURL
-	if err := u.userRepo.Update(ctx, user); err != nil {
+	// 5. ユーザーの avatar_url のみを更新
+	// 専用メソッドを使うことで、display_name や bio が同時リクエストで上書きされるのを防ぐ
+	if err := u.userRepo.UpdateAvatarURL(ctx, userID, avatarURL); err != nil {
 		return "", fmt.Errorf("failed to update avatar_url: %w", err)
 	}
 

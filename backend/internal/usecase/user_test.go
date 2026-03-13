@@ -28,11 +28,12 @@ func (m *mockFileStorage) Upload(ctx context.Context, bucket, path string, reade
 // 各メソッドの動作を関数フィールドで差し替えられるようにしています。
 // これにより、テストごとに「DB がこう返す」という状況を自由に設定できます。
 type mockUserRepo struct {
-	createFunc          func(ctx context.Context, user *model.User) error
-	getByIDFunc         func(ctx context.Context, id uuid.UUID) (*model.User, error)
-	getByUsernameFunc   func(ctx context.Context, username string) (*model.User, error)
-	updateFunc          func(ctx context.Context, user *model.User) error
-	existsByUsernameFunc func(ctx context.Context, username string) (bool, error)
+	createFunc            func(ctx context.Context, user *model.User) error
+	getByIDFunc           func(ctx context.Context, id uuid.UUID) (*model.User, error)
+	getByUsernameFunc     func(ctx context.Context, username string) (*model.User, error)
+	updateFunc            func(ctx context.Context, user *model.User) error
+	updateAvatarURLFunc   func(ctx context.Context, userID uuid.UUID, avatarURL string) error
+	existsByUsernameFunc  func(ctx context.Context, username string) (bool, error)
 }
 
 func (m *mockUserRepo) Create(ctx context.Context, user *model.User) error {
@@ -49,6 +50,13 @@ func (m *mockUserRepo) GetByUsername(ctx context.Context, username string) (*mod
 
 func (m *mockUserRepo) Update(ctx context.Context, user *model.User) error {
 	return m.updateFunc(ctx, user)
+}
+
+func (m *mockUserRepo) UpdateAvatarURL(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+	if m.updateAvatarURLFunc == nil {
+		return fmt.Errorf("UpdateAvatarURL not implemented")
+	}
+	return m.updateAvatarURLFunc(ctx, userID, avatarURL)
 }
 
 func (m *mockUserRepo) ExistsByUsername(ctx context.Context, username string) (bool, error) {
@@ -361,7 +369,7 @@ func TestUploadAvatar_Success(t *testing.T) {
 		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.User, error) {
 			return &model.User{ID: userID, Username: "testuser", DisplayName: "Test"}, nil
 		},
-		updateFunc: func(ctx context.Context, user *model.User) error {
+		updateAvatarURLFunc: func(ctx context.Context, uid uuid.UUID, avatarURL string) error {
 			return nil
 		},
 	}
@@ -485,7 +493,7 @@ func TestUploadAvatar_PNGContentType(t *testing.T) {
 		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.User, error) {
 			return &model.User{ID: userID, Username: "testuser", DisplayName: "Test"}, nil
 		},
-		updateFunc: func(ctx context.Context, user *model.User) error {
+		updateAvatarURLFunc: func(ctx context.Context, uid uuid.UUID, avatarURL string) error {
 			return nil
 		},
 	}

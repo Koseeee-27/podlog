@@ -21,6 +21,7 @@ type UserRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.User, error)
 	GetByUsername(ctx context.Context, username string) (*model.User, error)
 	Update(ctx context.Context, user *model.User) error
+	UpdateAvatarURL(ctx context.Context, userID uuid.UUID, avatarURL string) error
 	ExistsByUsername(ctx context.Context, username string) (bool, error)
 }
 
@@ -94,6 +95,18 @@ func (r *userRepository) Update(ctx context.Context, user *model.User) error {
 	_, err := r.db.NamedExecContext(ctx, query, user)
 	if err != nil {
 		return fmt.Errorf("failed to update user: %w", err)
+	}
+	return nil
+}
+
+// UpdateAvatarURL はユーザーの avatar_url のみを更新します。
+// avatar_url 以外のフィールド（display_name, bio）には影響しないため、
+// 同時リクエストによる競合を防ぎます。
+func (r *userRepository) UpdateAvatarURL(ctx context.Context, userID uuid.UUID, avatarURL string) error {
+	query := `UPDATE users SET avatar_url = $1, updated_at = NOW() WHERE id = $2 AND deleted_at IS NULL`
+	_, err := r.db.ExecContext(ctx, query, avatarURL, userID)
+	if err != nil {
+		return fmt.Errorf("failed to update avatar_url: %w", err)
 	}
 	return nil
 }
