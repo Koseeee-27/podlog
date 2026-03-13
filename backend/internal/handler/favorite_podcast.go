@@ -82,7 +82,7 @@ func (h *FavoritePodcastHandler) UpdateFavoritePodcasts(c echo.Context) error {
 	if err != nil {
 		var notFoundErr *usecase.NotFoundError
 		if errors.As(err, &notFoundErr) {
-			return response.Error(c, http.StatusNotFound, "user profile not found")
+			return response.Error(c, http.StatusNotFound, notFoundErr.Error())
 		}
 		var validationErr *usecase.ValidationError
 		if errors.As(err, &validationErr) {

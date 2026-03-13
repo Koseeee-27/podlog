@@ -90,6 +90,7 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 // UpdateFavorites はユーザーの好きな番組を一括更新します。
 //
 // 処理の流れ:
+//  0. プロフィール存在チェック（存在しなければ NotFoundError）
 //  1. podcast_id の重複チェック
 //  2. podcast_id がDBに存在するかバリデーション
 //  3. トランザクションで全削除 → 再挿入
