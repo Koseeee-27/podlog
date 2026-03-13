@@ -215,8 +215,8 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 				},
 				getByUserIDFn: func(_ context.Context, _ uuid.UUID) ([]repository.FavoritePodcastRow, error) {
 					return []repository.FavoritePodcastRow{
-						{ID: podcastID1, Title: "Podcast A", ArtworkURL: &artworkURL},
-						{ID: podcastID2, Title: "Podcast B", ArtworkURL: nil},
+						{PodcastID: podcastID1, Title: "Podcast A", ArtworkURL: &artworkURL},
+						{PodcastID: podcastID2, Title: "Podcast B", ArtworkURL: nil},
 					}, nil
 				},
 			},
