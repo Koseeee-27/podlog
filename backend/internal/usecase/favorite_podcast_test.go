@@ -203,6 +203,69 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 	ctx := context.Background()
 	userID := uuid.New()
 
+	t.Run("プロフィール未作成ユーザー（空配列） → NotFoundError", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return nil, nil // ユーザーが存在しない
+				},
+			},
+			&mockPodcastRepo{},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("プロフィール未作成ユーザー（非空配列） → NotFoundError", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return nil, nil // ユーザーが存在しない
+				},
+			},
+			&mockPodcastRepo{},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{uuid.New()})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("ユーザー存在チェックで DB エラー → エラー伝播", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return nil, fmt.Errorf("db connection error")
+				},
+			},
+			&mockPodcastRepo{},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if errors.As(err, &nfe) {
+			t.Fatal("expected general error, not NotFoundError")
+		}
+	})
+
 	t.Run("正常系: 好きな番組を一括更新", func(t *testing.T) {
 		podcastID1 := uuid.New()
 		podcastID2 := uuid.New()
@@ -220,7 +283,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 					}, nil
 				},
 			},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{
 				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 					return nil, nil // 全て存在する
@@ -250,7 +317,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 					return []repository.FavoritePodcastRow{}, nil
 				},
 			},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{},
 		)
 
@@ -267,7 +338,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 		duplicateID := uuid.New()
 		uc := NewFavoritePodcastUsecase(
 			&mockFavoritePodcastRepo{},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{},
 		)
 
@@ -285,7 +360,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 		missingID := uuid.New()
 		uc := NewFavoritePodcastUsecase(
 			&mockFavoritePodcastRepo{},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{
 				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 					return []uuid.UUID{missingID}, nil // 1つ見つからない
@@ -306,7 +385,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 	t.Run("podcast 存在チェックで DB エラー → エラー伝播", func(t *testing.T) {
 		uc := NewFavoritePodcastUsecase(
 			&mockFavoritePodcastRepo{},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{
 				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 					return nil, fmt.Errorf("db error")
@@ -331,7 +414,11 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 					return fmt.Errorf("transaction error")
 				},
 			},
-			&mockUserRepo{},
+			&mockUserRepo{
+				getByIDFunc: func(_ context.Context, _ uuid.UUID) (*model.User, error) {
+					return &model.User{ID: userID, Username: "testuser", DisplayName: "Test User"}, nil
+				},
+			},
 			&mockPodcastRepo{
 				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 					return nil, nil

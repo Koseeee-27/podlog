@@ -95,6 +95,16 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 //  3. トランザクションで全削除 → 再挿入
 //  4. 更新後のリストを取得して返す
 func (u *favoritePodcastUsecase) UpdateFavorites(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) (*FavoritePodcastListResult, error) {
+	// 0. プロフィール存在チェック: ユーザーが users テーブルに存在するか確認
+	// プロフィール未作成や削除済みユーザーの場合は NotFoundError を返す
+	user, err := u.userRepo.GetByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to check user existence: %w", err)
+	}
+	if user == nil {
+		return nil, &NotFoundError{Resource: "user"}
+	}
+
 	// 1. 重複チェック: 同じ podcast_id が複数指定されていないか
 	seen := make(map[uuid.UUID]bool, len(podcastIDs))
 	for _, id := range podcastIDs {

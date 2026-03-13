@@ -61,6 +61,7 @@ func (h *FavoritePodcastHandler) GetUserFavoritePodcasts(c echo.Context) error {
 // @Success 200 {object} usecase.FavoritePodcastListResult
 // @Failure 400 {object} map[string]string
 // @Failure 401 {object} map[string]string
+// @Failure 404 {object} map[string]string
 // @Security BearerAuth
 // @Router /users/me/favorite-podcasts [put]
 func (h *FavoritePodcastHandler) UpdateFavoritePodcasts(c echo.Context) error {
@@ -79,6 +80,10 @@ func (h *FavoritePodcastHandler) UpdateFavoritePodcasts(c echo.Context) error {
 	// 3. ユースケースを呼び出して一括更新
 	result, err := h.favPodcastUsecase.UpdateFavorites(c.Request().Context(), userID, input.PodcastIDs)
 	if err != nil {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			return response.Error(c, http.StatusNotFound, "user profile not found")
+		}
 		var validationErr *usecase.ValidationError
 		if errors.As(err, &validationErr) {
 			return response.Error(c, http.StatusBadRequest, err.Error())
