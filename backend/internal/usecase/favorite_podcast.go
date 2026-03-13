@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // FavoritePodcastUsecase は好きな番組に関するビジネスロジックです。

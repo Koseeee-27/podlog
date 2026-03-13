@@ -9,8 +9,8 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // usernameRegex はユーザー名のバリデーションに使う正規表現です。

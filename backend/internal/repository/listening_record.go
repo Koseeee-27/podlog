@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
 // ListeningRecordRepository は聴取記録データへのアクセスを提供します。

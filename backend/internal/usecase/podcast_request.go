@@ -7,8 +7,8 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // CreatePodcastRequestInput は番組追加リクエスト作成時のリクエストボディです。

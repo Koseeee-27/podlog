@@ -3,8 +3,8 @@
 package router
 
 import (
-	"github.com/kobayashikosei/podlog/backend/internal/handler"
-	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
+	"github.com/Koseeee-27/podlog/backend/internal/handler"
+	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/labstack/echo/v4"
 )
 

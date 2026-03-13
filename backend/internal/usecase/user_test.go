@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
 // mockUserRepo は UserRepository のモック（テスト用の偽実装）です。

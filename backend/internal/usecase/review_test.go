@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // ── モックリポジトリ ──

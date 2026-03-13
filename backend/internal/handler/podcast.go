@@ -5,9 +5,9 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/external/ogp"
-	"github.com/kobayashikosei/podlog/backend/internal/response"
-	"github.com/kobayashikosei/podlog/backend/internal/usecase"
+	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
+	"github.com/Koseeee-27/podlog/backend/internal/response"
+	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 )
 
