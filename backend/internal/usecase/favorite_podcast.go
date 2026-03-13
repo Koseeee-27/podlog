@@ -72,7 +72,7 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 		return nil, fmt.Errorf("failed to check user existence: %w", err)
 	}
 	if !exists {
-		return nil, &NotFoundError{Resource: "profile"}
+		return nil, &NotFoundError{Resource: "user"}
 	}
 
 	// 2. 好きな番組一覧を取得

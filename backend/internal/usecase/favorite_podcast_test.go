@@ -222,6 +222,9 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 		if !errors.As(err, &nfe) {
 			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
 		}
+		if nfe.Resource != "profile" {
+			t.Fatalf("expected Resource \"profile\", got %q", nfe.Resource)
+		}
 	})
 
 	t.Run("プロフィール未作成ユーザー（非空配列） → NotFoundError", func(t *testing.T) {
@@ -242,6 +245,9 @@ func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
 		var nfe *NotFoundError
 		if !errors.As(err, &nfe) {
 			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+		if nfe.Resource != "profile" {
+			t.Fatalf("expected Resource \"profile\", got %q", nfe.Resource)
 		}
 	})
 
