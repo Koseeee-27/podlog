@@ -85,7 +85,7 @@ func main() {
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
-	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo)
+	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
 
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),

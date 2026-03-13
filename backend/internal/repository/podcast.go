@@ -17,6 +17,10 @@ type PodcastRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 	GetByItunesID(ctx context.Context, itunesID int64) (*model.Podcast, error)
 	Search(ctx context.Context, query string, limit int) ([]model.Podcast, error)
+
+	// ExistsByIDs は指定された podcast_id のリストが全てDB上に存在するか確認します。
+	// 存在しない ID がある場合、存在しなかった ID のリストを返します。
+	ExistsByIDs(ctx context.Context, ids []uuid.UUID) (missingIDs []uuid.UUID, err error)
 }
 
 type podcastRepository struct {
@@ -69,6 +73,45 @@ func (r *podcastRepository) GetByItunesID(ctx context.Context, itunesID int64) (
 		return nil, fmt.Errorf("failed to get podcast by itunes_id: %w", err)
 	}
 	return &podcast, nil
+}
+
+// ExistsByIDs は指定された podcast_id が全てDBに存在するかチェックします。
+// 存在しない ID を missingIDs として返します。
+//
+// sqlx.In はプレースホルダを展開してくれるヘルパーです。
+// 例: IN (?) → IN ($1, $2, $3) のように展開されます。
+func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	// sqlx.In でプレースホルダを展開
+	query, args, err := sqlx.In(`SELECT id FROM podcasts WHERE id IN (?)`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build IN query: %w", err)
+	}
+	// PostgreSQL 用にプレースホルダを $1, $2, ... に変換
+	query = r.db.Rebind(query)
+
+	var foundIDs []uuid.UUID
+	if err := r.db.SelectContext(ctx, &foundIDs, query, args...); err != nil {
+		return nil, fmt.Errorf("failed to check podcast existence: %w", err)
+	}
+
+	// 見つかった ID をマップに入れて、入力リストと比較
+	foundSet := make(map[uuid.UUID]bool, len(foundIDs))
+	for _, id := range foundIDs {
+		foundSet[id] = true
+	}
+
+	var missing []uuid.UUID
+	for _, id := range ids {
+		if !foundSet[id] {
+			missing = append(missing, id)
+		}
+	}
+
+	return missing, nil
 }
 
 // Search はタイトルでポッドキャストを部分一致検索します。

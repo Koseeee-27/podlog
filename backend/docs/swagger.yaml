@@ -352,6 +352,13 @@ definitions:
       total:
         type: integer
     type: object
+  usecase.UpdateFavoritePodcastsInput:
+    properties:
+      podcast_ids:
+        items:
+          type: string
+        type: array
+    type: object
   usecase.UpdateReviewInput:
     properties:
       comment:
@@ -1200,6 +1207,42 @@ paths:
       summary: プロフィール更新
       tags:
       - users
+  /users/me/favorite-podcasts:
+    put:
+      consumes:
+      - application/json
+      description: プロフィール編集画面で好きな番組リストを保存します。既存のリストを全て置き換えます。
+      parameters:
+      - description: 好きな番組の podcast_id リスト
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/usecase.UpdateFavoritePodcastsInput'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.FavoritePodcastListResult'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 好きな番組を一括更新
+      tags:
+      - favorite-podcasts
   /users/me/listening-records:
     get:
       description: 認証ユーザーの聴取履歴をエピソード・ポッドキャスト情報付きで取得します

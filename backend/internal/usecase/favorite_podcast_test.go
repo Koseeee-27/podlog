@@ -7,15 +7,18 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/kobayashikosei/podlog/backend/internal/model"
 	"github.com/kobayashikosei/podlog/backend/internal/repository"
 )
 
 // ── モックリポジトリ ──
 
 // mockFavoritePodcastRepo は FavoritePodcastRepository のモック実装です。
-// テストケースごとに GetByUsername の振る舞いを差し替えます。
+// テストケースごとに各メソッドの振る舞いを差し替えます。
 type mockFavoritePodcastRepo struct {
 	getByUsernameFn func(ctx context.Context, username string) ([]repository.FavoritePodcastRow, error)
+	replaceAllFn    func(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) error
+	getByUserIDFn   func(ctx context.Context, userID uuid.UUID) ([]repository.FavoritePodcastRow, error)
 }
 
 func (m *mockFavoritePodcastRepo) GetByUsername(ctx context.Context, username string) ([]repository.FavoritePodcastRow, error) {
@@ -23,6 +26,44 @@ func (m *mockFavoritePodcastRepo) GetByUsername(ctx context.Context, username st
 		return nil, fmt.Errorf("mockFavoritePodcastRepo.GetByUsername: not implemented")
 	}
 	return m.getByUsernameFn(ctx, username)
+}
+
+func (m *mockFavoritePodcastRepo) ReplaceAll(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) error {
+	if m.replaceAllFn == nil {
+		return fmt.Errorf("mockFavoritePodcastRepo.ReplaceAll: not implemented")
+	}
+	return m.replaceAllFn(ctx, userID, podcastIDs)
+}
+
+func (m *mockFavoritePodcastRepo) GetByUserID(ctx context.Context, userID uuid.UUID) ([]repository.FavoritePodcastRow, error) {
+	if m.getByUserIDFn == nil {
+		return nil, fmt.Errorf("mockFavoritePodcastRepo.GetByUserID: not implemented")
+	}
+	return m.getByUserIDFn(ctx, userID)
+}
+
+// mockPodcastRepo は PodcastRepository のモック実装です（好きな番組テスト用）。
+type mockPodcastRepo struct {
+	existsByIDsFn func(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error)
+}
+
+func (m *mockPodcastRepo) Create(_ context.Context, _ *model.Podcast) error {
+	return fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) GetByID(_ context.Context, _ uuid.UUID) (*model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) GetByItunesID(_ context.Context, _ int64) (*model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) Search(_ context.Context, _ string, _ int) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
+	if m.existsByIDsFn == nil {
+		return nil, fmt.Errorf("mockPodcastRepo.ExistsByIDs: not implemented")
+	}
+	return m.existsByIDsFn(ctx, ids)
 }
 
 // ── テスト: GetByUsername ──
@@ -47,6 +88,7 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 					return true, nil
 				},
 			},
+			&mockPodcastRepo{},
 		)
 
 		result, err := uc.GetByUsername(ctx, username)
@@ -79,6 +121,7 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 					return true, nil
 				},
 			},
+			&mockPodcastRepo{},
 		)
 
 		result, err := uc.GetByUsername(ctx, username)
@@ -98,6 +141,7 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 					return false, nil
 				},
 			},
+			&mockPodcastRepo{},
 		)
 
 		_, err := uc.GetByUsername(ctx, "nonexistent")
@@ -118,13 +162,13 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 					return false, fmt.Errorf("db connection error")
 				},
 			},
+			&mockPodcastRepo{},
 		)
 
 		_, err := uc.GetByUsername(ctx, username)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
-		// NotFoundError ではなく一般的なエラーであること
 		var nfe *NotFoundError
 		if errors.As(err, &nfe) {
 			t.Fatal("expected general error, not NotFoundError")
@@ -143,9 +187,159 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 					return true, nil
 				},
 			},
+			&mockPodcastRepo{},
 		)
 
 		_, err := uc.GetByUsername(ctx, username)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
+// ── テスト: UpdateFavorites ──
+
+func TestFavoritePodcastUsecase_UpdateFavorites(t *testing.T) {
+	ctx := context.Background()
+	userID := uuid.New()
+
+	t.Run("正常系: 好きな番組を一括更新", func(t *testing.T) {
+		podcastID1 := uuid.New()
+		podcastID2 := uuid.New()
+		artworkURL := "https://example.com/art.jpg"
+
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{
+				replaceAllFn: func(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
+					return nil
+				},
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID) ([]repository.FavoritePodcastRow, error) {
+					return []repository.FavoritePodcastRow{
+						{ID: podcastID1, Title: "Podcast A", ArtworkURL: &artworkURL},
+						{ID: podcastID2, Title: "Podcast B", ArtworkURL: nil},
+					}, nil
+				},
+			},
+			&mockUserRepo{},
+			&mockPodcastRepo{
+				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
+					return nil, nil // 全て存在する
+				},
+			},
+		)
+
+		result, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{podcastID1, podcastID2})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Podcasts) != 2 {
+			t.Errorf("podcasts count = %d, want 2", len(result.Podcasts))
+		}
+		if result.Podcasts[0].Title != "Podcast A" {
+			t.Errorf("title = %s, want Podcast A", result.Podcasts[0].Title)
+		}
+	})
+
+	t.Run("正常系: 空配列で好きな番組をクリア", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{
+				replaceAllFn: func(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
+					return nil
+				},
+				getByUserIDFn: func(_ context.Context, _ uuid.UUID) ([]repository.FavoritePodcastRow, error) {
+					return []repository.FavoritePodcastRow{}, nil
+				},
+			},
+			&mockUserRepo{},
+			&mockPodcastRepo{},
+		)
+
+		result, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if len(result.Podcasts) != 0 {
+			t.Errorf("podcasts count = %d, want 0", len(result.Podcasts))
+		}
+	})
+
+	t.Run("重複した podcast_id → ValidationError", func(t *testing.T) {
+		duplicateID := uuid.New()
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{},
+			&mockPodcastRepo{},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{duplicateID, duplicateID})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatalf("expected ValidationError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("存在しない podcast_id → ValidationError", func(t *testing.T) {
+		missingID := uuid.New()
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{},
+			&mockPodcastRepo{
+				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
+					return []uuid.UUID{missingID}, nil // 1つ見つからない
+				},
+			},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{missingID})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatalf("expected ValidationError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("podcast 存在チェックで DB エラー → エラー伝播", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{},
+			&mockUserRepo{},
+			&mockPodcastRepo{
+				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
+					return nil, fmt.Errorf("db error")
+				},
+			},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{uuid.New()})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ve *ValidationError
+		if errors.As(err, &ve) {
+			t.Fatal("expected general error, not ValidationError")
+		}
+	})
+
+	t.Run("ReplaceAll で DB エラー → エラー伝播", func(t *testing.T) {
+		uc := NewFavoritePodcastUsecase(
+			&mockFavoritePodcastRepo{
+				replaceAllFn: func(_ context.Context, _ uuid.UUID, _ []uuid.UUID) error {
+					return fmt.Errorf("transaction error")
+				},
+			},
+			&mockUserRepo{},
+			&mockPodcastRepo{
+				existsByIDsFn: func(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
+					return nil, nil
+				},
+			},
+		)
+
+		_, err := uc.UpdateFavorites(ctx, userID, []uuid.UUID{uuid.New()})
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
