@@ -26,6 +26,7 @@ import (
 	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 	"github.com/Koseeee-27/podlog/backend/internal/router"
+	"github.com/Koseeee-27/podlog/backend/internal/storage"
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -72,7 +73,10 @@ func main() {
 	ogpScraper := ogp.NewScraper()
 	rssClient := rss.NewClient()
 
-	// 7. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
+	// 7. ストレージクライアントを初期化
+	fileStorage := storage.NewSupabaseStorage(cfg.SupabaseURL, cfg.SupabaseServiceKey)
+
+	// 8. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
 	userRepo := repository.NewUserRepository(db)
 	podcastRepo := repository.NewPodcastRepository(db)
 	episodeRepo := repository.NewEpisodeRepository(db)
@@ -81,7 +85,7 @@ func main() {
 	favoritePodcastRepo := repository.NewFavoritePodcastRepository(db)
 	podcastRequestRepo := repository.NewPodcastRequestRepository(db)
 
-	userUsecase := usecase.NewUserUsecase(userRepo)
+	userUsecase := usecase.NewUserUsecase(userRepo, fileStorage)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
@@ -100,10 +104,10 @@ func main() {
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
 	}
 
-	// 8. ルーティングを設定
+	// 9. ルーティングを設定
 	router.Setup(e, handlers, cfg.SupabaseURL)
 
-	// 9. サーバーを起動
+	// 10. サーバーを起動
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
 	if err := e.Start(addr); err != nil {

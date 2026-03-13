@@ -6,6 +6,7 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/handler"
 	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 // Handlers は全ハンドラーをまとめた構造体です。
@@ -57,6 +58,9 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	auth.POST("/users/profile", h.User.CreateProfile)
 	auth.GET("/users/me", h.User.GetMyProfile)
 	auth.PUT("/users/me", h.User.UpdateMyProfile)
+	// アバターアップロードにはボディサイズ制限を設定（DoS 対策）
+	// 画像最大 2MB + multipart ヘッダー分の余裕を持たせて 3MB に制限
+	auth.POST("/users/me/avatar", h.User.UploadAvatar, middleware.BodyLimit("3M"))
 
 	// Podcasts (認証必要)
 	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
