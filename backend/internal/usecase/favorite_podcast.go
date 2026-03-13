@@ -72,7 +72,7 @@ func (u *favoritePodcastUsecase) GetByUsername(ctx context.Context, username str
 		return nil, fmt.Errorf("failed to check user existence: %w", err)
 	}
 	if !exists {
-		return nil, &NotFoundError{Resource: "user"}
+		return nil, &NotFoundError{Resource: "profile"}
 	}
 
 	// 2. 好きな番組一覧を取得
@@ -103,7 +103,7 @@ func (u *favoritePodcastUsecase) UpdateFavorites(ctx context.Context, userID uui
 		return nil, fmt.Errorf("failed to check user existence: %w", err)
 	}
 	if user == nil {
-		return nil, &NotFoundError{Resource: "user"}
+		return nil, &NotFoundError{Resource: "profile"}
 	}
 
 	// 1. 重複チェック: 同じ podcast_id が複数指定されていないか
