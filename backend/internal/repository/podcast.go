@@ -20,7 +20,6 @@ type PodcastSearchRow struct {
 	ArtworkURL    *string   `db:"artwork_url"`
 	AverageRating float64   `db:"average_rating"`
 	TotalReviews  int       `db:"total_reviews"`
-	Total         int       `db:"total"` // COUNT(*) OVER() で取得するマッチ総数（ページネーション用）
 }
 
 // PodcastRepository はポッドキャストデータへのアクセスを提供します。
@@ -130,20 +129,32 @@ func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([
 // ILIKE は大文字小文字を区別しない LIKE 検索です（PostgreSQL固有）。
 // レビューテーブルとの LEFT JOIN で平均評価とレビュー件数も一緒に取得します。
 // total（マッチした件数）も返し、ページネーションに対応します。
+//
+// 総件数（total）とデータ取得を2つの別クエリで行います。
+// COUNT(*) OVER() を使う1クエリ方式だと、offset が結果件数を超えた場合に
+// 行が0件になり total が取得できないバグがあるため、2クエリ方式を採用しています。
 func (r *podcastRepository) Search(ctx context.Context, query string, limit, offset int) ([]PodcastSearchRow, int, error) {
-	// COUNT(*) OVER() はウィンドウ関数で、GROUP BY 後の全行数（= ILIKE にマッチした番組数）を
-	// 各行に付与します。これにより、データ取得と総件数取得を1クエリで行えます。
+	likePattern := "%" + query + "%"
+
+	// 1. 総件数を取得するクエリ
+	// offset に関係なく、ILIKE にマッチする番組の総数を返します。
+	countQuery := `SELECT COUNT(*) FROM podcasts WHERE title ILIKE $1`
+	var total int
+	if err := r.db.GetContext(ctx, &total, countQuery, likePattern); err != nil {
+		return nil, 0, fmt.Errorf("failed to count podcasts: %w", err)
+	}
+
+	// 2. データ取得クエリ
 	// LEFT JOIN で episodes → reviews を辿り、番組単位の集計を行います。
 	// LEFT JOIN を使うのは、レビューが1件もない番組も検索結果に含めるためです。
-	sqlQuery := `
+	dataQuery := `
 		SELECT
 			p.id,
 			p.title,
 			p.author,
 			p.artwork_url,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
-			COUNT(*) OVER() AS total
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
 		LEFT JOIN reviews r ON e.id = r.episode_id
@@ -154,15 +165,8 @@ func (r *podcastRepository) Search(ctx context.Context, query string, limit, off
 		LIMIT $2 OFFSET $3
 	`
 	var rows []PodcastSearchRow
-	if err := r.db.SelectContext(ctx, &rows, sqlQuery, "%"+query+"%", limit, offset); err != nil {
+	if err := r.db.SelectContext(ctx, &rows, dataQuery, likePattern, limit, offset); err != nil {
 		return nil, 0, fmt.Errorf("failed to search podcasts: %w", err)
-	}
-
-	// 結果が0件の場合は total = 0、1件以上の場合は最初の行の Total を使う
-	// （COUNT(*) OVER() は全行に同じ値が入るので、どの行から取っても同じ）
-	total := 0
-	if len(rows) > 0 {
-		total = rows[0].Total
 	}
 
 	return rows, total, nil
