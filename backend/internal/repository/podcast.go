@@ -146,8 +146,8 @@ func (r *podcastRepository) Search(ctx context.Context, query string, limit, off
 			p.title,
 			p.author,
 			p.artwork_url,
-			COALESCE(AVG(r.rating)::float8, 0) AS average_rating,
-			COUNT(r.id)::int AS total_reviews
+			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
 		LEFT JOIN reviews r ON e.id = r.episode_id
