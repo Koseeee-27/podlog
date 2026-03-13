@@ -40,7 +40,7 @@
 | メソッド | パス                                    | 認証  | 説明               | 状態  |
 | ---- | ------------------------------------- | --- | ---------------- | --- |
 | GET  | `/users/{username}/favorite-podcasts` | 不要  | ユーザーの好きな番組一覧（公開） | 実装済み |
-| PUT  | `/users/me/favorite-podcasts`         | 必要  | 好きな番組を一括更新       | 未実装 |
+| PUT  | `/users/me/favorite-podcasts`         | 必要  | 好きな番組を一括更新       | 実装済み |
 
 
 ### Podcasts

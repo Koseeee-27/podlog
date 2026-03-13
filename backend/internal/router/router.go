@@ -17,6 +17,7 @@ type Handlers struct {
 	ListeningRecord *handler.ListeningRecordHandler
 	Review          *handler.ReviewHandler
 	FavoritePodcast *handler.FavoritePodcastHandler
+	PodcastRequest  *handler.PodcastRequestHandler
 }
 
 // Setup は全ルートを Echo インスタンスに登録します。
@@ -76,4 +77,10 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	auth.PUT("/episodes/:id/reviews/mine", h.Review.Update)
 	auth.DELETE("/episodes/:id/reviews/mine", h.Review.Delete)
 	auth.GET("/users/me/reviews", h.Review.GetMyReviews)
+
+	// Favorite Podcasts (認証必要)
+	auth.PUT("/users/me/favorite-podcasts", h.FavoritePodcast.UpdateFavoritePodcasts)
+
+	// Podcast Requests (認証必要)
+	auth.POST("/podcasts/request", h.PodcastRequest.Create)
 }

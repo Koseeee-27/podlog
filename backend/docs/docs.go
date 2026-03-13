@@ -615,6 +615,63 @@ const docTemplate = `{
                 }
             }
         },
+        "/podcasts/request": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが番組の追加をリクエストします",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "podcast-requests"
+                ],
+                "summary": "番組追加リクエスト",
+                "parameters": [
+                    {
+                        "description": "リクエスト内容",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreatePodcastRequestInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.PodcastRequestResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/podcasts/search": {
             "get": {
                 "description": "iTunes API を使ってポッドキャストを検索します",
@@ -1056,6 +1113,63 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/favorite-podcasts": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "プロフィール編集画面で好きな番組リストを保存します。既存のリストを全て置き換えます。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "favorite-podcasts"
+                ],
+                "summary": "好きな番組を一括更新",
+                "parameters": [
+                    {
+                        "description": "好きな番組の podcast_id リスト",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UpdateFavoritePodcastsInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.FavoritePodcastListResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1687,6 +1801,19 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.CreatePodcastRequestInput": {
+            "type": "object",
+            "properties": {
+                "title": {
+                    "description": "必須: 番組名",
+                    "type": "string"
+                },
+                "url": {
+                    "description": "任意: Apple Podcasts や Spotify の URL",
+                    "type": "string"
+                }
+            }
+        },
         "usecase.CreateReviewInput": {
             "type": "object",
             "properties": {
@@ -1839,6 +1966,26 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.PodcastRequestResult": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "url": {
+                    "type": "string"
+                }
+            }
+        },
         "usecase.ReviewEpisodeInfo": {
             "type": "object",
             "properties": {
@@ -1961,6 +2108,17 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.UpdateFavoritePodcastsInput": {
+            "type": "object",
+            "properties": {
+                "podcast_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 }
             }
         },
