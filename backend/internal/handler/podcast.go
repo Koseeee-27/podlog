@@ -3,7 +3,6 @@ package handler
 import (
 	"errors"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
@@ -43,19 +42,7 @@ func (h *PodcastHandler) Search(c echo.Context) error {
 		return response.Error(c, http.StatusBadRequest, "query parameter 'q' is required")
 	}
 
-	limit := 20 // デフォルト値
-	offset := 0 // デフォルト値
-
-	if l := c.QueryParam("limit"); l != "" {
-		if v, err := strconv.Atoi(l); err == nil {
-			limit = v
-		}
-	}
-	if o := c.QueryParam("offset"); o != "" {
-		if v, err := strconv.Atoi(o); err == nil {
-			offset = v
-		}
-	}
+	limit, offset := parsePagination(c)
 
 	result, err := h.podcastUsecase.Search(c.Request().Context(), query, limit, offset)
 	if err != nil {
