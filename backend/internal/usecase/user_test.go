@@ -18,6 +18,9 @@ type mockFileStorage struct {
 }
 
 func (m *mockFileStorage) Upload(ctx context.Context, bucket, path string, reader io.Reader, contentType string) (string, error) {
+	if m.uploadFunc == nil {
+		return "", fmt.Errorf("not implemented")
+	}
 	return m.uploadFunc(ctx, bucket, path, reader, contentType)
 }
 

@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
+	"time"
 )
 
 // supabaseStorage は Supabase Storage を使った FileStorage の実装です。
@@ -26,9 +28,9 @@ type supabaseStorage struct {
 // NewSupabaseStorage は Supabase Storage を使う FileStorage を生成します。
 func NewSupabaseStorage(supabaseURL, serviceKey string) FileStorage {
 	return &supabaseStorage{
-		supabaseURL: supabaseURL,
+		supabaseURL: strings.TrimRight(supabaseURL, "/"),
 		serviceKey:  serviceKey,
-		httpClient:  &http.Client{},
+		httpClient:  &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -56,7 +58,7 @@ func (s *supabaseStorage) Upload(ctx context.Context, bucket, path string, reade
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		body, _ := io.ReadAll(resp.Body)
 		return "", fmt.Errorf("upload failed with status %d: %s", resp.StatusCode, string(body))
 	}

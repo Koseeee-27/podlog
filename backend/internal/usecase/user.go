@@ -181,6 +181,11 @@ func (u *userUsecase) GetPublicProfile(ctx context.Context, username string) (*m
 // ストレージのパスは "{userID}/avatar{拡張子}" の形式で保存されます。
 // 同じユーザーが再度アップロードすると、既存ファイルが上書きされます。
 func (u *userUsecase) UploadAvatar(ctx context.Context, userID uuid.UUID, file io.Reader, fileSize int64, contentType string) (string, error) {
+	// 0. fileStorage が設定されていることを確認
+	if u.fileStorage == nil {
+		return "", fmt.Errorf("file storage is not configured")
+	}
+
 	// 1. プロフィールの存在確認
 	user, err := u.userRepo.GetByID(ctx, userID)
 	if err != nil {

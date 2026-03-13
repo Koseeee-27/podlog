@@ -8,7 +8,7 @@ import (
 	"io"
 )
 
-// FileStorage はファイルアップロード・削除の共通インターフェースです。
+// FileStorage はファイルアップロードの共通インターフェースです。
 // usecase 層はこのインターフェースに依存し、具体的なストレージの実装には依存しません。
 type FileStorage interface {
 	// Upload はファイルをストレージにアップロードし、公開 URL を返します。
