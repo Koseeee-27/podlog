@@ -27,7 +27,7 @@ type FavoritePodcastRepository interface {
 // FavoritePodcastRow は好きな番組一覧の JOIN 結果です。
 // API レスポンスに必要なフィールド（id, title, artwork_url）のみ含みます。
 type FavoritePodcastRow struct {
-	ID         uuid.UUID `db:"id"`
+	PodcastID  uuid.UUID `db:"id"`
 	Title      string    `db:"title"`
 	ArtworkURL *string   `db:"artwork_url"`
 }

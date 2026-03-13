@@ -78,8 +78,8 @@ func TestFavoritePodcastUsecase_GetByUsername(t *testing.T) {
 			&mockFavoritePodcastRepo{
 				getByUsernameFn: func(_ context.Context, _ string) ([]repository.FavoritePodcastRow, error) {
 					return []repository.FavoritePodcastRow{
-						{ID: uuid.New(), Title: "Podcast A", ArtworkURL: &artworkURL},
-						{ID: uuid.New(), Title: "Podcast B", ArtworkURL: nil},
+						{PodcastID: uuid.New(), Title: "Podcast A", ArtworkURL: &artworkURL},
+						{PodcastID: uuid.New(), Title: "Podcast B", ArtworkURL: nil},
 					}, nil
 				},
 			},

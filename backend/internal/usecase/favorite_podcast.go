@@ -137,7 +137,7 @@ func rowsToFavoritePodcastItems(rows []repository.FavoritePodcastRow) []Favorite
 	items := make([]FavoritePodcastItem, 0, len(rows))
 	for _, row := range rows {
 		items = append(items, FavoritePodcastItem{
-			ID:         row.ID,
+			ID:         row.PodcastID,
 			Title:      row.Title,
 			ArtworkURL: row.ArtworkURL,
 		})
