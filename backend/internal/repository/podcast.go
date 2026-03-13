@@ -150,7 +150,7 @@ func (r *podcastRepository) Search(ctx context.Context, query string, limit, off
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		WHERE p.title ILIKE $1
 		GROUP BY p.id, p.title, p.author, p.artwork_url
-		ORDER BY p.title
+		ORDER BY p.title, p.id
 		LIMIT $2 OFFSET $3
 	`
 	var rows []PodcastSearchRow

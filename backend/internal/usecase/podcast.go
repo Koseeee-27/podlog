@@ -3,7 +3,6 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"math"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
@@ -70,7 +69,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, limit, offset
 			Title:         row.Title,
 			Author:        row.Author,
 			ArtworkURL:    row.ArtworkURL,
-			AverageRating: math.Round(row.AverageRating*10) / 10,
+			AverageRating: roundToOneDecimal(row.AverageRating),
 			TotalReviews:  row.TotalReviews,
 		})
 	}

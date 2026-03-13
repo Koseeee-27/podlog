@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/google/uuid"
@@ -479,7 +478,3 @@ func validateReviewInput(rating int, comment *string) error {
 	return nil
 }
 
-// roundToOneDecimal は小数点第1位に丸めます。
-func roundToOneDecimal(v float64) float64 {
-	return math.Round(v*10) / 10
-}
