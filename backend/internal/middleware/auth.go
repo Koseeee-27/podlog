@@ -12,7 +12,7 @@ import (
 	"github.com/MicahParks/keyfunc/v3"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/response"
+	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/labstack/echo/v4"
 )
 

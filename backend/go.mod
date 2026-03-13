@@ -1,4 +1,4 @@
-module github.com/kobayashikosei/podlog/backend
+module github.com/Koseeee-27/podlog/backend
 
 go 1.25.4
 

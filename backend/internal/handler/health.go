@@ -6,7 +6,7 @@ package handler
 import (
 	"net/http"
 
-	"github.com/kobayashikosei/podlog/backend/internal/response"
+	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/labstack/echo/v4"
 )
 

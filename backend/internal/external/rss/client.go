@@ -15,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/kobayashikosei/podlog/backend/internal/util"
+	"github.com/Koseeee-27/podlog/backend/internal/util"
 )
 
 // ErrSSRFBlocked は SSRF 対策でリクエストがブロックされたことを表す sentinel error です。

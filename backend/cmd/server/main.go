@@ -18,21 +18,21 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/kobayashikosei/podlog/backend/internal/config"
-	"github.com/kobayashikosei/podlog/backend/internal/external/itunes"
-	"github.com/kobayashikosei/podlog/backend/internal/external/ogp"
-	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
-	"github.com/kobayashikosei/podlog/backend/internal/handler"
-	mw "github.com/kobayashikosei/podlog/backend/internal/middleware"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
-	"github.com/kobayashikosei/podlog/backend/internal/router"
-	"github.com/kobayashikosei/podlog/backend/internal/usecase"
+	"github.com/Koseeee-27/podlog/backend/internal/config"
+	"github.com/Koseeee-27/podlog/backend/internal/external/itunes"
+	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
+	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
+	"github.com/Koseeee-27/podlog/backend/internal/handler"
+	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/router"
+	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
 	_ "github.com/lib/pq"
 
-	_ "github.com/kobayashikosei/podlog/backend/docs"
+	_ "github.com/Koseeee-27/podlog/backend/docs"
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 

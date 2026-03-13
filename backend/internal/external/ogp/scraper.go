@@ -16,7 +16,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/kobayashikosei/podlog/backend/internal/util"
+	"github.com/Koseeee-27/podlog/backend/internal/util"
 	"golang.org/x/net/html"
 )
 

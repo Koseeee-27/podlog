@@ -7,8 +7,8 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
-	"github.com/kobayashikosei/podlog/backend/internal/repository"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // ListeningRecordUsecase は聴取記録に関するビジネスロジックです。

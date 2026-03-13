@@ -6,9 +6,9 @@ import (
 	"strconv"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
-	"github.com/kobayashikosei/podlog/backend/internal/response"
-	"github.com/kobayashikosei/podlog/backend/internal/usecase"
+	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
+	"github.com/Koseeee-27/podlog/backend/internal/response"
+	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 )
 

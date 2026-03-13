@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/external/rss"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
 // mockEpisodeRepo は EpisodeRepository のモック（テスト用の偽実装）です。

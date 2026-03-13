@@ -4,7 +4,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/kobayashikosei/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
 // newTestEpisode はテスト用のエピソードを生成します。
