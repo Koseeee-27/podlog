@@ -27,14 +27,16 @@ func NewPodcastRequestRepository(db *sqlx.DB) PodcastRequestRepository {
 }
 
 // Create は新しい番組追加リクエストをDBに保存します。
-// NamedExecContext を使うことで、構造体のフィールド名（db タグ）と
-// SQL のプレースホルダーを自動でマッピングします。
+// RETURNING 句で DB が生成した created_at と status を取得し、
+// 引数の req に反映します（レスポンスで正確な値を返すため）。
 func (r *podcastRequestRepository) Create(ctx context.Context, req *model.PodcastRequest) error {
 	query := `
 		INSERT INTO podcast_requests (id, user_id, title, url)
-		VALUES (:id, :user_id, :title, :url)
+		VALUES ($1, $2, $3, $4)
+		RETURNING status, created_at
 	`
-	_, err := r.db.NamedExecContext(ctx, query, req)
+	err := r.db.QueryRowContext(ctx, query, req.ID, req.UserID, req.Title, req.URL).
+		Scan(&req.Status, &req.CreatedAt)
 	if err != nil {
 		return fmt.Errorf("failed to create podcast request: %w", err)
 	}

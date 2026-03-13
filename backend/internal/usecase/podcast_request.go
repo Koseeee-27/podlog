@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/url"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/google/uuid"
 	"github.com/kobayashikosei/podlog/backend/internal/model"
@@ -78,10 +79,7 @@ func (u *podcastRequestUsecase) Create(ctx context.Context, userID uuid.UUID, in
 	}
 
 	// 3. レスポンス用の構造体に変換して返す
-	// DB の DEFAULT NOW() で設定される created_at を正確に返すため、
-	// 本来は再取得するのが理想ですが、今回はシンプルに現在時刻を使います。
-	// （レスポンスの時刻と DB の時刻に数ミリ秒のズレが出る可能性がありますが、
-	//   この機能では問題になりません）
+	// Repository の RETURNING 句で created_at と status が req に反映済み
 	return &PodcastRequestResult{
 		ID:        req.ID,
 		Title:     req.Title,
@@ -100,7 +98,9 @@ func validatePodcastRequestInput(input CreatePodcastRequestInput) error {
 	}
 
 	// title は最大500文字（DB の VARCHAR(500) に合わせる）
-	if len(title) > 500 {
+	// len() はバイト数を返すため、マルチバイト文字（日本語等）では正しくカウントできない。
+	// utf8.RuneCountInString() で文字数（ルーン数）をカウントする。
+	if utf8.RuneCountInString(title) > 500 {
 		return &ValidationError{Message: "title must be 500 characters or less"}
 	}
 

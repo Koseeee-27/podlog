@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/kobayashikosei/podlog/backend/internal/model"
@@ -33,6 +34,8 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 	userID := uuid.New()
 
 	t.Run("正常系: title のみでリクエスト作成成功", func(t *testing.T) {
+		now := time.Now().UTC().Truncate(time.Second)
+
 		uc := NewPodcastRequestUsecase(
 			&mockPodcastRequestRepo{
 				createFn: func(_ context.Context, req *model.PodcastRequest) error {
@@ -43,12 +46,12 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 					if req.URL != nil {
 						t.Errorf("url = %v, want nil", req.URL)
 					}
-					if req.Status != "pending" {
-						t.Errorf("status = %q, want %q", req.Status, "pending")
-					}
 					if req.UserID != userID {
 						t.Errorf("user_id = %v, want %v", req.UserID, userID)
 					}
+					// DB の RETURNING をシミュレート
+					req.Status = "pending"
+					req.CreatedAt = now
 					return nil
 				},
 			},
@@ -72,6 +75,14 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 		if result.ID == uuid.Nil {
 			t.Error("id should not be nil UUID")
 		}
+		// created_at がゼロ値でないことを検証
+		parsed, err := time.Parse("2006-01-02T15:04:05Z07:00", result.CreatedAt)
+		if err != nil {
+			t.Fatalf("failed to parse created_at %q: %v", result.CreatedAt, err)
+		}
+		if !parsed.Equal(now) {
+			t.Errorf("created_at = %v, want %v", parsed, now)
+		}
 	})
 
 	t.Run("正常系: title + url でリクエスト作成成功", func(t *testing.T) {
@@ -83,6 +94,8 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 					if req.URL == nil || *req.URL != testURL {
 						t.Errorf("url = %v, want %q", req.URL, testURL)
 					}
+					req.Status = "pending"
+					req.CreatedAt = time.Now().UTC()
 					return nil
 				},
 			},
@@ -109,6 +122,8 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 					if req.URL != nil {
 						t.Errorf("url = %v, want nil (empty string should be treated as nil)", req.URL)
 					}
+					req.Status = "pending"
+					req.CreatedAt = time.Now().UTC()
 					return nil
 				},
 			},
@@ -175,7 +190,9 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 	t.Run("title がちょうど500文字 → 正常", func(t *testing.T) {
 		uc := NewPodcastRequestUsecase(
 			&mockPodcastRequestRepo{
-				createFn: func(_ context.Context, _ *model.PodcastRequest) error {
+				createFn: func(_ context.Context, req *model.PodcastRequest) error {
+					req.Status = "pending"
+					req.CreatedAt = time.Now().UTC()
 					return nil
 				},
 			},
@@ -190,6 +207,46 @@ func TestPodcastRequestUsecase_Create(t *testing.T) {
 		}
 		if len(result.Title) != 500 {
 			t.Errorf("title length = %d, want 500", len(result.Title))
+		}
+	})
+
+	t.Run("title が日本語500文字 → 正常（マルチバイト対応）", func(t *testing.T) {
+		uc := NewPodcastRequestUsecase(
+			&mockPodcastRequestRepo{
+				createFn: func(_ context.Context, req *model.PodcastRequest) error {
+					req.Status = "pending"
+					req.CreatedAt = time.Now().UTC()
+					return nil
+				},
+			},
+		)
+
+		// 日本語500文字（バイト数では1500だが、文字数は500）
+		title500jp := strings.Repeat("あ", 500)
+		result, err := uc.Create(ctx, userID, CreatePodcastRequestInput{
+			Title: title500jp,
+		})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Title != title500jp {
+			t.Errorf("title mismatch")
+		}
+	})
+
+	t.Run("title が日本語501文字 → ValidationError", func(t *testing.T) {
+		uc := NewPodcastRequestUsecase(&mockPodcastRequestRepo{})
+
+		title501jp := strings.Repeat("あ", 501)
+		_, err := uc.Create(ctx, userID, CreatePodcastRequestInput{
+			Title: title501jp,
+		})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatalf("expected ValidationError, got %T: %v", err, err)
 		}
 	})
 
