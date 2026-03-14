@@ -94,8 +94,8 @@ func main() {
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),
 		User:            handler.NewUserHandler(userUsecase),
-		Podcast:         handler.NewPodcastHandler(podcastUsecase, ogpScraper),
-		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase),
+		Podcast:         handler.NewPodcastHandler(podcastUsecase, reviewUsecase, ogpScraper),
+		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, reviewUsecase),
 		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
 		Review:          handler.NewReviewHandler(reviewUsecase),
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),

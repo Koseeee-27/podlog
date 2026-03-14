@@ -5,17 +5,30 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
+// EpisodeWithStatsRow はエピソード一覧でレビュー統計を含む行です。
+type EpisodeWithStatsRow struct {
+	ID            uuid.UUID  `db:"id"`
+	Title         string     `db:"title"`
+	Description   *string    `db:"description"`
+	DurationMs    *int64     `db:"duration_ms"`
+	PublishedAt   *time.Time `db:"published_at"`
+	AverageRating float64    `db:"average_rating"`
+	TotalReviews  int        `db:"total_reviews"`
+}
+
 // EpisodeRepository はエピソードデータへのアクセスを提供します。
 type EpisodeRepository interface {
 	Create(ctx context.Context, episode *model.Episode) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
+	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
 	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 }
@@ -100,4 +113,42 @@ func (r *episodeRepository) GetByGUID(ctx context.Context, podcastID uuid.UUID, 
 		return nil, fmt.Errorf("failed to get episode by guid: %w", err)
 	}
 	return &episode, nil
+}
+
+// GetByPodcastIDWithStats はポッドキャストのエピソード一覧をレビュー統計付きで取得します。
+// 各エピソードに平均評価とレビュー件数を含み、総件数（total）も返します。
+// LEFT JOIN でレビューテーブルを結合し、N+1 問題を回避しています。
+// 削除済みユーザーのレビューは集計から除外します。
+func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error) {
+	// 1. 総件数を取得
+	var total int
+	countQuery := `SELECT COUNT(*) FROM episodes WHERE podcast_id = $1`
+	if err := r.db.GetContext(ctx, &total, countQuery, podcastID); err != nil {
+		return nil, 0, fmt.Errorf("failed to count episodes: %w", err)
+	}
+
+	// 2. データ取得（レビュー統計付き）
+	dataQuery := `
+		SELECT
+			e.id,
+			e.title,
+			e.description,
+			e.duration_ms,
+			e.published_at,
+			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
+		FROM episodes e
+		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		WHERE e.podcast_id = $1
+		GROUP BY e.id, e.title, e.description, e.duration_ms, e.published_at
+		ORDER BY e.published_at DESC NULLS LAST
+		LIMIT $2 OFFSET $3
+	`
+	var rows []EpisodeWithStatsRow
+	if err := r.db.SelectContext(ctx, &rows, dataQuery, podcastID, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("failed to get episodes with stats: %w", err)
+	}
+
+	return rows, total, nil
 }

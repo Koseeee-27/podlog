@@ -17,7 +17,7 @@ const docTemplate = `{
     "paths": {
         "/episodes/{id}": {
             "get": {
-                "description": "エピソードIDから詳細情報を取得します",
+                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -38,7 +38,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Episode"
+                            "$ref": "#/definitions/usecase.EpisodeDetailResult"
                         }
                     },
                     "404": {
@@ -726,7 +726,7 @@ const docTemplate = `{
         },
         "/podcasts/{id}": {
             "get": {
-                "description": "ポッドキャストIDから詳細情報を取得します",
+                "description": "ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -747,7 +747,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Podcast"
+                            "$ref": "#/definitions/usecase.PodcastDetailResult"
                         }
                     },
                     "404": {
@@ -764,7 +764,7 @@ const docTemplate = `{
         },
         "/podcasts/{id}/episodes": {
             "get": {
-                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します",
+                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -799,10 +799,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Episode"
-                            }
+                            "$ref": "#/definitions/usecase.EpisodeListResult"
                         }
                     },
                     "400": {
@@ -1704,50 +1701,6 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Podcast": {
-            "type": "object",
-            "properties": {
-                "artwork_url": {
-                    "type": "string"
-                },
-                "author": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "feed_url": {
-                    "type": "string"
-                },
-                "genre": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "itunes_id": {
-                    "type": "integer"
-                },
-                "itunes_url": {
-                    "type": "string"
-                },
-                "source_type": {
-                    "type": "string"
-                },
-                "source_url": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
         "model.Review": {
             "type": "object",
             "properties": {
@@ -1910,6 +1863,98 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.EpisodeDetailResult": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "audio_url": {
+                    "type": "string"
+                },
+                "average_rating": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.EpisodePodcastInfo"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_reviews": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.EpisodeListItem": {
+            "type": "object",
+            "properties": {
+                "average_rating": {
+                    "type": "number"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_reviews": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.EpisodeListResult": {
+            "type": "object",
+            "properties": {
+                "episodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.EpisodeListItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.EpisodePodcastInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
         "usecase.FavoritePodcastItem": {
             "type": "object",
             "properties": {
@@ -2037,6 +2082,41 @@ const docTemplate = `{
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.PodcastDetailResult": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "average_rating": {
+                    "type": "number"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feed_url": {
+                    "type": "string"
+                },
+                "genre": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "total_reviews": {
+                    "type": "integer"
                 }
             }
         },
