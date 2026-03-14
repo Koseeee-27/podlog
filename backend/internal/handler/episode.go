@@ -103,6 +103,10 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 	// ポッドキャスト情報を取得
 	podcast, err := h.podcastUsecase.GetByID(ctx, episode.PodcastID)
 	if err != nil {
+		var notFoundErr *usecase.NotFoundError
+		if errors.As(err, &notFoundErr) {
+			return response.Error(c, http.StatusNotFound, notFoundErr.Error())
+		}
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
