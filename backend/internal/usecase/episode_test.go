@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
@@ -671,7 +672,7 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 		t.Fatalf("expected 2 episodes, got %d", len(result.Episodes))
 	}
 	// 平均評価が小数点第1位に丸められていること
-	if result.Episodes[0].AverageRating != 4.3 {
+	if math.Abs(result.Episodes[0].AverageRating-4.3) > 0.001 {
 		t.Errorf("expected average_rating 4.3, got %f", result.Episodes[0].AverageRating)
 	}
 	if result.Episodes[0].TotalReviews != 3 {

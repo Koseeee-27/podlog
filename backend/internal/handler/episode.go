@@ -106,7 +106,7 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
-	// エピソードのレビュー一覧から平均評価を取得（limit=0 で統計のみ取得）
+	// エピソードのレビュー一覧から平均評価を取得（limit=1 でレビューデータ取得を最小限にし、統計情報を取得）
 	reviewResult, err := h.reviewUsecase.GetByEpisodeID(ctx, id, 1, 0)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episode reviews")

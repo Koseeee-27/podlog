@@ -142,7 +142,7 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		WHERE e.podcast_id = $1
 		GROUP BY e.id, e.title, e.description, e.duration_ms, e.published_at
-		ORDER BY e.published_at DESC NULLS LAST
+		ORDER BY e.published_at DESC NULLS LAST, e.id DESC
 		LIMIT $2 OFFSET $3
 	`
 	var rows []EpisodeWithStatsRow
