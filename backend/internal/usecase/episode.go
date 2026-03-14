@@ -13,6 +13,47 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
+// EpisodeDetailResult はエピソード詳細のレスポンスです。
+// API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_reviews を含みます。
+type EpisodeDetailResult struct {
+	ID            uuid.UUID              `json:"id"`
+	Title         string                 `json:"title"`
+	Description   *string                `json:"description,omitempty"`
+	AudioURL      *string                `json:"audio_url,omitempty"`
+	ArtworkURL    *string                `json:"artwork_url,omitempty"`
+	DurationMs    *int64                 `json:"duration_ms,omitempty"`
+	PublishedAt   *string                `json:"published_at,omitempty"`
+	Podcast       EpisodePodcastInfo     `json:"podcast"`
+	AverageRating float64                `json:"average_rating"`
+	TotalReviews  int                    `json:"total_reviews"`
+	CreatedAt     string                 `json:"created_at"`
+}
+
+// EpisodePodcastInfo はエピソード詳細に含まれるポッドキャスト情報です。
+type EpisodePodcastInfo struct {
+	ID         uuid.UUID `json:"id"`
+	Title      string    `json:"title"`
+	ArtworkURL *string   `json:"artwork_url,omitempty"`
+}
+
+// EpisodeListResult はエピソード一覧のレスポンスです。
+// API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+type EpisodeListResult struct {
+	Episodes []EpisodeListItem `json:"episodes"`
+	Total    int               `json:"total"`
+}
+
+// EpisodeListItem はエピソード一覧の各レコードです。
+type EpisodeListItem struct {
+	ID            uuid.UUID `json:"id"`
+	Title         string    `json:"title"`
+	Description   *string   `json:"description,omitempty"`
+	DurationMs    *int64    `json:"duration_ms,omitempty"`
+	PublishedAt   *string   `json:"published_at,omitempty"`
+	AverageRating float64   `json:"average_rating"`
+	TotalReviews  int       `json:"total_reviews"`
+}
+
 // CreateEpisodeInput はエピソード作成のリクエストを表します。
 // ハンドラーから受け取ったデータをユースケースに渡す際に使います。
 type CreateEpisodeInput struct {
@@ -47,6 +88,7 @@ type EpisodeUsecase interface {
 	Create(ctx context.Context, podcastID uuid.UUID, input CreateEpisodeInput) (*CreateEpisodeResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
+	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
 	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
 }
 
@@ -169,6 +211,44 @@ func (u *episodeUsecase) GetByPodcastID(ctx context.Context, podcastID uuid.UUID
 		return nil, fmt.Errorf("failed to get episodes: %w", err)
 	}
 	return episodes, nil
+}
+
+// GetByPodcastIDWithStats はポッドキャストのエピソード一覧をレビュー統計付きで取得します。
+// API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	rows, total, err := u.episodeRepo.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get episodes with stats: %w", err)
+	}
+
+	items := make([]EpisodeListItem, 0, len(rows))
+	for _, row := range rows {
+		item := EpisodeListItem{
+			ID:            row.ID,
+			Title:         row.Title,
+			Description:   row.Description,
+			DurationMs:    row.DurationMs,
+			AverageRating: roundToOneDecimal(row.AverageRating),
+			TotalReviews:  row.TotalReviews,
+		}
+		if row.PublishedAt != nil {
+			formatted := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
+			item.PublishedAt = &formatted
+		}
+		items = append(items, item)
+	}
+
+	return &EpisodeListResult{
+		Episodes: items,
+		Total:    total,
+	}, nil
 }
 
 // FetchFromFeed は RSS フィードからエピソードを取得してDBに登録します。

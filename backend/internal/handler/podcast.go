@@ -12,15 +12,19 @@ import (
 )
 
 // PodcastHandler はポッドキャスト関連のHTTPハンドラーです。
+// reviewUsecase はポッドキャスト詳細に平均評価・レビュー件数を付加するために使用します。
 type PodcastHandler struct {
 	podcastUsecase usecase.PodcastUsecase
+	reviewUsecase  usecase.ReviewUsecase
 	ogpScraper     *ogp.Scraper
 }
 
 // NewPodcastHandler は PodcastHandler を生成します。
-func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, ogpScraper *ogp.Scraper) *PodcastHandler {
+// reviewUsecase はポッドキャスト詳細レスポンスに平均評価を含めるために必要です。
+func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usecase.ReviewUsecase, ogpScraper *ogp.Scraper) *PodcastHandler {
 	return &PodcastHandler{
 		podcastUsecase: podcastUsecase,
+		reviewUsecase:  reviewUsecase,
 		ogpScraper:     ogpScraper,
 	}
 }
@@ -53,12 +57,13 @@ func (h *PodcastHandler) Search(c echo.Context) error {
 }
 
 // GetByID はポッドキャスト詳細を取得するハンドラーです。
+// API 設計書に従い、番組情報に加えて average_rating / total_reviews を含むレスポンスを返します。
 // @Summary ポッドキャスト詳細取得
-// @Description ポッドキャストIDから詳細情報を取得します
+// @Description ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。
 // @Tags podcasts
 // @Produce json
 // @Param id path string true "ポッドキャストID (UUID)"
-// @Success 200 {object} model.Podcast
+// @Success 200 {object} usecase.PodcastDetailResult
 // @Failure 404 {object} map[string]string
 // @Router /podcasts/{id} [get]
 func (h *PodcastHandler) GetByID(c echo.Context) error {
@@ -76,7 +81,27 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
-	return response.Success(c, http.StatusOK, podcast)
+	// ReviewUsecase から平均評価とレビュー件数を取得
+	rating, err := h.reviewUsecase.GetPodcastRating(c.Request().Context(), id)
+	if err != nil {
+		return response.Error(c, http.StatusInternalServerError, "failed to get podcast rating")
+	}
+
+	// API 設計書のレスポンス形式に合わせて組み立て
+	result := usecase.PodcastDetailResult{
+		ID:            podcast.ID,
+		Title:         podcast.Title,
+		Author:        podcast.Author,
+		Description:   podcast.Description,
+		ArtworkURL:    podcast.ArtworkURL,
+		Genre:         podcast.Genre,
+		FeedURL:       podcast.FeedURL,
+		AverageRating: rating.AverageRating,
+		TotalReviews:  rating.TotalReviews,
+		CreatedAt:     podcast.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+	}
+
+	return response.Success(c, http.StatusOK, result)
 }
 
 // FetchURL は外部URLからOGP情報を取得するハンドラーです。

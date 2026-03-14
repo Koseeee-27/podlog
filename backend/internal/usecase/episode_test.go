@@ -3,23 +3,26 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"math"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
 // mockEpisodeRepo は EpisodeRepository のモック（テスト用の偽実装）です。
 // 各メソッドの動作を関数フィールドで差し替えられるようにしています。
 // 未設定のまま呼ばれた場合は panic ではなく明示的なエラーを返します。
 type mockEpisodeRepo struct {
-	createFunc             func(ctx context.Context, episode *model.Episode) error
-	getByIDFunc            func(ctx context.Context, id uuid.UUID) (*model.Episode, error)
-	getByPodcastIDFunc     func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
-	getByItunesTrackIDFunc func(ctx context.Context, trackID int64) (*model.Episode, error)
-	getByGUIDFunc          func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
+	createFunc                  func(ctx context.Context, episode *model.Episode) error
+	getByIDFunc                 func(ctx context.Context, id uuid.UUID) (*model.Episode, error)
+	getByPodcastIDFunc          func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
+	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error)
+	getByItunesTrackIDFunc      func(ctx context.Context, trackID int64) (*model.Episode, error)
+	getByGUIDFunc               func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -55,6 +58,13 @@ func (m *mockEpisodeRepo) GetByGUID(ctx context.Context, podcastID uuid.UUID, gu
 		return nil, fmt.Errorf("mockEpisodeRepo.GetByGUID: not implemented")
 	}
 	return m.getByGUIDFunc(ctx, podcastID, guid)
+}
+
+func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+	if m.getByPodcastIDWithStatsFunc == nil {
+		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetByPodcastIDWithStats: not implemented")
+	}
+	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset)
 }
 
 // mockRSSFetcher は rss.Fetcher のモックです。
@@ -619,5 +629,112 @@ func TestFetchFromFeed_UniqueViolationSkipped(t *testing.T) {
 	}
 	if result.SkippedCount != 1 {
 		t.Errorf("expected 1 skipped, got %d", result.SkippedCount)
+	}
+}
+
+// ── GetByPodcastIDWithStats テスト ──
+
+func TestGetByPodcastIDWithStats_Success(t *testing.T) {
+	podcastID := uuid.New()
+	ep1ID := uuid.New()
+	ep2ID := uuid.New()
+	now := time.Now()
+
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{
+				{
+					ID:            ep1ID,
+					Title:         "エピソード1",
+					PublishedAt:   &now,
+					AverageRating: 4.333,
+					TotalReviews:  3,
+				},
+				{
+					ID:            ep2ID,
+					Title:         "エピソード2",
+					AverageRating: 0,
+					TotalReviews:  0,
+				},
+			}, 2, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), podcastID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected total 2, got %d", result.Total)
+	}
+	if len(result.Episodes) != 2 {
+		t.Fatalf("expected 2 episodes, got %d", len(result.Episodes))
+	}
+	// 平均評価が小数点第1位に丸められていること
+	if math.Abs(result.Episodes[0].AverageRating-4.3) > 0.001 {
+		t.Errorf("expected average_rating 4.3, got %f", result.Episodes[0].AverageRating)
+	}
+	if result.Episodes[0].TotalReviews != 3 {
+		t.Errorf("expected total_reviews 3, got %d", result.Episodes[0].TotalReviews)
+	}
+	// published_at が nil のエピソードでもエラーにならないこと
+	if result.Episodes[1].PublishedAt != nil {
+		t.Errorf("expected nil published_at for ep2, got %v", result.Episodes[1].PublishedAt)
+	}
+}
+
+func TestGetByPodcastIDWithStats_Empty(t *testing.T) {
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{}, 0, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 0 {
+		t.Errorf("expected total 0, got %d", result.Total)
+	}
+	if len(result.Episodes) != 0 {
+		t.Errorf("expected 0 episodes, got %d", len(result.Episodes))
+	}
+}
+
+func TestGetByPodcastIDWithStats_LimitOffset(t *testing.T) {
+	// limit が 0 以下の場合にデフォルト値 20 に補正されることを確認
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			if limit != 20 {
+				t.Errorf("expected limit to be corrected to 20, got %d", limit)
+			}
+			if offset != 0 {
+				t.Errorf("expected offset to be corrected to 0, got %d", offset)
+			}
+			return []repository.EpisodeWithStatsRow{}, 0, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), -1, -5)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+}
+
+func TestGetByPodcastIDWithStats_RepoError(t *testing.T) {
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return nil, 0, fmt.Errorf("database error")
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0)
+	if err == nil {
+		t.Fatal("expected error, got nil")
 	}
 }

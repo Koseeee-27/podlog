@@ -9,6 +9,21 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
 
+// PodcastDetailResult はポッドキャスト詳細のレスポンスです。
+// API 設計書に従い、番組情報に加えて average_rating / total_reviews を含みます。
+type PodcastDetailResult struct {
+	ID            uuid.UUID `json:"id"`
+	Title         string    `json:"title"`
+	Author        *string   `json:"author,omitempty"`
+	Description   *string   `json:"description,omitempty"`
+	ArtworkURL    *string   `json:"artwork_url,omitempty"`
+	Genre         *string   `json:"genre,omitempty"`
+	FeedURL       *string   `json:"feed_url,omitempty"`
+	AverageRating float64   `json:"average_rating"`
+	TotalReviews  int       `json:"total_reviews"`
+	CreatedAt     string    `json:"created_at"`
+}
+
 // PodcastSearchResult は番組検索のレスポンスです。
 type PodcastSearchResult struct {
 	Podcasts []PodcastSearchItem `json:"podcasts"`

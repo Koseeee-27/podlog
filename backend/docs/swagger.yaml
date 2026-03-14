@@ -59,35 +59,6 @@ definitions:
       user_id:
         type: string
     type: object
-  model.Podcast:
-    properties:
-      artwork_url:
-        type: string
-      author:
-        type: string
-      created_at:
-        type: string
-      description:
-        type: string
-      feed_url:
-        type: string
-      genre:
-        type: string
-      id:
-        type: string
-      itunes_id:
-        type: integer
-      itunes_url:
-        type: string
-      source_type:
-        type: string
-      source_url:
-        type: string
-      title:
-        type: string
-      updated_at:
-        type: string
-    type: object
   model.Review:
     properties:
       comment:
@@ -194,6 +165,66 @@ definitions:
       rating:
         type: integer
     type: object
+  usecase.EpisodeDetailResult:
+    properties:
+      artwork_url:
+        type: string
+      audio_url:
+        type: string
+      average_rating:
+        type: number
+      created_at:
+        type: string
+      description:
+        type: string
+      duration_ms:
+        type: integer
+      id:
+        type: string
+      podcast:
+        $ref: '#/definitions/usecase.EpisodePodcastInfo'
+      published_at:
+        type: string
+      title:
+        type: string
+      total_reviews:
+        type: integer
+    type: object
+  usecase.EpisodeListItem:
+    properties:
+      average_rating:
+        type: number
+      description:
+        type: string
+      duration_ms:
+        type: integer
+      id:
+        type: string
+      published_at:
+        type: string
+      title:
+        type: string
+      total_reviews:
+        type: integer
+    type: object
+  usecase.EpisodeListResult:
+    properties:
+      episodes:
+        items:
+          $ref: '#/definitions/usecase.EpisodeListItem'
+        type: array
+      total:
+        type: integer
+    type: object
+  usecase.EpisodePodcastInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+    type: object
   usecase.FavoritePodcastItem:
     properties:
       artwork_url:
@@ -277,6 +308,29 @@ definitions:
         type: integer
       updated_at:
         type: string
+    type: object
+  usecase.PodcastDetailResult:
+    properties:
+      artwork_url:
+        type: string
+      author:
+        type: string
+      average_rating:
+        type: number
+      created_at:
+        type: string
+      description:
+        type: string
+      feed_url:
+        type: string
+      genre:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
+      total_reviews:
+        type: integer
     type: object
   usecase.PodcastRatingResult:
     properties:
@@ -452,7 +506,7 @@ info:
 paths:
   /episodes/{id}:
     get:
-      description: エピソードIDから詳細情報を取得します
+      description: エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。
       parameters:
       - description: エピソードID (UUID)
         in: path
@@ -465,7 +519,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Episode'
+            $ref: '#/definitions/usecase.EpisodeDetailResult'
         "404":
           description: Not Found
           schema:
@@ -810,7 +864,7 @@ paths:
       - health
   /podcasts/{id}:
     get:
-      description: ポッドキャストIDから詳細情報を取得します
+      description: ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。
       parameters:
       - description: ポッドキャストID (UUID)
         in: path
@@ -823,7 +877,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Podcast'
+            $ref: '#/definitions/usecase.PodcastDetailResult'
         "404":
           description: Not Found
           schema:
@@ -835,7 +889,7 @@ paths:
       - podcasts
   /podcasts/{id}/episodes:
     get:
-      description: ポッドキャストIDに紐づくエピソード一覧を取得します
+      description: ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。
       parameters:
       - description: ポッドキャストID (UUID)
         in: path
@@ -858,9 +912,7 @@ paths:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Episode'
-            type: array
+            $ref: '#/definitions/usecase.EpisodeListResult'
         "400":
           description: Bad Request
           schema:
