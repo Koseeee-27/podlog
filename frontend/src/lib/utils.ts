@@ -22,6 +22,15 @@ export function formatDate(dateString: string | null): string {
 }
 
 /**
+ * 星評価を文字列で返す（★☆表記）。
+ * rating を 0〜5 の整数にクランプし、範囲外や NaN でもクラッシュしない。
+ */
+export function formatStars(rating: number): string {
+  const r = Math.max(0, Math.min(5, Math.round(rating) || 0));
+  return "★".repeat(r) + "☆".repeat(5 - r);
+}
+
+/**
  * URLが安全なプロトコル（http/https）を使用しているか検証する。
  * javascript: や data: などの危険なプロトコルを防止する。
  * 前後の空白はトリムして判定する。空文字列（トリム後）は有効として扱う（任意フィールド用）。
