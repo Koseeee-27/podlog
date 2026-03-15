@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { getUserListeningRecords } from "@/lib/api/listening-records";
 import { getUserReviews } from "@/lib/api/reviews";
 import { getUserFavoritePodcasts } from "@/lib/api/users";
@@ -16,6 +16,7 @@ export function useUserListeningRecords(username: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -42,24 +43,29 @@ export function useUserListeningRecords(username: string) {
     return () => { controller.abort(); };
   }, [username]);
 
-  const recordsLength = records.length;
   const loadMore = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const data = await getUserListeningRecords(username, {
         limit: PAGE_SIZE,
-        offset: recordsLength,
+        offset: records.length,
       });
       const list = data.records ?? [];
-      setRecords((prev) => [...prev, ...list]);
+      setRecords((prev) => {
+        const next = [...prev, ...list];
+        setHasMore(next.length < data.total);
+        return next;
+      });
       setTotal(data.total);
-      setHasMore(recordsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [username, recordsLength]);
+  }, [username, records.length]);
 
   return { records, total, loading, error, hasMore, loadMore };
 }
@@ -70,6 +76,7 @@ export function useUserReviews(username: string) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const loadingRef = useRef(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -96,24 +103,29 @@ export function useUserReviews(username: string) {
     return () => { controller.abort(); };
   }, [username]);
 
-  const reviewsLength = reviews.length;
   const loadMore = useCallback(async () => {
+    if (loadingRef.current) return;
+    loadingRef.current = true;
     setLoading(true);
     try {
       const data = await getUserReviews(username, {
         limit: PAGE_SIZE,
-        offset: reviewsLength,
+        offset: reviews.length,
       });
       const list = data.reviews ?? [];
-      setReviews((prev) => [...prev, ...list]);
+      setReviews((prev) => {
+        const next = [...prev, ...list];
+        setHasMore(next.length < data.total);
+        return next;
+      });
       setTotal(data.total);
-      setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込み失敗");
     } finally {
       setLoading(false);
+      loadingRef.current = false;
     }
-  }, [username, reviewsLength]);
+  }, [username, reviews.length]);
 
   return { reviews, total, loading, error, hasMore, loadMore };
 }

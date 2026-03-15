@@ -27,11 +27,9 @@ export default function UserListeningHistory({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {error ? (
-        <ErrorMessage message={error} />
-      ) : loading && records.length === 0 ? (
+      {loading && records.length === 0 ? (
         <p className="text-sm text-stone-500">読み込み中...</p>
-      ) : records.length === 0 ? (
+      ) : records.length === 0 && !error ? (
         <p className="text-sm text-stone-500">まだ聴取記録がありません</p>
       ) : (
         <div className="space-y-2">
@@ -57,8 +55,11 @@ export default function UserListeningHistory({
         </div>
       )}
 
+      {error && <ErrorMessage message={error} />}
+
       {hasMore && records.length > 0 && (
         <button
+          type="button"
           onClick={onLoadMore}
           disabled={loading}
           className="mt-3 w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"

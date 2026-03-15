@@ -27,11 +27,9 @@ export default function UserReviewList({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {error ? (
-        <ErrorMessage message={error} />
-      ) : loading && reviews.length === 0 ? (
+      {loading && reviews.length === 0 ? (
         <p className="text-sm text-stone-500">読み込み中...</p>
-      ) : reviews.length === 0 ? (
+      ) : reviews.length === 0 && !error ? (
         <p className="text-sm text-stone-500">まだレビューがありません</p>
       ) : (
         <div className="space-y-3">
@@ -68,8 +66,11 @@ export default function UserReviewList({
         </div>
       )}
 
+      {error && <ErrorMessage message={error} />}
+
       {hasMore && reviews.length > 0 && (
         <button
+          type="button"
           onClick={onLoadMore}
           disabled={loading}
           className="mt-3 w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
