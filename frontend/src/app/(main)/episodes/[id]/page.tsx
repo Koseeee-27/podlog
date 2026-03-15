@@ -13,5 +13,5 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
-  return <EpisodePageClient episodeId={id} isLoggedIn={isLoggedIn} />;
+  return <EpisodePageClient episodeId={id} isLoggedIn={isLoggedIn} userId={user?.id ?? null} />;
 }

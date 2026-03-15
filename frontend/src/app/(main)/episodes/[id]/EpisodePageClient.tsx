@@ -8,11 +8,13 @@ import EpisodeDetail from "@/components/episode/EpisodeDetail";
 interface EpisodePageClientProps {
   episodeId: string;
   isLoggedIn: boolean;
+  userId: string | null;
 }
 
 export default function EpisodePageClient({
   episodeId,
   isLoggedIn,
+  userId,
 }: EpisodePageClientProps) {
   const { episode, loading, error } = useEpisode(episodeId);
 
@@ -28,5 +30,5 @@ export default function EpisodePageClient({
     return <ErrorMessage message="エピソードが見つかりません" />;
   }
 
-  return <EpisodeDetail episode={episode} isLoggedIn={isLoggedIn} />;
+  return <EpisodeDetail episode={episode} isLoggedIn={isLoggedIn} userId={userId} />;
 }
