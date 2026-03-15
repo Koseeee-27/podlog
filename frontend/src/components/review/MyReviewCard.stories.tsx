@@ -12,14 +12,10 @@ type Story = StoryObj<typeof meta>;
 
 const baseReview = {
   id: "r1",
-  user: {
-    id: "u1",
-    username: "tanaka",
-    display_name: "田中太郎",
-  },
   rating: 4,
   comment: "面白かった！また聴きたい。",
   created_at: "2026-03-10T12:00:00Z",
+  updated_at: "2026-03-10T12:00:00Z",
 };
 
 export const Default: Story = {

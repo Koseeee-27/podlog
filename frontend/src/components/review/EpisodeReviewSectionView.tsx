@@ -1,4 +1,4 @@
-import type { ReviewItem } from "@/types/review";
+import type { ReviewItem, MyReviewResult } from "@/types/review";
 import ReviewForm from "./ReviewForm";
 import ReviewCard from "./ReviewCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -20,9 +20,10 @@ export interface EpisodeReviewSectionViewProps {
   listError?: string | null;
   submitted: boolean;
   isLoggedIn: boolean;
-  myReview: ReviewItem | null;
+  myReview: MyReviewResult | null;
   myReviewLoading: boolean;
   myReviewError?: string | null;
+  deletedReviewId: string | null;
   editing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
@@ -49,6 +50,7 @@ export default function EpisodeReviewSectionView({
   myReview,
   myReviewLoading,
   myReviewError,
+  deletedReviewId,
   editing,
   onStartEdit,
   onCancelEdit,
@@ -56,9 +58,11 @@ export default function EpisodeReviewSectionView({
   onStartDelete,
   onCancelDelete,
 }: EpisodeReviewSectionViewProps) {
-  const otherReviews = myReview
-    ? reviews.filter((r) => r.id !== myReview.id)
-    : reviews;
+  const otherReviews = reviews.filter((r) => {
+    if (myReview && r.id === myReview.id) return false;
+    if (deletedReviewId && r.id === deletedReviewId) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-6">

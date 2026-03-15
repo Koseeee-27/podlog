@@ -20,6 +20,7 @@ const defaultHandlers = {
   onStartDelete: () => {},
   onCancelDelete: () => {},
   myReviewLoading: false,
+  deletedReviewId: null,
 };
 
 export const WithReviews: Story = {
@@ -79,10 +80,10 @@ export const WithMyReview: Story = {
     isLoggedIn: true,
     myReview: {
       id: "r1",
-      user: { id: "u1", username: "me", display_name: "自分" },
       rating: 4,
       comment: "面白かった！",
       created_at: "2026-03-10T12:00:00Z",
+      updated_at: "2026-03-10T12:00:00Z",
     },
     editing: false,
     confirmDelete: false,
@@ -110,10 +111,10 @@ export const EditingMyReview: Story = {
     isLoggedIn: true,
     myReview: {
       id: "r1",
-      user: { id: "u1", username: "me", display_name: "自分" },
       rating: 4,
       comment: "面白かった！",
       created_at: "2026-03-10T12:00:00Z",
+      updated_at: "2026-03-10T12:00:00Z",
     },
     editing: true,
     confirmDelete: false,

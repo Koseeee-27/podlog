@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
-import type { ReviewItem } from "@/types/review";
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
@@ -15,26 +14,14 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
-  const { myReview: myReviewRaw, loading: myReviewLoading, error: myReviewError, refresh: refreshMyReview, clearMyReview, updateMyReview } =
+  const { myReview, loading: myReviewLoading, error: myReviewError, refresh: refreshMyReview, clearMyReview, updateMyReview } =
     useMyReviewForEpisode(episodeId, isLoggedIn);
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletedReviewId, setDeletedReviewId] = useState<string | null>(null);
 
-  // MyReviewResult を ReviewItem 互換に変換（user 情報はレビュー一覧から補完）
-  const myReview: ReviewItem | null = myReviewRaw && userId
-    ? {
-        id: myReviewRaw.id,
-        user: reviews.find((r) => r.user.id === userId)?.user ?? {
-          id: userId,
-          username: "",
-          display_name: "",
-        },
-        rating: myReviewRaw.rating,
-        comment: myReviewRaw.comment,
-        created_at: myReviewRaw.created_at,
-      }
-    : null;
+  void userId; // userId は myReview の特定に不要（useMyReviewForEpisode が直接取得）
 
   const handleSubmit = async (rating: number, comment: string) => {
     const review = await create({
@@ -54,7 +41,6 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
       comment: comment || undefined,
     });
     if (review) {
-      // 楽観的更新: refetch を待たずにローカル state を即座に反映
       updateMyReview({
         id: review.id,
         rating: review.rating,
@@ -68,10 +54,11 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   };
 
   const handleDelete = async () => {
+    const reviewId = myReview?.id ?? null;
     const success = await remove();
     if (success) {
-      // 即座にクリア: refetch の 404 待ちに依存しない
       clearMyReview();
+      setDeletedReviewId(reviewId);
       setConfirmDelete(false);
       setSubmitted(false);
       refresh();
@@ -97,6 +84,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
       myReview={myReview}
       myReviewLoading={myReviewLoading}
       myReviewError={myReviewError}
+      deletedReviewId={deletedReviewId}
       editing={editing}
       onStartEdit={() => setEditing(true)}
       onCancelEdit={() => setEditing(false)}

@@ -1,8 +1,8 @@
-import type { ReviewItem } from "@/types/review";
+import type { MyReviewResult } from "@/types/review";
 import { formatDate } from "@/lib/utils";
 
 interface MyReviewCardProps {
-  review: ReviewItem;
+  review: MyReviewResult;
   onEdit: () => void;
   onDelete: () => void;
   confirmDelete: boolean;
