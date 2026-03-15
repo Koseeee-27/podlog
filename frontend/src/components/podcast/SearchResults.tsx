@@ -16,8 +16,8 @@ export default function SearchResults({ results, query, loading, error }: Search
 
   if (!query.trim()) {
     return (
-      <div className="text-center py-12 text-gray-500">
-        <svg className="mx-auto h-12 w-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="text-center py-12 text-stone-500">
+        <svg className="mx-auto h-12 w-12 text-stone-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <p>ポッドキャスト名で検索してみましょう</p>
@@ -27,7 +27,7 @@ export default function SearchResults({ results, query, loading, error }: Search
 
   if (!loading && results.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-stone-500">
         <p>&ldquo;{query}&rdquo; に一致するポッドキャストが見つかりませんでした</p>
       </div>
     );

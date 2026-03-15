@@ -67,7 +67,7 @@ export default function PodcastPageClient() {
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold text-gray-900">エピソード</h2>
+          <h2 className="text-xl font-bold text-stone-900">エピソード</h2>
           {podcast.feed_url && (
             <Button
               variant="outline"

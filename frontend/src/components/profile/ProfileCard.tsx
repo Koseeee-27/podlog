@@ -11,12 +11,12 @@ export default function ProfileCard({ user }: ProfileCardProps) {
     <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
       <Avatar src={user.avatar_url} alt={user.display_name} size="xl" />
       <div className="text-center sm:text-left">
-        <h1 className="text-2xl font-bold text-gray-900">{user.display_name}</h1>
-        <p className="text-gray-500">@{user.username}</p>
+        <h1 className="text-2xl font-bold text-stone-900">{user.display_name}</h1>
+        <p className="text-stone-500">@{user.username}</p>
         {user.bio && (
-          <p className="mt-3 text-sm text-gray-700 leading-relaxed">{user.bio}</p>
+          <p className="mt-3 text-sm text-stone-700 leading-relaxed">{user.bio}</p>
         )}
-        <p className="mt-2 text-xs text-gray-400">
+        <p className="mt-2 text-xs text-stone-400">
           {formatDate(user.created_at)} に登録
         </p>
       </div>

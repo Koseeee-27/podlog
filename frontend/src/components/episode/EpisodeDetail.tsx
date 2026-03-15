@@ -13,9 +13,9 @@ interface EpisodeDetailProps {
 export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">{episode.title}</h1>
+      <h1 className="text-2xl font-bold text-stone-900">{episode.title}</h1>
 
-      <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-gray-500">
+      <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-stone-500">
         {episode.published_at && <span>{formatDate(episode.published_at)}</span>}
         {episode.duration_ms && <span>{formatDuration(episode.duration_ms)}</span>}
         {episode.review_count > 0 && (
@@ -36,7 +36,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
       <div className="mt-2">
         <Link
           href={`/podcasts/${episode.podcast_id}`}
-          className="text-sm text-indigo-600 hover:text-indigo-800"
+          className="text-sm text-rose-600 hover:text-rose-700"
         >
           ポッドキャストに戻る
         </Link>
@@ -52,8 +52,8 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       {episode.description && (
         <div className="mt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-2">説明</h2>
-          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+          <h2 className="text-lg font-semibold text-stone-900 mb-2">説明</h2>
+          <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
             {episode.description}
           </p>
         </div>
@@ -65,7 +65,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
             href={episode.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800"
+            className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:text-rose-700"
           >
             元のページで見る
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -75,7 +75,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
         </div>
       )}
 
-      <hr className="my-8 border-gray-200" />
+      <hr className="my-8 border-stone-200" />
 
       <EpisodeReviewSection episodeId={episode.id} isLoggedIn={isLoggedIn} />
     </div>

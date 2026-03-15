@@ -41,9 +41,9 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
       {/* サイドバー */}
       <div className="absolute right-0 top-0 bottom-0 w-64 bg-white shadow-xl flex flex-col">
         {/* ヘッダー */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-200">
-          <span className="font-bold text-indigo-600">PodLog</span>
-          <button onClick={onClose} className="p-1 text-gray-500 hover:text-gray-700" aria-label="メニューを閉じる">
+        <div className="flex items-center justify-between p-4 border-b border-stone-200">
+          <span className="font-bold text-rose-600">PodLog</span>
+          <button onClick={onClose} className="p-1 text-stone-500 hover:text-stone-700" aria-label="メニューを閉じる">
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -52,12 +52,12 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
 
         {/* ログイン済み: ユーザー情報 */}
         {profile && (
-          <div className="p-4 border-b border-gray-200">
+          <div className="p-4 border-b border-stone-200">
             <div className="flex items-center gap-3">
               <Avatar src={profile.avatar_url} alt={profile.display_name} size="md" />
               <div>
-                <p className="font-medium text-gray-900">{profile.display_name}</p>
-                <p className="text-sm text-gray-500">@{profile.username}</p>
+                <p className="font-medium text-stone-900">{profile.display_name}</p>
+                <p className="text-sm text-stone-500">@{profile.username}</p>
               </div>
             </div>
           </div>
@@ -85,7 +85,7 @@ export default function MobileNav({ open, onClose, profile, isLoggedIn, isLoadin
 
         {/* ログアウトボタン（ログイン済みのみ） */}
         {isLoggedIn && (
-          <div className="p-4 border-t border-gray-200">
+          <div className="p-4 border-t border-stone-200">
             <button
               onClick={async () => {
                 await onSignOut();
@@ -107,7 +107,7 @@ function NavLink({ href, onClick, children }: { href: string; onClick: () => voi
     <Link
       href={href}
       onClick={onClick}
-      className="block px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-md"
+      className="block px-3 py-2 text-sm font-medium text-stone-700 hover:bg-stone-50 rounded-md"
     >
       {children}
     </Link>

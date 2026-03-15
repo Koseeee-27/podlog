@@ -16,7 +16,7 @@ export default function EpisodeList({ episodes, loading, hasMore, onLoadMore }: 
   }
 
   if (episodes.length === 0) {
-    return <p className="text-center py-8 text-gray-500">エピソードはまだ登録されていません</p>;
+    return <p className="text-center py-8 text-stone-500">エピソードはまだ登録されていません</p>;
   }
 
   return (

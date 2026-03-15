@@ -17,12 +17,12 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <nav className="bg-white border-b border-stone-200 sticky top-0 z-40">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center justify-between h-14">
             {/* 左側: ロゴ + 検索リンク */}
             <div className="flex items-center gap-6">
-              <Link href="/" className="text-lg font-bold text-indigo-600">
+              <Link href="/" className="text-lg font-bold text-rose-600">
                 PodLog
               </Link>
               <div className="hidden sm:flex items-center gap-1">
@@ -30,8 +30,8 @@ export default function Navbar() {
                   href="/search"
                   className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
                     pathname === "/search"
-                      ? "bg-indigo-50 text-indigo-700"
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                      ? "bg-rose-50 text-rose-700"
+                      : "text-stone-600 hover:text-stone-900 hover:bg-stone-50"
                   }`}
                 >
                   検索
@@ -47,19 +47,19 @@ export default function Navbar() {
                   className="flex items-center gap-2 hover:opacity-80 transition-opacity"
                 >
                   <Avatar src={profile.avatar_url} alt={profile.display_name} size="sm" />
-                  <span className="text-sm font-medium text-gray-700">{profile.display_name}</span>
+                  <span className="text-sm font-medium text-stone-700">{profile.display_name}</span>
                 </Link>
               ) : auth.status === "no_profile" ? (
                 <Link
                   href="/profile/setup"
-                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                  className="px-4 py-1.5 bg-rose-500 text-white text-sm font-medium rounded-md hover:bg-rose-600 transition-colors"
                 >
                   プロフィール設定
                 </Link>
               ) : !isLoggedIn && auth.status !== "loading" ? (
                 <Link
                   href="/login"
-                  className="px-4 py-1.5 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                  className="px-4 py-1.5 bg-rose-500 text-white text-sm font-medium rounded-md hover:bg-rose-600 transition-colors"
                 >
                   ログイン
                 </Link>
@@ -68,7 +68,7 @@ export default function Navbar() {
 
             {/* ハンバーガーメニュー: モバイル */}
             <button
-              className="sm:hidden p-2 text-gray-600 hover:text-gray-900"
+              className="sm:hidden p-2 text-stone-600 hover:text-stone-900"
               onClick={() => setMobileOpen(true)}
               aria-label="メニューを開く"
             >

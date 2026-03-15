@@ -22,7 +22,7 @@ export default function Avatar({ src, alt, size = "md", className = "" }: Avatar
   if (!src) {
     return (
       <div
-        className={`${sizeClass} rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-semibold ${className}`}
+        className={`${sizeClass} rounded-full bg-rose-100 flex items-center justify-center text-rose-600 font-semibold ${className}`}
       >
         {alt.charAt(0).toUpperCase()}
       </div>
