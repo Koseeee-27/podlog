@@ -6,6 +6,7 @@ import {
   updateReview,
   deleteReview,
   getEpisodeReviews,
+  getPodcastRating,
   getMyReviews,
   getTimeline,
 } from "@/lib/api/reviews";
@@ -14,6 +15,7 @@ import type {
   CreateReviewRequest,
   UpdateReviewRequest,
   ReviewItem,
+  PodcastRatingResult,
   UserReviewItem,
   TimelineItem,
 } from "@/types/review";
@@ -245,4 +247,38 @@ export function useTimeline() {
   }, [reviewsLength]);
 
   return { reviews, total, loading, error, hasMore, loadMore };
+}
+
+/**
+ * ポッドキャストの平均評価・レビュー件数を取得するフック。
+ */
+export function usePodcastRating(podcastId: string) {
+  const [rating, setRating] = useState<PodcastRatingResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function fetch() {
+      setLoading(true);
+      setError(null);
+      setRating(null);
+      try {
+        const data = await getPodcastRating(podcastId);
+        if (controller.signal.aborted) return;
+        setRating(data);
+      } catch (err) {
+        if (controller.signal.aborted) return;
+        setError(err instanceof Error ? err.message : "評価の取得に失敗しました");
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    fetch();
+    return () => { controller.abort(); };
+  }, [podcastId]);
+
+  return { rating, loading, error };
 }
