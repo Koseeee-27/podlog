@@ -24,3 +24,16 @@ export function getMyListeningRecords(
     `/users/me/listening-records${query ? `?${query}` : ""}`
   );
 }
+
+export function getUserListeningRecords(
+  username: string,
+  params?: { limit?: number; offset?: number }
+): Promise<ListeningRecordListResult> {
+  const searchParams = new URLSearchParams();
+  if (params?.limit) searchParams.set("limit", String(params.limit));
+  if (params?.offset) searchParams.set("offset", String(params.offset));
+  const query = searchParams.toString();
+  return apiGet<ListeningRecordListResult>(
+    `/users/${encodeURIComponent(username)}/listening-records${query ? `?${query}` : ""}`
+  );
+}

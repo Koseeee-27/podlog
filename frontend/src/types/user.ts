@@ -30,3 +30,13 @@ export interface UserPublicProfile {
   bio: string | null;
   created_at: string;
 }
+
+export interface FavoritePodcastItem {
+  id: string;
+  title: string;
+  artwork_url?: string;
+}
+
+export interface FavoritePodcastListResult {
+  podcasts: FavoritePodcastItem[];
+}
