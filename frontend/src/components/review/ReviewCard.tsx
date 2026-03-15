@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { ReviewItem } from "@/types/review";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatStars } from "@/lib/utils";
 
 interface ReviewCardProps {
   review: ReviewItem;
@@ -23,8 +23,7 @@ export default function ReviewCard({ review }: ReviewCardProps) {
           <p className="text-xs text-stone-500">{formatDate(review.created_at)}</p>
         </div>
         <div className="ml-auto text-sm text-yellow-500">
-          {"★".repeat(review.rating)}
-          {"☆".repeat(5 - review.rating)}
+          {formatStars(review.rating)}
         </div>
       </div>
       {review.comment && (

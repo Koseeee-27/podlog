@@ -1,4 +1,4 @@
-import { formatDuration, formatDate, isValidUrl } from "../utils";
+import { formatDuration, formatDate, isValidUrl, formatStars } from "../utils";
 
 describe("formatDuration", () => {
   it("returns empty string for null", () => {
@@ -85,5 +85,36 @@ describe("isValidUrl", () => {
 
   it("returns true for URL with authentication info", () => {
     expect(isValidUrl("https://user:pass@example.com")).toBe(true);
+  });
+});
+
+describe("formatStars", () => {
+  it("returns 5 filled stars for rating 5", () => {
+    expect(formatStars(5)).toBe("★★★★★");
+  });
+
+  it("returns 0 filled stars for rating 0", () => {
+    expect(formatStars(0)).toBe("☆☆☆☆☆");
+  });
+
+  it("returns correct stars for rating 3", () => {
+    expect(formatStars(3)).toBe("★★★☆☆");
+  });
+
+  it("clamps rating above 5 to 5", () => {
+    expect(formatStars(6)).toBe("★★★★★");
+  });
+
+  it("clamps negative rating to 0", () => {
+    expect(formatStars(-1)).toBe("☆☆☆☆☆");
+  });
+
+  it("rounds float rating", () => {
+    expect(formatStars(3.7)).toBe("★★★★☆");
+    expect(formatStars(3.2)).toBe("★★★☆☆");
+  });
+
+  it("handles NaN as 0", () => {
+    expect(formatStars(NaN)).toBe("☆☆☆☆☆");
   });
 });

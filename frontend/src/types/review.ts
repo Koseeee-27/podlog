@@ -18,6 +18,8 @@ export interface UpdateReviewRequest {
   comment?: string;
 }
 
+export type MyReviewResult = Omit<Review, "user_id" | "episode_id">;
+
 export interface ReviewUser {
   id: string;
   username: string;

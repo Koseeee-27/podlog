@@ -77,7 +77,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       <hr className="my-8 border-stone-200" />
 
-      <EpisodeReviewSection episodeId={episode.id} isLoggedIn={isLoggedIn} />
+      <EpisodeReviewSection key={`${episode.id}-${isLoggedIn}`} episodeId={episode.id} isLoggedIn={isLoggedIn} />
     </div>
   );
 }

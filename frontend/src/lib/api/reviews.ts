@@ -1,6 +1,7 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./client";
 import type {
   Review,
+  MyReviewResult,
   CreateReviewRequest,
   UpdateReviewRequest,
   ReviewListResult,
@@ -25,6 +26,10 @@ export function updateReview(
 
 export function deleteReview(episodeId: string): Promise<void> {
   return apiDelete(`/episodes/${encodeURIComponent(episodeId)}/reviews/mine`);
+}
+
+export function getMyReviewForEpisode(episodeId: string): Promise<MyReviewResult> {
+  return apiGet<MyReviewResult>(`/episodes/${encodeURIComponent(episodeId)}/reviews/mine`);
 }
 
 export function getEpisodeReviews(

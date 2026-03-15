@@ -6,12 +6,15 @@ import {
   updateReview,
   deleteReview,
   getEpisodeReviews,
+  getMyReviewForEpisode,
   getPodcastRating,
   getMyReviews,
   getTimeline,
 } from "@/lib/api/reviews";
+import { ApiRequestError } from "@/types/api";
 import type {
   Review,
+  MyReviewResult,
   CreateReviewRequest,
   UpdateReviewRequest,
   ReviewItem,
@@ -133,6 +136,68 @@ export function useReviewActions(episodeId: string) {
   }, [episodeId]);
 
   return { create, update, remove, loading, error };
+}
+
+/**
+ * エピソードに対する自分のレビューを取得するフック。
+ * ページングに依存せず /episodes/{id}/reviews/mine から直接取得する。
+ */
+export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
+  const [myReview, setMyReview] = useState<MyReviewResult | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchMyReview() {
+      if (!isLoggedIn) {
+        setMyReview(null);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+      setMyReview(null);
+      setLoading(true);
+      setError(null);
+      try {
+        const review = await getMyReviewForEpisode(episodeId);
+        if (!cancelled) {
+          setMyReview(review);
+          setError(null);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && err.status === 404) {
+          setMyReview(null);
+          setError(null);
+        } else {
+          setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
+          setMyReview(null);
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchMyReview();
+    return () => { cancelled = true; };
+  }, [episodeId, isLoggedIn, refreshKey]);
+
+  const clearMyReview = useCallback(() => {
+    setMyReview(null);
+  }, []);
+
+  const updateMyReview = useCallback((data: MyReviewResult) => {
+    setMyReview(data);
+  }, []);
+
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  return { myReview, loading, error, refresh, clearMyReview, updateMyReview };
 }
 
 /**
