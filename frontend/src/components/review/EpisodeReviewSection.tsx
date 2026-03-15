@@ -55,7 +55,13 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
     });
     if (review) {
       // 楽観的更新: refetch を待たずにローカル state を即座に反映
-      updateMyReview(review);
+      updateMyReview({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.created_at,
+        updated_at: review.updated_at,
+      });
       setEditing(false);
       refresh();
     }

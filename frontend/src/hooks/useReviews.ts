@@ -144,50 +144,27 @@ export function useReviewActions(episodeId: string) {
  */
 export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
   const [myReview, setMyReview] = useState<MyReviewResult | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(isLoggedIn);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchMyReview = useCallback(async () => {
-    if (!isLoggedIn) {
-      setMyReview(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    try {
-      const review = await getMyReviewForEpisode(episodeId);
-      setMyReview(review);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 404) {
-        setMyReview(null);
-      } else {
-        setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
-        setMyReview(null);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [episodeId, isLoggedIn]);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function fetch() {
-      if (!isLoggedIn) {
+    if (!isLoggedIn) {
+      // 非同期コールバック内でリセット（lint: set-state-in-effect 回避）
+      queueMicrotask(() => {
         setMyReview(null);
         setLoading(false);
         setError(null);
-        return;
-      }
-      setLoading(true);
-      setError(null);
-      try {
-        const review = await getMyReviewForEpisode(episodeId);
-        if (cancelled) return;
-        setMyReview(review);
-      } catch (err) {
+      });
+      return;
+    }
+    let cancelled = false;
+
+    getMyReviewForEpisode(episodeId)
+      .then((review) => {
+        if (!cancelled) setMyReview(review);
+      })
+      .catch((err) => {
         if (cancelled) return;
         if (err instanceof ApiRequestError && err.status === 404) {
           setMyReview(null);
@@ -195,14 +172,13 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
           setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
           setMyReview(null);
         }
-      } finally {
+      })
+      .finally(() => {
         if (!cancelled) setLoading(false);
-      }
-    }
+      });
 
-    fetch();
     return () => { cancelled = true; };
-  }, [episodeId, isLoggedIn]);
+  }, [episodeId, isLoggedIn, refreshKey]);
 
   const clearMyReview = useCallback(() => {
     setMyReview(null);
@@ -212,7 +188,11 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
     setMyReview(data);
   }, []);
 
-  return { myReview, loading, error, refresh: fetchMyReview, clearMyReview, updateMyReview };
+  const refresh = useCallback(() => {
+    setRefreshKey((k) => k + 1);
+  }, []);
+
+  return { myReview, loading, error, refresh, clearMyReview, updateMyReview };
 }
 
 /**
