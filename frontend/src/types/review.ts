@@ -18,13 +18,7 @@ export interface UpdateReviewRequest {
   comment?: string;
 }
 
-export interface MyReviewResult {
-  id: string;
-  rating: number;
-  comment?: string;
-  created_at: string;
-  updated_at: string;
-}
+export type MyReviewResult = Omit<Review, "user_id" | "episode_id">;
 
 export interface ReviewUser {
   id: string;
