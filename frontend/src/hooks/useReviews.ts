@@ -149,34 +149,38 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (!isLoggedIn) {
-      // 非同期コールバック内でリセット（lint: set-state-in-effect 回避）
-      queueMicrotask(() => {
+    let cancelled = false;
+
+    async function fetchMyReview() {
+      if (!isLoggedIn) {
         setMyReview(null);
         setLoading(false);
         setError(null);
-      });
-      return;
-    }
-    let cancelled = false;
-
-    getMyReviewForEpisode(episodeId)
-      .then((review) => {
-        if (!cancelled) setMyReview(review);
-      })
-      .catch((err) => {
+        return;
+      }
+      setLoading(true);
+      setError(null);
+      try {
+        const review = await getMyReviewForEpisode(episodeId);
+        if (!cancelled) {
+          setMyReview(review);
+          setError(null);
+        }
+      } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiRequestError && err.status === 404) {
           setMyReview(null);
+          setError(null);
         } else {
           setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
           setMyReview(null);
         }
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
 
+    fetchMyReview();
     return () => { cancelled = true; };
   }, [episodeId, isLoggedIn, refreshKey]);
 
