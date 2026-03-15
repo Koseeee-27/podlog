@@ -31,6 +31,7 @@ type ReviewUsecase interface {
 	Delete(ctx context.Context, userID, episodeID uuid.UUID) error
 	GetMyReview(ctx context.Context, userID, episodeID uuid.UUID) (*MyReviewResult, error)
 	GetByEpisodeID(ctx context.Context, episodeID uuid.UUID, limit, offset int) (*ReviewListResult, error)
+	GetEpisodeRating(ctx context.Context, episodeID uuid.UUID) (*EpisodeRatingResult, error)
 	GetPodcastRating(ctx context.Context, podcastID uuid.UUID) (*PodcastRatingResult, error)
 	GetByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) (*UserReviewListResult, error)
 	GetByUsername(ctx context.Context, username string, limit, offset int) (*UserReviewListResult, error)
@@ -69,6 +70,13 @@ type ReviewUserInfo struct {
 	Username    string    `json:"username"`
 	DisplayName string    `json:"display_name"`
 	AvatarURL   *string   `json:"avatar_url,omitempty"`
+}
+
+// EpisodeRatingResult はエピソードの平均評価レスポンスです。
+// レビュー一覧を取得せず、統計情報のみを返す軽量なレスポンスです。
+type EpisodeRatingResult struct {
+	AverageRating float64 `json:"average_rating"`
+	TotalReviews  int     `json:"total_reviews"`
 }
 
 // PodcastRatingResult はポッドキャストの平均評価レスポンスです。
@@ -307,6 +315,20 @@ func (u *reviewUsecase) GetByEpisodeID(ctx context.Context, episodeID uuid.UUID,
 		Reviews:       items,
 		Total:         total,
 		AverageRating: roundToOneDecimal(avg),
+	}, nil
+}
+
+// GetEpisodeRating はエピソードの平均評価と件数のみを取得します。
+// レビュー一覧を取得しないため、GetByEpisodeID より軽量です。
+func (u *reviewUsecase) GetEpisodeRating(ctx context.Context, episodeID uuid.UUID) (*EpisodeRatingResult, error) {
+	avg, count, err := u.reviewRepo.GetAverageRatingByEpisodeID(ctx, episodeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get episode rating: %w", err)
+	}
+
+	return &EpisodeRatingResult{
+		AverageRating: roundToOneDecimal(avg),
+		TotalReviews:  count,
 	}, nil
 }
 

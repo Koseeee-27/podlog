@@ -110,10 +110,10 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
-	// エピソードのレビュー一覧から平均評価を取得（limit=1 でレビューデータ取得を最小限にし、統計情報を取得）
-	reviewResult, err := h.reviewUsecase.GetByEpisodeID(ctx, id, 1, 0)
+	// エピソードの平均評価・レビュー件数を取得（統計専用メソッドで軽量に取得）
+	rating, err := h.reviewUsecase.GetEpisodeRating(ctx, id)
 	if err != nil {
-		return response.Error(c, http.StatusInternalServerError, "failed to get episode reviews")
+		return response.Error(c, http.StatusInternalServerError, "failed to get episode rating")
 	}
 
 	// API 設計書のレスポンス形式に合わせて組み立て
@@ -129,8 +129,8 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 			Title:      podcast.Title,
 			ArtworkURL: podcast.ArtworkURL,
 		},
-		AverageRating: reviewResult.AverageRating,
-		TotalReviews:  reviewResult.Total,
+		AverageRating: rating.AverageRating,
+		TotalReviews:  rating.TotalReviews,
 		CreatedAt:     episode.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 	if episode.PublishedAt != nil {
