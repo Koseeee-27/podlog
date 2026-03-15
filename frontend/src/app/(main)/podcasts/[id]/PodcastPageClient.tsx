@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useParams } from "next/navigation";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
+import { usePodcastRating } from "@/hooks/useReviews";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Button from "@/components/ui/Button";
@@ -16,6 +17,7 @@ export default function PodcastPageClient() {
   const { podcast, loading: podcastLoading, error: podcastError } = usePodcast(id);
   const { episodes, loading: episodesLoading, error: episodesError, hasMore, loadMore, refresh } = useEpisodes(id);
   const { fetchFromFeed, loading: fetchLoading, error: fetchError, result: fetchResult } = useFetchFromFeed(id);
+  const { rating } = usePodcastRating(id);
   const [showFetchResult, setShowFetchResult] = useState(false);
   const hasFetchedRef = useRef(false);
 
@@ -63,7 +65,11 @@ export default function PodcastPageClient() {
 
   return (
     <div>
-      <PodcastDetail podcast={podcast} />
+      <PodcastDetail
+        podcast={podcast}
+        averageRating={rating?.average_rating}
+        totalReviews={rating?.total_reviews}
+      />
 
       <div className="mt-8">
         <div className="flex items-center justify-between mb-4">
