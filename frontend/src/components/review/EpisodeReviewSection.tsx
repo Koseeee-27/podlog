@@ -13,7 +13,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
-  const { myReview, loading: myReviewLoading, error: myReviewError, refresh: refreshMyReview, clearMyReview, updateMyReview } =
+  const { myReview, loading: myReviewLoading, error: myReviewError, clearMyReview, updateMyReview } =
     useMyReviewForEpisode(episodeId, isLoggedIn);
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -26,9 +26,15 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       comment: comment || undefined,
     });
     if (review) {
+      updateMyReview({
+        id: review.id,
+        rating: review.rating,
+        comment: review.comment,
+        created_at: review.created_at,
+        updated_at: review.updated_at,
+      });
       setSubmitted(true);
       refresh();
-      refreshMyReview();
     }
   };
 
