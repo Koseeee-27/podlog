@@ -3,6 +3,17 @@
 import { useState } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
+import type { Review, MyReviewResult } from "@/types/review";
+
+function toMyReviewResult(review: Review): MyReviewResult {
+  return {
+    id: review.id,
+    rating: review.rating,
+    comment: review.comment,
+    created_at: review.created_at,
+    updated_at: review.updated_at,
+  };
+}
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
@@ -26,13 +37,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       comment: comment || undefined,
     });
     if (review) {
-      updateMyReview({
-        id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        created_at: review.created_at,
-        updated_at: review.updated_at,
-      });
+      updateMyReview(toMyReviewResult(review));
       setSubmitted(true);
       refresh();
     }
@@ -44,13 +49,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       comment: comment || undefined,
     });
     if (review) {
-      updateMyReview({
-        id: review.id,
-        rating: review.rating,
-        comment: review.comment,
-        created_at: review.created_at,
-        updated_at: review.updated_at,
-      });
+      updateMyReview(toMyReviewResult(review));
       setEditing(false);
       refresh();
     }
