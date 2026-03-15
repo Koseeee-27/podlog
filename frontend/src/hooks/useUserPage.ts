@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useTransition } from "react";
 import { getUserListeningRecords } from "@/lib/api/listening-records";
 import { getUserReviews } from "@/lib/api/reviews";
 import { getUserFavoritePodcasts } from "@/lib/api/users";
@@ -13,16 +13,16 @@ const PAGE_SIZE = 10;
 export function useUserListeningRecords(username: string) {
   const [records, setRecords] = useState<ListeningRecordItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const loadingRef = useRef(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetch() {
-      setLoading(true);
+      setInitialLoading(true);
       setError(null);
       try {
         const data = await getUserListeningRecords(username, { limit: PAGE_SIZE, offset: 0 });
@@ -35,7 +35,7 @@ export function useUserListeningRecords(username: string) {
         if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setInitialLoading(false);
       }
     }
 
@@ -43,46 +43,42 @@ export function useUserListeningRecords(username: string) {
     return () => { controller.abort(); };
   }, [username]);
 
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setLoading(true);
-    try {
-      const data = await getUserListeningRecords(username, {
-        limit: PAGE_SIZE,
-        offset: records.length,
-      });
-      const list = data.records ?? [];
-      setRecords((prev) => {
-        const next = [...prev, ...list];
-        setHasMore(next.length < data.total);
-        return next;
-      });
-      setTotal(data.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
-    } finally {
-      setLoading(false);
-      loadingRef.current = false;
-    }
-  }, [username, records.length]);
+  const loadMore = () => {
+    startTransition(async () => {
+      try {
+        const data = await getUserListeningRecords(username, {
+          limit: PAGE_SIZE,
+          offset: records.length,
+        });
+        const list = data.records ?? [];
+        setRecords((prev) => {
+          const next = [...prev, ...list];
+          setHasMore(next.length < data.total);
+          return next;
+        });
+        setTotal(data.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "読み込み失敗");
+      }
+    });
+  };
 
-  return { records, total, loading, error, hasMore, loadMore };
+  return { records, total, loading: initialLoading || isPending, error, hasMore, loadMore };
 }
 
 export function useUserReviews(username: string) {
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
-  const loadingRef = useRef(false);
+  const [isPending, startTransition] = useTransition();
 
   useEffect(() => {
     const controller = new AbortController();
 
     async function fetch() {
-      setLoading(true);
+      setInitialLoading(true);
       setError(null);
       try {
         const data = await getUserReviews(username, { limit: PAGE_SIZE, offset: 0 });
@@ -95,7 +91,7 @@ export function useUserReviews(username: string) {
         if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) setInitialLoading(false);
       }
     }
 
@@ -103,31 +99,27 @@ export function useUserReviews(username: string) {
     return () => { controller.abort(); };
   }, [username]);
 
-  const loadMore = useCallback(async () => {
-    if (loadingRef.current) return;
-    loadingRef.current = true;
-    setLoading(true);
-    try {
-      const data = await getUserReviews(username, {
-        limit: PAGE_SIZE,
-        offset: reviews.length,
-      });
-      const list = data.reviews ?? [];
-      setReviews((prev) => {
-        const next = [...prev, ...list];
-        setHasMore(next.length < data.total);
-        return next;
-      });
-      setTotal(data.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
-    } finally {
-      setLoading(false);
-      loadingRef.current = false;
-    }
-  }, [username, reviews.length]);
+  const loadMore = () => {
+    startTransition(async () => {
+      try {
+        const data = await getUserReviews(username, {
+          limit: PAGE_SIZE,
+          offset: reviews.length,
+        });
+        const list = data.reviews ?? [];
+        setReviews((prev) => {
+          const next = [...prev, ...list];
+          setHasMore(next.length < data.total);
+          return next;
+        });
+        setTotal(data.total);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "読み込み失敗");
+      }
+    });
+  };
 
-  return { reviews, total, loading, error, hasMore, loadMore };
+  return { reviews, total, loading: initialLoading || isPending, error, hasMore, loadMore };
 }
 
 export function useUserFavoritePodcasts(username: string) {
