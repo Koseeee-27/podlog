@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { getUserListeningRecords } from "@/lib/api/listening-records";
 import { getUserReviews } from "@/lib/api/reviews";
 import { getUserFavoritePodcasts } from "@/lib/api/users";
@@ -14,8 +14,9 @@ export function useUserListeningRecords(username: string, enabled: boolean) {
   const [records, setRecords] = useState<ListeningRecordItem[]>([]);
   const [total, setTotal] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const inFlight = useRef(false);
 
   const hasMore = useMemo(() => records.length < total, [records.length, total]);
 
@@ -44,33 +45,38 @@ export function useUserListeningRecords(username: string, enabled: boolean) {
     return () => { cancelled = true; };
   }, [username, enabled]);
 
-  const loadMore = () => {
-    startTransition(async () => {
-      setError(null);
-      try {
-        const data = await getUserListeningRecords(username, {
-          limit: PAGE_SIZE,
-          offset: records.length,
-        });
-        const list = data.records ?? [];
-        const next = [...records, ...list];
-        setRecords(next);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "読み込み失敗");
-      }
-    });
+  const loadMore = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const offset = records.length;
+      const data = await getUserListeningRecords(username, {
+        limit: PAGE_SIZE,
+        offset,
+      });
+      const list = data.records ?? [];
+      setRecords(prev => [...prev, ...list]);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込み失敗");
+    } finally {
+      setLoadingMore(false);
+      inFlight.current = false;
+    }
   };
 
-  return { records, total, loading: initialLoading || isPending, error, hasMore, loadMore };
+  return { records, total, loading: initialLoading || loadingMore, error, hasMore, loadMore };
 }
 
 export function useUserReviews(username: string, enabled: boolean) {
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [total, setTotal] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
+  const inFlight = useRef(false);
 
   const hasMore = useMemo(() => reviews.length < total, [reviews.length, total]);
 
@@ -99,25 +105,29 @@ export function useUserReviews(username: string, enabled: boolean) {
     return () => { cancelled = true; };
   }, [username, enabled]);
 
-  const loadMore = () => {
-    startTransition(async () => {
-      setError(null);
-      try {
-        const data = await getUserReviews(username, {
-          limit: PAGE_SIZE,
-          offset: reviews.length,
-        });
-        const list = data.reviews ?? [];
-        const next = [...reviews, ...list];
-        setReviews(next);
-        setTotal(data.total);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "読み込み失敗");
-      }
-    });
+  const loadMore = async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const offset = reviews.length;
+      const data = await getUserReviews(username, {
+        limit: PAGE_SIZE,
+        offset,
+      });
+      const list = data.reviews ?? [];
+      setReviews(prev => [...prev, ...list]);
+      setTotal(data.total);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "読み込み失敗");
+    } finally {
+      setLoadingMore(false);
+      inFlight.current = false;
+    }
   };
 
-  return { reviews, total, loading: initialLoading || isPending, error, hasMore, loadMore };
+  return { reviews, total, loading: initialLoading || loadingMore, error, hasMore, loadMore };
 }
 
 export function useUserFavoritePodcasts(username: string, enabled: boolean) {
