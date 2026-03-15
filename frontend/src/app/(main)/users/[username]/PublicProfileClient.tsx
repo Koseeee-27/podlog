@@ -2,16 +2,42 @@
 
 import { useParams } from "next/navigation";
 import { usePublicProfile } from "@/hooks/useProfile";
+import { useUserListeningRecords, useUserReviews, useUserFavoritePodcasts } from "@/hooks/useUserPage";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
 import { formatDate } from "@/lib/utils";
+import UserFavoritePodcasts from "@/components/profile/UserFavoritePodcasts";
+import UserListeningHistory from "@/components/profile/UserListeningHistory";
+import UserReviewList from "@/components/profile/UserReviewList";
 
 export default function PublicProfileClient() {
   const params = useParams();
   const username = params.username as string;
   const { profile, loading, error } = usePublicProfile(username);
+  const profileReady = !loading && !error && !!profile;
+  const {
+    podcasts: favoritePodcasts,
+    loading: favLoading,
+    error: favError,
+  } = useUserFavoritePodcasts(username, profileReady);
+  const {
+    records,
+    total: recordsTotal,
+    loading: recordsLoading,
+    error: recordsError,
+    hasMore: recordsHasMore,
+    loadMore: loadMoreRecords,
+  } = useUserListeningRecords(username, profileReady);
+  const {
+    reviews,
+    total: reviewsTotal,
+    loading: reviewsLoading,
+    error: reviewsError,
+    hasMore: reviewsHasMore,
+    loadMore: loadMoreReviews,
+  } = useUserReviews(username, profileReady);
 
   if (loading) {
     return <Loading />;
@@ -26,7 +52,7 @@ export default function PublicProfileClient() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="max-w-2xl mx-auto space-y-8">
       <Card padding="lg">
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar src={profile.avatar_url} alt={profile.display_name} size="xl" />
@@ -42,6 +68,26 @@ export default function PublicProfileClient() {
           </div>
         </div>
       </Card>
+
+      <UserFavoritePodcasts podcasts={favoritePodcasts} loading={favLoading} error={favError} />
+
+      <UserListeningHistory
+        records={records}
+        total={recordsTotal}
+        loading={recordsLoading}
+        error={recordsError}
+        hasMore={recordsHasMore}
+        onLoadMore={loadMoreRecords}
+      />
+
+      <UserReviewList
+        reviews={reviews}
+        total={reviewsTotal}
+        loading={reviewsLoading}
+        error={reviewsError}
+        hasMore={reviewsHasMore}
+        onLoadMore={loadMoreReviews}
+      />
     </div>
   );
 }
