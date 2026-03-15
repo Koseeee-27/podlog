@@ -503,6 +503,76 @@ func TestReviewUsecase_GetByEpisodeID(t *testing.T) {
 	})
 }
 
+// ── テスト: GetEpisodeRating ──
+
+func TestReviewUsecase_GetEpisodeRating(t *testing.T) {
+	ctx := context.Background()
+	episodeID := uuid.New()
+
+	t.Run("正常系: 平均評価と件数を取得", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getAverageRatingByEpisodeFn: func(_ context.Context, _ uuid.UUID) (float64, int, error) {
+					return 3.666, 3, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			nil,
+		)
+
+		result, err := uc.GetEpisodeRating(ctx, episodeID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.AverageRating != 3.7 {
+			t.Errorf("average_rating = %f, want 3.7", result.AverageRating)
+		}
+		if result.TotalReviews != 3 {
+			t.Errorf("total_reviews = %d, want 3", result.TotalReviews)
+		}
+	})
+
+	t.Run("レビューなし → 0 を返す", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getAverageRatingByEpisodeFn: func(_ context.Context, _ uuid.UUID) (float64, int, error) {
+					return 0, 0, nil
+				},
+			},
+			&mockEpisodeRepo{},
+			nil,
+		)
+
+		result, err := uc.GetEpisodeRating(ctx, episodeID)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.AverageRating != 0 {
+			t.Errorf("average_rating = %f, want 0", result.AverageRating)
+		}
+		if result.TotalReviews != 0 {
+			t.Errorf("total_reviews = %d, want 0", result.TotalReviews)
+		}
+	})
+
+	t.Run("リポジトリエラー → エラー伝播", func(t *testing.T) {
+		uc := NewReviewUsecase(
+			&mockReviewRepo{
+				getAverageRatingByEpisodeFn: func(_ context.Context, _ uuid.UUID) (float64, int, error) {
+					return 0, 0, fmt.Errorf("db error")
+				},
+			},
+			&mockEpisodeRepo{},
+			nil,
+		)
+
+		_, err := uc.GetEpisodeRating(ctx, episodeID)
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
 // ── テスト: GetPodcastRating ──
 
 func TestReviewUsecase_GetPodcastRating(t *testing.T) {
