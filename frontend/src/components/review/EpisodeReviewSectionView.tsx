@@ -132,7 +132,7 @@ export default function EpisodeReviewSectionView({
 
       {listError && <ErrorMessage message={listError} />}
 
-      {otherReviews.length === 0 && !listLoading ? (
+      {otherReviews.length === 0 && !listLoading && !hasMore ? (
         <p className="text-sm text-stone-500">
           {myReview ? "他のレビューはありません" : "まだレビューはありません"}
         </p>
