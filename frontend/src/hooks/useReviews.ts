@@ -263,6 +263,7 @@ export function usePodcastRating(podcastId: string) {
     async function fetch() {
       setLoading(true);
       setError(null);
+      setRating(null);
       try {
         const data = await getPodcastRating(podcastId);
         if (controller.signal.aborted) return;
