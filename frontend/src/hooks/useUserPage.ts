@@ -13,7 +13,7 @@ const PAGE_SIZE = 10;
 export function useUserListeningRecords(username: string, enabled: boolean) {
   const [records, setRecords] = useState<ListeningRecordItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(enabled);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -73,7 +73,7 @@ export function useUserListeningRecords(username: string, enabled: boolean) {
 export function useUserReviews(username: string, enabled: boolean) {
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [total, setTotal] = useState(0);
-  const [initialLoading, setInitialLoading] = useState(true);
+  const [initialLoading, setInitialLoading] = useState(enabled);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inFlight = useRef(false);
@@ -132,7 +132,7 @@ export function useUserReviews(username: string, enabled: boolean) {
 
 export function useUserFavoritePodcasts(username: string, enabled: boolean) {
   const [podcasts, setPodcasts] = useState<FavoritePodcastItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
