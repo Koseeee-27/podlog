@@ -15,7 +15,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
-  const { myReview: myReviewRaw, refresh: refreshMyReview, clearMyReview, updateMyReview } =
+  const { myReview: myReviewRaw, loading: myReviewLoading, error: myReviewError, refresh: refreshMyReview, clearMyReview, updateMyReview } =
     useMyReviewForEpisode(episodeId, isLoggedIn);
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -89,6 +89,8 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
       submitted={submitted}
       isLoggedIn={isLoggedIn}
       myReview={myReview}
+      myReviewLoading={myReviewLoading}
+      myReviewError={myReviewError}
       editing={editing}
       onStartEdit={() => setEditing(true)}
       onCancelEdit={() => setEditing(false)}

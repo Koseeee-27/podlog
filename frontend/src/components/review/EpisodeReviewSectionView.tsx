@@ -21,6 +21,8 @@ export interface EpisodeReviewSectionViewProps {
   submitted: boolean;
   isLoggedIn: boolean;
   myReview: ReviewItem | null;
+  myReviewLoading: boolean;
+  myReviewError?: string | null;
   editing: boolean;
   onStartEdit: () => void;
   onCancelEdit: () => void;
@@ -45,6 +47,8 @@ export default function EpisodeReviewSectionView({
   submitted,
   isLoggedIn,
   myReview,
+  myReviewLoading,
+  myReviewError,
   editing,
   onStartEdit,
   onCancelEdit,
@@ -69,7 +73,10 @@ export default function EpisodeReviewSectionView({
 
       {isLoggedIn ? (
         <>
-          {myReview && !editing ? (
+          {myReviewError && <ErrorMessage message={myReviewError} />}
+          {myReviewLoading ? (
+            <p className="text-sm text-stone-500">読み込み中...</p>
+          ) : myReview && !editing ? (
             <>
               {actionError && <ErrorMessage message={actionError} />}
               <MyReviewCard

@@ -19,6 +19,7 @@ const defaultHandlers = {
   onCancelEdit: () => {},
   onStartDelete: () => {},
   onCancelDelete: () => {},
+  myReviewLoading: false,
 };
 
 export const WithReviews: Story = {
