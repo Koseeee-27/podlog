@@ -80,6 +80,15 @@ PR を push する前に、以下を必ずローカルで確認すること。CI
 - ビジネスロジックは **カスタムフック** に切り出す
 - 重要な関数には **Jest** でユニットテストを書く
 
+#### React 19 / Next.js (App Router) のベストプラクティス
+
+実装時は、使用するパターンが最新バージョンのベストプラクティスに沿っているか確認する。迷ったら古い書き方より新しい API を優先する。
+
+- **`"use client"` の多用を避ける**: `page.tsx` / `layout.tsx` は Server Component に保ち、`"use client"` 境界は末端のインタラクティブなコンポーネントに限定する。`useState` / `useEffect` を使わないコンポーネントに `"use client"` を付けない
+- **`useTransition`** を積極的に使う: 非同期アクション（追加読み込み、フォーム送信等）のローディング管理には `useTransition` の `isPending` を使い、手動の `loading` state + `useRef` による連打防止を避ける
+- **`useActionState`**: フォーム送信には `useActionState` + Server Actions の利用を検討する
+- **`<button>`** には必ず `type="button"` または `type="submit"` を明示する（デフォルトの `type="submit"` による意図しない送信を防ぐ）
+
 ### バックエンド (Go)
 - **レイヤードアーキテクチャ**を採用: handler → usecase → repository
 - エラーハンドリングは必ず行う（`if err != nil` を省略しない）
