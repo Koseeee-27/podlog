@@ -18,6 +18,14 @@ export interface UpdateReviewRequest {
   comment?: string;
 }
 
+export interface MyReviewResult {
+  id: string;
+  rating: number;
+  comment?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ReviewUser {
   id: string;
   username: string;

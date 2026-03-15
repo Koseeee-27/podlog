@@ -11,8 +11,10 @@ import {
   getMyReviews,
   getTimeline,
 } from "@/lib/api/reviews";
+import { ApiRequestError } from "@/types/api";
 import type {
   Review,
+  MyReviewResult,
   CreateReviewRequest,
   UpdateReviewRequest,
   ReviewItem,
@@ -141,22 +143,31 @@ export function useReviewActions(episodeId: string) {
  * ページングに依存せず /episodes/{id}/reviews/mine から直接取得する。
  */
 export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
-  const [myReview, setMyReview] = useState<Review | null>(null);
+  const [myReview, setMyReview] = useState<MyReviewResult | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchMyReview = useCallback(async (signal?: AbortSignal) => {
     if (!isLoggedIn) {
       setMyReview(null);
+      setLoading(false);
+      setError(null);
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       const review = await getMyReviewForEpisode(episodeId);
       if (signal?.aborted) return;
       setMyReview(review);
-    } catch {
+    } catch (err) {
       if (signal?.aborted) return;
-      setMyReview(null);
+      if (err instanceof ApiRequestError && err.status === 404) {
+        setMyReview(null);
+      } else {
+        setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
+        setMyReview(null);
+      }
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -168,7 +179,7 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
     return () => { controller.abort(); };
   }, [fetchMyReview]);
 
-  return { myReview, loading, refresh: fetchMyReview };
+  return { myReview, loading, error, refresh: fetchMyReview };
 }
 
 /**

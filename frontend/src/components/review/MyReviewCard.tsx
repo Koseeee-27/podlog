@@ -40,6 +40,7 @@ export default function MyReviewCard({
         <div className="flex items-center gap-3">
           <span className="text-sm text-stone-600">本当に削除しますか？</span>
           <button
+            type="button"
             onClick={onConfirmDelete}
             disabled={actionLoading}
             className="rounded-lg px-3 py-1.5 text-sm font-medium text-white bg-red-500 hover:bg-red-600 disabled:opacity-50"
@@ -47,6 +48,7 @@ export default function MyReviewCard({
             {actionLoading ? "削除中..." : "削除する"}
           </button>
           <button
+            type="button"
             onClick={onCancelDelete}
             disabled={actionLoading}
             className="text-sm text-stone-500 hover:text-stone-700"
@@ -57,12 +59,14 @@ export default function MyReviewCard({
       ) : (
         <div className="flex gap-3">
           <button
+            type="button"
             onClick={onEdit}
             className="text-sm text-rose-600 hover:text-rose-700 font-medium"
           >
             編集する
           </button>
           <button
+            type="button"
             onClick={onDelete}
             className="text-sm text-stone-500 hover:text-red-600"
           >
