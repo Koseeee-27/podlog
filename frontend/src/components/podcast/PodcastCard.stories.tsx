@@ -14,38 +14,34 @@ export const Default: Story = {
   args: {
     podcast: {
       id: "1",
-      itunes_id: 123,
       title: "Rebuild",
       author: "Tatsuhiko Miyagawa",
-      description: "A podcast about technology and more.",
-      feed_url: null,
-      artwork_url: null,
-      itunes_url: null,
-      genre: "テクノロジー",
-      source_type: "itunes",
-      source_url: null,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
+      artwork_url: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts/v4/dummy/300x300.jpg",
+      average_rating: 4.5,
+      total_reviews: 12,
     },
   },
 };
 
-export const NoGenre: Story = {
+export const NoReviews: Story = {
   args: {
     podcast: {
       id: "2",
-      itunes_id: null,
       title: "ゆる言語学ラジオ",
       author: "ゆる言語学ラジオ",
-      description: null,
-      feed_url: null,
-      artwork_url: null,
-      itunes_url: null,
-      genre: null,
-      source_type: "itunes",
-      source_url: null,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
+      average_rating: 0,
+      total_reviews: 0,
+    },
+  },
+};
+
+export const NoArtwork: Story = {
+  args: {
+    podcast: {
+      id: "3",
+      title: "バイリンガルニュース",
+      average_rating: 3.8,
+      total_reviews: 5,
     },
   },
 };

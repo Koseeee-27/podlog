@@ -2,13 +2,13 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { searchPodcasts } from "@/lib/api/podcasts";
-import type { Podcast } from "@/types/podcast";
+import type { PodcastSearchItem } from "@/types/podcast";
 
 const DEBOUNCE_MS = 400;
 
 export function usePodcastSearch() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Podcast[]>([]);
+  const [results, setResults] = useState<PodcastSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);

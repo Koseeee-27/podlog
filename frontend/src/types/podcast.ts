@@ -14,7 +14,16 @@ export interface Podcast {
   updated_at: string;
 }
 
+export interface PodcastSearchItem {
+  id: string;
+  title: string;
+  author?: string;
+  artwork_url?: string;
+  average_rating: number;
+  total_reviews: number;
+}
+
 export interface PodcastSearchResult {
-  podcasts: Podcast[];
+  podcasts: PodcastSearchItem[];
   total: number;
 }

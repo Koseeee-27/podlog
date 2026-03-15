@@ -1,9 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { Podcast } from "@/types/podcast";
+import type { PodcastSearchItem } from "@/types/podcast";
 
 interface PodcastCardProps {
-  podcast: Podcast;
+  podcast: PodcastSearchItem;
 }
 
 export default function PodcastCard({ podcast }: PodcastCardProps) {
@@ -32,9 +32,9 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
         {podcast.author && (
           <p className="text-sm text-stone-500 mt-0.5">{podcast.author}</p>
         )}
-        {podcast.genre && (
-          <span className="inline-block mt-1.5 px-2 py-0.5 text-xs bg-rose-50 text-rose-700 rounded-full">
-            {podcast.genre}
+        {podcast.total_reviews > 0 && (
+          <span className="inline-block mt-1.5 text-xs text-stone-500">
+            {podcast.average_rating.toFixed(1)} ({podcast.total_reviews}件のレビュー)
           </span>
         )}
       </div>

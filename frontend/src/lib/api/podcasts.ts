@@ -1,7 +1,7 @@
 import { apiGet } from "./client";
-import type { Podcast, PodcastSearchResult } from "@/types/podcast";
+import type { Podcast, PodcastSearchItem, PodcastSearchResult } from "@/types/podcast";
 
-export async function searchPodcasts(query: string): Promise<Podcast[]> {
+export async function searchPodcasts(query: string): Promise<PodcastSearchItem[]> {
   const result = await apiGet<PodcastSearchResult>(`/podcasts/search?q=${encodeURIComponent(query)}`);
   return result.podcasts ?? [];
 }
