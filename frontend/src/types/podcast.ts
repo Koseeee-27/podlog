@@ -13,3 +13,8 @@ export interface Podcast {
   created_at: string;
   updated_at: string;
 }
+
+export interface PodcastSearchResult {
+  podcasts: Podcast[];
+  total: number;
+}
