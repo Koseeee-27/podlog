@@ -17,7 +17,7 @@ export default function PodcastPageClient() {
   const { podcast, loading: podcastLoading, error: podcastError } = usePodcast(id);
   const { episodes, loading: episodesLoading, error: episodesError, hasMore, loadMore, refresh } = useEpisodes(id);
   const { fetchFromFeed, loading: fetchLoading, error: fetchError, result: fetchResult } = useFetchFromFeed(id);
-  const { rating } = usePodcastRating(id);
+  const { rating, error: ratingError } = usePodcastRating(id);
   const [showFetchResult, setShowFetchResult] = useState(false);
   const hasFetchedRef = useRef(false);
 
@@ -69,6 +69,7 @@ export default function PodcastPageClient() {
         podcast={podcast}
         averageRating={rating?.average_rating}
         totalReviews={rating?.total_reviews}
+        ratingError={ratingError}
       />
 
       <div className="mt-8">

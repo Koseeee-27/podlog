@@ -5,9 +5,10 @@ interface PodcastDetailProps {
   podcast: Podcast;
   averageRating?: number;
   totalReviews?: number;
+  ratingError?: string | null;
 }
 
-export default function PodcastDetail({ podcast, averageRating, totalReviews }: PodcastDetailProps) {
+export default function PodcastDetail({ podcast, averageRating, totalReviews, ratingError }: PodcastDetailProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-6">
       {podcast.artwork_url ? (
@@ -49,6 +50,9 @@ export default function PodcastDetail({ podcast, averageRating, totalReviews }: 
               ({totalReviews}件のレビュー)
             </span>
           </div>
+        )}
+        {ratingError && (
+          <p className="mt-3 text-xs text-red-500">評価の取得に失敗しました</p>
         )}
         {podcast.description && (
           <p className="mt-4 text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
