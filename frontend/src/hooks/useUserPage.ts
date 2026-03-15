@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect, useTransition, useMemo } from "react";
 import { getUserListeningRecords } from "@/lib/api/listening-records";
 import { getUserReviews } from "@/lib/api/reviews";
 import { getUserFavoritePodcasts } from "@/lib/api/users";
@@ -10,52 +10,51 @@ import type { FavoritePodcastItem } from "@/types/user";
 
 const PAGE_SIZE = 10;
 
-export function useUserListeningRecords(username: string) {
+export function useUserListeningRecords(username: string, enabled: boolean) {
   const [records, setRecords] = useState<ListeningRecordItem[]>([]);
   const [total, setTotal] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
   const [isPending, startTransition] = useTransition();
 
+  const hasMore = useMemo(() => records.length < total, [records.length, total]);
+
   useEffect(() => {
-    const controller = new AbortController();
+    if (!enabled) return;
+    let cancelled = false;
 
     async function fetch() {
       setInitialLoading(true);
       setError(null);
       try {
         const data = await getUserListeningRecords(username, { limit: PAGE_SIZE, offset: 0 });
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         const list = data.records ?? [];
         setRecords(list);
         setTotal(data.total);
-        setHasMore(list.length < data.total);
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!controller.signal.aborted) setInitialLoading(false);
+        if (!cancelled) setInitialLoading(false);
       }
     }
 
     fetch();
-    return () => { controller.abort(); };
-  }, [username]);
+    return () => { cancelled = true; };
+  }, [username, enabled]);
 
   const loadMore = () => {
     startTransition(async () => {
+      setError(null);
       try {
         const data = await getUserListeningRecords(username, {
           limit: PAGE_SIZE,
           offset: records.length,
         });
         const list = data.records ?? [];
-        setRecords((prev) => {
-          const next = [...prev, ...list];
-          setHasMore(next.length < data.total);
-          return next;
-        });
+        const next = [...records, ...list];
+        setRecords(next);
         setTotal(data.total);
       } catch (err) {
         setError(err instanceof Error ? err.message : "読み込み失敗");
@@ -66,52 +65,51 @@ export function useUserListeningRecords(username: string) {
   return { records, total, loading: initialLoading || isPending, error, hasMore, loadMore };
 }
 
-export function useUserReviews(username: string) {
+export function useUserReviews(username: string, enabled: boolean) {
   const [reviews, setReviews] = useState<UserReviewItem[]>([]);
   const [total, setTotal] = useState(0);
   const [initialLoading, setInitialLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
   const [isPending, startTransition] = useTransition();
 
+  const hasMore = useMemo(() => reviews.length < total, [reviews.length, total]);
+
   useEffect(() => {
-    const controller = new AbortController();
+    if (!enabled) return;
+    let cancelled = false;
 
     async function fetch() {
       setInitialLoading(true);
       setError(null);
       try {
         const data = await getUserReviews(username, { limit: PAGE_SIZE, offset: 0 });
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         const list = data.reviews ?? [];
         setReviews(list);
         setTotal(data.total);
-        setHasMore(list.length < data.total);
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!controller.signal.aborted) setInitialLoading(false);
+        if (!cancelled) setInitialLoading(false);
       }
     }
 
     fetch();
-    return () => { controller.abort(); };
-  }, [username]);
+    return () => { cancelled = true; };
+  }, [username, enabled]);
 
   const loadMore = () => {
     startTransition(async () => {
+      setError(null);
       try {
         const data = await getUserReviews(username, {
           limit: PAGE_SIZE,
           offset: reviews.length,
         });
         const list = data.reviews ?? [];
-        setReviews((prev) => {
-          const next = [...prev, ...list];
-          setHasMore(next.length < data.total);
-          return next;
-        });
+        const next = [...reviews, ...list];
+        setReviews(next);
         setTotal(data.total);
       } catch (err) {
         setError(err instanceof Error ? err.message : "読み込み失敗");
@@ -122,32 +120,33 @@ export function useUserReviews(username: string) {
   return { reviews, total, loading: initialLoading || isPending, error, hasMore, loadMore };
 }
 
-export function useUserFavoritePodcasts(username: string) {
+export function useUserFavoritePodcasts(username: string, enabled: boolean) {
   const [podcasts, setPodcasts] = useState<FavoritePodcastItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (!enabled) return;
+    let cancelled = false;
 
     async function fetch() {
       setLoading(true);
       setError(null);
       try {
         const data = await getUserFavoritePodcasts(username);
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setPodcasts(data.podcasts ?? []);
       } catch (err) {
-        if (controller.signal.aborted) return;
+        if (cancelled) return;
         setError(err instanceof Error ? err.message : "読み込み失敗");
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     }
 
     fetch();
-    return () => { controller.abort(); };
-  }, [username]);
+    return () => { cancelled = true; };
+  }, [username, enabled]);
 
   return { podcasts, loading, error };
 }

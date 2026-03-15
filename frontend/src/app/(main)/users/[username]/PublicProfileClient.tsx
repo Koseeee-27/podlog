@@ -16,11 +16,12 @@ export default function PublicProfileClient() {
   const params = useParams();
   const username = params.username as string;
   const { profile, loading, error } = usePublicProfile(username);
+  const profileReady = !loading && !error && !!profile;
   const {
     podcasts: favoritePodcasts,
     loading: favLoading,
     error: favError,
-  } = useUserFavoritePodcasts(username);
+  } = useUserFavoritePodcasts(username, profileReady);
   const {
     records,
     total: recordsTotal,
@@ -28,7 +29,7 @@ export default function PublicProfileClient() {
     error: recordsError,
     hasMore: recordsHasMore,
     loadMore: loadMoreRecords,
-  } = useUserListeningRecords(username);
+  } = useUserListeningRecords(username, profileReady);
   const {
     reviews,
     total: reviewsTotal,
@@ -36,7 +37,7 @@ export default function PublicProfileClient() {
     error: reviewsError,
     hasMore: reviewsHasMore,
     loadMore: loadMoreReviews,
-  } = useUserReviews(username);
+  } = useUserReviews(username, profileReady);
 
   if (loading) {
     return <Loading />;
