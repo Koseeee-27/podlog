@@ -158,6 +158,7 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
         setError(null);
         return;
       }
+      setMyReview(null);
       setLoading(true);
       setError(null);
       try {

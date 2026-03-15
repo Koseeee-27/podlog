@@ -28,8 +28,10 @@ export default function MyReviewCard({
       </div>
 
       <div className="text-sm text-yellow-500 mb-2">
-        {"★".repeat(review.rating)}
-        {"☆".repeat(5 - review.rating)}
+        {(() => {
+          const r = Math.max(0, Math.min(5, Math.round(review.rating)));
+          return "★".repeat(r) + "☆".repeat(5 - r);
+        })()}
       </div>
 
       {review.comment && (

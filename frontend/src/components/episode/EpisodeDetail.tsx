@@ -8,10 +8,9 @@ import LoginPromptButton from "@/components/ui/LoginPromptButton";
 interface EpisodeDetailProps {
   episode: EpisodeWithStats;
   isLoggedIn: boolean;
-  userId: string | null;
 }
 
-export default function EpisodeDetail({ episode, isLoggedIn, userId }: EpisodeDetailProps) {
+export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
   return (
     <div>
       <h1 className="text-2xl font-bold text-stone-900">{episode.title}</h1>
@@ -78,7 +77,7 @@ export default function EpisodeDetail({ episode, isLoggedIn, userId }: EpisodeDe
 
       <hr className="my-8 border-stone-200" />
 
-      <EpisodeReviewSection episodeId={episode.id} isLoggedIn={isLoggedIn} userId={userId} />
+      <EpisodeReviewSection episodeId={episode.id} isLoggedIn={isLoggedIn} />
     </div>
   );
 }

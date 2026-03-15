@@ -7,10 +7,9 @@ import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 interface EpisodeReviewSectionProps {
   episodeId: string;
   isLoggedIn: boolean;
-  userId: string | null;
 }
 
-export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: EpisodeReviewSectionProps) {
+export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeReviewSectionProps) {
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
@@ -20,8 +19,6 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletedReviewId, setDeletedReviewId] = useState<string | null>(null);
-
-  void userId; // userId は myReview の特定に不要（useMyReviewForEpisode が直接取得）
 
   const handleSubmit = async (rating: number, comment: string) => {
     const review = await create({
