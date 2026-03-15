@@ -15,12 +15,13 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
-  const { myReview: myReviewRaw, refresh: refreshMyReview } = useMyReviewForEpisode(episodeId, isLoggedIn);
+  const { myReview: myReviewRaw, refresh: refreshMyReview, clearMyReview, updateMyReview } =
+    useMyReviewForEpisode(episodeId, isLoggedIn);
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  // Review 型を ReviewItem 互換に変換（user 情報はレビュー一覧から補完）
+  // MyReviewResult を ReviewItem 互換に変換（user 情報はレビュー一覧から補完）
   const myReview: ReviewItem | null = myReviewRaw && userId
     ? {
         id: myReviewRaw.id,
@@ -53,19 +54,21 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
       comment: comment || undefined,
     });
     if (review) {
+      // 楽観的更新: refetch を待たずにローカル state を即座に反映
+      updateMyReview(review);
       setEditing(false);
       refresh();
-      refreshMyReview();
     }
   };
 
   const handleDelete = async () => {
     const success = await remove();
     if (success) {
+      // 即座にクリア: refetch の 404 待ちに依存しない
+      clearMyReview();
       setConfirmDelete(false);
       setSubmitted(false);
       refresh();
-      refreshMyReview();
     }
   };
 

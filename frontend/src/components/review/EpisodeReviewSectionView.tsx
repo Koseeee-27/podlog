@@ -87,6 +87,7 @@ export default function EpisodeReviewSectionView({
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-stone-700">レビューを編集</h3>
                 <button
+                  type="button"
                   onClick={onCancelEdit}
                   className="text-sm text-stone-500 hover:text-stone-700"
                 >
@@ -120,8 +121,10 @@ export default function EpisodeReviewSectionView({
 
       {listError && <ErrorMessage message={listError} />}
 
-      {otherReviews.length === 0 && !myReview && !listLoading ? (
-        <p className="text-sm text-stone-500">まだレビューはありません</p>
+      {otherReviews.length === 0 && !listLoading ? (
+        <p className="text-sm text-stone-500">
+          {myReview ? "他のレビューはありません" : "まだレビューはありません"}
+        </p>
       ) : (
         <div className="space-y-3">
           {otherReviews.map((review) => (
@@ -132,6 +135,7 @@ export default function EpisodeReviewSectionView({
 
       {hasMore && reviews.length > 0 && (
         <button
+          type="button"
           onClick={onLoadMore}
           disabled={listLoading}
           className="w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"

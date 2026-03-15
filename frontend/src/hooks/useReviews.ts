@@ -179,7 +179,15 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
     return () => { controller.abort(); };
   }, [fetchMyReview]);
 
-  return { myReview, loading, error, refresh: fetchMyReview };
+  const clearMyReview = useCallback(() => {
+    setMyReview(null);
+  }, []);
+
+  const updateMyReview = useCallback((data: MyReviewResult) => {
+    setMyReview(data);
+  }, []);
+
+  return { myReview, loading, error, refresh: fetchMyReview, clearMyReview, updateMyReview };
 }
 
 /**
