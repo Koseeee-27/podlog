@@ -17,7 +17,7 @@ export default function ListenButtonView({
     return (
       <button
         disabled
-        className="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-4 py-2 text-sm text-gray-400"
+        className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-400"
       >
         読み込み中...
       </button>
@@ -32,8 +32,8 @@ export default function ListenButtonView({
         aria-pressed={listened}
         className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
           listened
-            ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
-            : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+            ? "bg-rose-100 text-rose-700 hover:bg-rose-200"
+            : "border border-stone-300 text-stone-700 hover:bg-stone-50"
         } ${toggling ? "opacity-50 cursor-not-allowed" : ""}`}
       >
         {listened ? (

@@ -31,12 +31,12 @@ export default function PublicProfileClient() {
         <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <Avatar src={profile.avatar_url} alt={profile.display_name} size="xl" />
           <div className="text-center sm:text-left">
-            <h1 className="text-2xl font-bold text-gray-900">{profile.display_name}</h1>
-            <p className="text-gray-500">@{profile.username}</p>
+            <h1 className="text-2xl font-bold text-stone-900">{profile.display_name}</h1>
+            <p className="text-stone-500">@{profile.username}</p>
             {profile.bio && (
-              <p className="mt-3 text-sm text-gray-700 leading-relaxed">{profile.bio}</p>
+              <p className="mt-3 text-sm text-stone-700 leading-relaxed">{profile.bio}</p>
             )}
-            <p className="mt-2 text-xs text-gray-400">
+            <p className="mt-2 text-xs text-stone-400">
               {formatDate(profile.created_at)} に登録
             </p>
           </div>

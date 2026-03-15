@@ -9,7 +9,7 @@ export default function SearchClient() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-6">番組を探す</h1>
+      <h1 className="text-2xl font-bold text-stone-900 mb-6">番組を探す</h1>
       <SearchBar value={query} onChange={setQuery} loading={searchLoading} />
       <div className="mt-6">
         <SearchResults results={results} query={query} loading={searchLoading} error={error} />

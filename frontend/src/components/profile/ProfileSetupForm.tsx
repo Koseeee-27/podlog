@@ -60,7 +60,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
         placeholder="your_username"
         required
       />
-      <p className="text-xs text-gray-500 -mt-2">3〜30文字、英数字とアンダースコアのみ</p>
+      <p className="text-xs text-stone-500 -mt-2">3〜30文字、英数字とアンダースコアのみ</p>
       <Input
         id="display-name"
         label="表示名"
@@ -70,7 +70,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
         required
       />
       <div>
-        <label htmlFor="bio" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="bio" className="block text-sm font-medium text-stone-700 mb-1">
           自己紹介（任意）
         </label>
         <textarea
@@ -79,7 +79,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
           onChange={(e) => setBio(e.target.value)}
           placeholder="好きなポッドキャストについて..."
           rows={3}
-          className="block w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          className="block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
         />
       </div>
       <Button type="submit" loading={loading} className="w-full">

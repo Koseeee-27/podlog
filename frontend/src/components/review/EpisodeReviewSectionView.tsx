@@ -36,9 +36,9 @@ export default function EpisodeReviewSectionView({
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4">
-        <h2 className="text-lg font-semibold text-gray-900">レビュー</h2>
+        <h2 className="text-lg font-semibold text-stone-900">レビュー</h2>
         {total > 0 && (
-          <span className="text-sm text-gray-500">
+          <span className="text-sm text-stone-500">
             {averageRating.toFixed(1)} ({total}件)
           </span>
         )}
@@ -47,8 +47,8 @@ export default function EpisodeReviewSectionView({
       {isLoggedIn ? (
         <>
           {!submitted && (
-            <div className="rounded-lg border border-gray-200 p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">レビューを書く</h3>
+            <div className="rounded-lg border border-stone-200 p-4">
+              <h3 className="text-sm font-medium text-stone-700 mb-3">レビューを書く</h3>
               {actionError && <ErrorMessage message={actionError} />}
               <ReviewForm onSubmit={onSubmit} loading={actionLoading} />
             </div>
@@ -59,7 +59,7 @@ export default function EpisodeReviewSectionView({
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-gray-200 p-4">
+        <div className="rounded-lg border border-stone-200 p-4">
           <LoginPromptButton label="ログインしてレビューを書く" />
         </div>
       )}
@@ -67,7 +67,7 @@ export default function EpisodeReviewSectionView({
       {listError && <ErrorMessage message={listError} />}
 
       {reviews.length === 0 && !listLoading ? (
-        <p className="text-sm text-gray-500">まだレビューはありません</p>
+        <p className="text-sm text-stone-500">まだレビューはありません</p>
       ) : (
         <div className="space-y-3">
           {reviews.map((review) => (
@@ -80,7 +80,7 @@ export default function EpisodeReviewSectionView({
         <button
           onClick={onLoadMore}
           disabled={listLoading}
-          className="w-full rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
           {listLoading ? "読み込み中..." : "もっと見る"}
         </button>

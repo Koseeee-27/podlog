@@ -14,7 +14,7 @@ export default function TimelineSection() {
       {error && <ErrorMessage message={error} />}
 
       {!loading && reviews.length === 0 && !error && (
-        <p className="text-sm text-gray-500">まだレビューはありません</p>
+        <p className="text-sm text-stone-500">まだレビューはありません</p>
       )}
 
       <div className="space-y-4">
@@ -27,7 +27,7 @@ export default function TimelineSection() {
         <button
           onClick={loadMore}
           disabled={loading}
-          className="mt-6 w-full rounded-lg border border-gray-300 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className="mt-6 w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
           {loading ? "読み込み中..." : "もっと見る"}
         </button>

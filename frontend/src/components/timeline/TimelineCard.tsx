@@ -8,33 +8,33 @@ interface TimelineCardProps {
 
 export default function TimelineCard({ item }: TimelineCardProps) {
   return (
-    <div className="rounded-lg border border-gray-200 p-4">
+    <div className="rounded-lg border border-stone-200 p-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-sm font-medium text-indigo-700">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-rose-100 text-sm font-medium text-rose-700">
           {item.user.display_name.charAt(0)}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <Link
               href={`/users/${item.user.username}`}
-              className="text-sm font-medium text-gray-900 hover:text-indigo-600"
+              className="text-sm font-medium text-stone-900 hover:text-rose-600"
             >
               {item.user.display_name}
             </Link>
-            <span className="text-xs text-gray-400">{formatDate(item.created_at)}</span>
+            <span className="text-xs text-stone-400">{formatDate(item.created_at)}</span>
           </div>
 
           <div className="mt-1">
             <Link
               href={`/episodes/${item.episode.id}`}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+              className="text-sm font-medium text-rose-600 hover:text-rose-700"
             >
               {item.episode.title}
             </Link>
-            <span className="text-xs text-gray-400 ml-2">
+            <span className="text-xs text-stone-400 ml-2">
               <Link
                 href={`/podcasts/${item.podcast.id}`}
-                className="hover:text-indigo-600"
+                className="hover:text-rose-600"
               >
                 {item.podcast.title}
               </Link>
@@ -47,7 +47,7 @@ export default function TimelineCard({ item }: TimelineCardProps) {
           </div>
 
           {item.comment && (
-            <p className="mt-2 text-sm text-gray-700 whitespace-pre-wrap">{item.comment}</p>
+            <p className="mt-2 text-sm text-stone-700 whitespace-pre-wrap">{item.comment}</p>
           )}
         </div>
       </div>
