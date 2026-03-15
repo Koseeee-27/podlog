@@ -144,7 +144,7 @@ export function useReviewActions(episodeId: string) {
  */
 export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
   const [myReview, setMyReview] = useState<MyReviewResult | null>(null);
-  const [loading, setLoading] = useState(isLoggedIn);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 

@@ -4,7 +4,7 @@ import { formatDate } from "@/lib/utils";
 interface MyReviewCardProps {
   review: MyReviewResult;
   onEdit: () => void;
-  onDelete: () => void;
+  onStartDelete: () => void;
   confirmDelete: boolean;
   onConfirmDelete: () => Promise<void>;
   onCancelDelete: () => void;
@@ -14,7 +14,7 @@ interface MyReviewCardProps {
 export default function MyReviewCard({
   review,
   onEdit,
-  onDelete,
+  onStartDelete,
   confirmDelete,
   onConfirmDelete,
   onCancelDelete,
@@ -69,7 +69,7 @@ export default function MyReviewCard({
           </button>
           <button
             type="button"
-            onClick={onDelete}
+            onClick={onStartDelete}
             className="text-sm text-stone-500 hover:text-red-600"
           >
             削除する

@@ -22,7 +22,7 @@ export const Default: Story = {
   args: {
     review: baseReview,
     onEdit: () => {},
-    onDelete: () => {},
+    onStartDelete: () => {},
     confirmDelete: false,
     onConfirmDelete: async () => {},
     onCancelDelete: () => {},
@@ -34,7 +34,7 @@ export const ConfirmingDelete: Story = {
   args: {
     review: baseReview,
     onEdit: () => {},
-    onDelete: () => {},
+    onStartDelete: () => {},
     confirmDelete: true,
     onConfirmDelete: async () => {},
     onCancelDelete: () => {},
@@ -46,7 +46,7 @@ export const Deleting: Story = {
   args: {
     review: baseReview,
     onEdit: () => {},
-    onDelete: () => {},
+    onStartDelete: () => {},
     confirmDelete: true,
     onConfirmDelete: async () => {},
     onCancelDelete: () => {},
@@ -58,7 +58,7 @@ export const WithoutComment: Story = {
   args: {
     review: { ...baseReview, comment: undefined },
     onEdit: () => {},
-    onDelete: () => {},
+    onStartDelete: () => {},
     confirmDelete: false,
     onConfirmDelete: async () => {},
     onCancelDelete: () => {},

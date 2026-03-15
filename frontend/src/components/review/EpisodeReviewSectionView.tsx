@@ -86,7 +86,7 @@ export default function EpisodeReviewSectionView({
               <MyReviewCard
                 review={myReview}
                 onEdit={onStartEdit}
-                onDelete={onStartDelete}
+                onStartDelete={onStartDelete}
                 confirmDelete={confirmDelete}
                 onConfirmDelete={onDelete}
                 onCancelDelete={onCancelDelete}
