@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { ListeningRecordItem } from "@/types/listening-record";
 import { formatDate } from "@/lib/utils";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface UserListeningHistoryProps {
   records: ListeningRecordItem[];
   total: number;
   loading: boolean;
+  error?: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -14,6 +16,7 @@ export default function UserListeningHistory({
   records,
   total,
   loading,
+  error,
   hasMore,
   onLoadMore,
 }: UserListeningHistoryProps) {
@@ -24,7 +27,11 @@ export default function UserListeningHistory({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {records.length === 0 && !loading ? (
+      {error ? (
+        <ErrorMessage message={error} />
+      ) : loading && records.length === 0 ? (
+        <p className="text-sm text-stone-500">読み込み中...</p>
+      ) : records.length === 0 ? (
         <p className="text-sm text-stone-500">まだ聴取記録がありません</p>
       ) : (
         <div className="space-y-2">

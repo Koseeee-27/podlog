@@ -1,11 +1,13 @@
 import Link from "next/link";
 import type { UserReviewItem } from "@/types/review";
 import { formatDate } from "@/lib/utils";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface UserReviewListProps {
   reviews: UserReviewItem[];
   total: number;
   loading: boolean;
+  error?: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -14,6 +16,7 @@ export default function UserReviewList({
   reviews,
   total,
   loading,
+  error,
   hasMore,
   onLoadMore,
 }: UserReviewListProps) {
@@ -24,7 +27,11 @@ export default function UserReviewList({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {reviews.length === 0 && !loading ? (
+      {error ? (
+        <ErrorMessage message={error} />
+      ) : loading && reviews.length === 0 ? (
+        <p className="text-sm text-stone-500">読み込み中...</p>
+      ) : reviews.length === 0 ? (
         <p className="text-sm text-stone-500">まだレビューがありません</p>
       ) : (
         <div className="space-y-3">

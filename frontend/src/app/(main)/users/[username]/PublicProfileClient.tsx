@@ -19,11 +19,13 @@ export default function PublicProfileClient() {
   const {
     podcasts: favoritePodcasts,
     loading: favLoading,
+    error: favError,
   } = useUserFavoritePodcasts(username);
   const {
     records,
     total: recordsTotal,
     loading: recordsLoading,
+    error: recordsError,
     hasMore: recordsHasMore,
     loadMore: loadMoreRecords,
   } = useUserListeningRecords(username);
@@ -31,6 +33,7 @@ export default function PublicProfileClient() {
     reviews,
     total: reviewsTotal,
     loading: reviewsLoading,
+    error: reviewsError,
     hasMore: reviewsHasMore,
     loadMore: loadMoreReviews,
   } = useUserReviews(username);
@@ -65,12 +68,13 @@ export default function PublicProfileClient() {
         </div>
       </Card>
 
-      <UserFavoritePodcasts podcasts={favoritePodcasts} loading={favLoading} />
+      <UserFavoritePodcasts podcasts={favoritePodcasts} loading={favLoading} error={favError} />
 
       <UserListeningHistory
         records={records}
         total={recordsTotal}
         loading={recordsLoading}
+        error={recordsError}
         hasMore={recordsHasMore}
         onLoadMore={loadMoreRecords}
       />
@@ -79,6 +83,7 @@ export default function PublicProfileClient() {
         reviews={reviews}
         total={reviewsTotal}
         loading={reviewsLoading}
+        error={reviewsError}
         hasMore={reviewsHasMore}
         onLoadMore={loadMoreReviews}
       />
