@@ -79,7 +79,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
           onChange={(e) => setBio(e.target.value)}
           placeholder="好きなポッドキャストについて..."
           rows={3}
-          className="block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+          className="block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
         />
       </div>
       <Button type="submit" loading={loading} className="w-full">

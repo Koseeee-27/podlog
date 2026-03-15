@@ -19,7 +19,7 @@ export default function SearchBar({ value, onChange, loading }: SearchBarProps) 
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder="ポッドキャストを検索..."
-        className="block w-full pl-10 pr-10 py-3 rounded-xl border border-stone-300 text-sm shadow-sm placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
+        className="block w-full pl-10 pr-10 py-3 rounded-xl border border-stone-300 text-sm shadow-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
       />
       {loading && (
         <div className="absolute inset-y-0 right-0 pr-3 flex items-center">
