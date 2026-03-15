@@ -70,15 +70,18 @@ export default function EpisodeReviewSectionView({
       {isLoggedIn ? (
         <>
           {myReview && !editing ? (
-            <MyReviewCard
-              review={myReview}
-              onEdit={onStartEdit}
-              onDelete={onStartDelete}
-              confirmDelete={confirmDelete}
-              onConfirmDelete={onDelete}
-              onCancelDelete={onCancelDelete}
-              actionLoading={actionLoading}
-            />
+            <>
+              {actionError && <ErrorMessage message={actionError} />}
+              <MyReviewCard
+                review={myReview}
+                onEdit={onStartEdit}
+                onDelete={onStartDelete}
+                confirmDelete={confirmDelete}
+                onConfirmDelete={onDelete}
+                onCancelDelete={onCancelDelete}
+                actionLoading={actionLoading}
+              />
+            </>
           ) : myReview && editing ? (
             <div className="rounded-lg border border-stone-200 p-4">
               <div className="flex items-center justify-between mb-3">

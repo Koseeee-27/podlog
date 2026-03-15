@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useReviewActions, useEpisodeReviews } from "@/hooks/useReviews";
+import { useState } from "react";
+import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
+import type { ReviewItem } from "@/types/review";
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
@@ -14,14 +15,25 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
+  const { myReview: myReviewRaw, refresh: refreshMyReview } = useMyReviewForEpisode(episodeId, isLoggedIn);
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const myReview = useMemo(() => {
-    if (!userId) return null;
-    return reviews.find((r) => r.user.id === userId) ?? null;
-  }, [reviews, userId]);
+  // Review 型を ReviewItem 互換に変換（user 情報はレビュー一覧から補完）
+  const myReview: ReviewItem | null = myReviewRaw && userId
+    ? {
+        id: myReviewRaw.id,
+        user: reviews.find((r) => r.user.id === userId)?.user ?? {
+          id: userId,
+          username: "",
+          display_name: "",
+        },
+        rating: myReviewRaw.rating,
+        comment: myReviewRaw.comment,
+        created_at: myReviewRaw.created_at,
+      }
+    : null;
 
   const handleSubmit = async (rating: number, comment: string) => {
     const review = await create({
@@ -31,6 +43,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
     if (review) {
       setSubmitted(true);
       refresh();
+      refreshMyReview();
     }
   };
 
@@ -42,6 +55,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
     if (review) {
       setEditing(false);
       refresh();
+      refreshMyReview();
     }
   };
 
@@ -51,6 +65,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn, userId }: 
       setConfirmDelete(false);
       setSubmitted(false);
       refresh();
+      refreshMyReview();
     }
   };
 

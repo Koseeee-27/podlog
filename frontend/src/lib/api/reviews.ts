@@ -27,6 +27,10 @@ export function deleteReview(episodeId: string): Promise<void> {
   return apiDelete(`/episodes/${encodeURIComponent(episodeId)}/reviews/mine`);
 }
 
+export function getMyReviewForEpisode(episodeId: string): Promise<Review> {
+  return apiGet<Review>(`/episodes/${encodeURIComponent(episodeId)}/reviews/mine`);
+}
+
 export function getEpisodeReviews(
   episodeId: string,
   params?: { limit?: number; offset?: number }

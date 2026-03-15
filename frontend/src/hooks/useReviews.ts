@@ -6,6 +6,7 @@ import {
   updateReview,
   deleteReview,
   getEpisodeReviews,
+  getMyReviewForEpisode,
   getPodcastRating,
   getMyReviews,
   getTimeline,
@@ -133,6 +134,41 @@ export function useReviewActions(episodeId: string) {
   }, [episodeId]);
 
   return { create, update, remove, loading, error };
+}
+
+/**
+ * エピソードに対する自分のレビューを取得するフック。
+ * ページングに依存せず /episodes/{id}/reviews/mine から直接取得する。
+ */
+export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
+  const [myReview, setMyReview] = useState<Review | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  const fetchMyReview = useCallback(async (signal?: AbortSignal) => {
+    if (!isLoggedIn) {
+      setMyReview(null);
+      return;
+    }
+    setLoading(true);
+    try {
+      const review = await getMyReviewForEpisode(episodeId);
+      if (signal?.aborted) return;
+      setMyReview(review);
+    } catch {
+      if (signal?.aborted) return;
+      setMyReview(null);
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, [episodeId, isLoggedIn]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetchMyReview(controller.signal);
+    return () => { controller.abort(); };
+  }, [fetchMyReview]);
+
+  return { myReview, loading, refresh: fetchMyReview };
 }
 
 /**
