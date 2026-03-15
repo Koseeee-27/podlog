@@ -5,10 +5,10 @@ interface PodcastDetailProps {
   podcast: Podcast;
   averageRating?: number;
   totalReviews?: number;
-  ratingError?: string | null;
+  hasRatingError?: boolean;
 }
 
-export default function PodcastDetail({ podcast, averageRating, totalReviews, ratingError }: PodcastDetailProps) {
+export default function PodcastDetail({ podcast, averageRating, totalReviews, hasRatingError }: PodcastDetailProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-6">
       {podcast.artwork_url ? (
@@ -51,7 +51,7 @@ export default function PodcastDetail({ podcast, averageRating, totalReviews, ra
             </span>
           </div>
         )}
-        {ratingError && (
+        {hasRatingError && (
           <p className="mt-3 text-xs text-red-500">評価の取得に失敗しました</p>
         )}
         {podcast.description && (

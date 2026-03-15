@@ -69,7 +69,7 @@ export default function PodcastPageClient() {
         podcast={podcast}
         averageRating={rating?.average_rating}
         totalReviews={rating?.total_reviews}
-        ratingError={ratingError}
+        hasRatingError={!!ratingError}
       />
 
       <div className="mt-8">
