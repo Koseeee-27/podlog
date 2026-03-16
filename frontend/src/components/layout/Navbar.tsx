@@ -69,7 +69,7 @@ export default function Navbar() {
       </nav>
 
       {/* SP ボトムナビ */}
-      <BottomNav profile={profile} isLoggedIn={isLoggedIn} />
+      <BottomNav profile={profile} isLoggedIn={isLoggedIn} hasProfile={!!profile} />
     </>
   );
 }

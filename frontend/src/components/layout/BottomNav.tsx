@@ -7,6 +7,7 @@ import type { User } from "@/types/user";
 interface BottomNavProps {
   profile: User | null;
   isLoggedIn: boolean;
+  hasProfile: boolean;
 }
 
 interface NavItem {
@@ -40,8 +41,15 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
+function getLastTab(profile: User | null, isLoggedIn: boolean, hasProfile: boolean): { label: string; href: string } {
+  if (!isLoggedIn) return { label: "ログイン", href: "/login" };
+  if (!hasProfile) return { label: "プロフィール設定", href: "/profile/setup" };
+  return { label: "マイページ", href: `/users/${profile!.username}` };
+}
+
+export default function BottomNav({ profile, isLoggedIn, hasProfile }: BottomNavProps) {
   const pathname = usePathname();
+  const lastTab = getLastTab(profile, isLoggedIn, hasProfile);
 
   const navItems: NavItem[] = [
     {
@@ -52,33 +60,26 @@ export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
     },
     {
       label: "探す",
-      href: "/discover",
-      icon: <SearchIcon active={pathname === "/discover" || pathname === "/search"} />,
-      isActive: (p) => p === "/discover" || p === "/search",
+      href: "/search",
+      icon: <SearchIcon active={pathname === "/search"} />,
+      isActive: (p) => p === "/search",
     },
     {
       label: "記録する",
-      href: "/record",
+      href: "/search",
       icon: <PlusIcon />,
-      isActive: (p) => p === "/record",
+      isActive: () => false,
     },
     {
-      label: isLoggedIn ? "マイページ" : "ログイン",
-      href: isLoggedIn && profile ? `/users/${profile.username}` : "/login",
-      icon: <UserIcon active={
-        isLoggedIn && profile
-          ? pathname === `/users/${profile.username}`
-          : pathname === "/login"
-      } />,
-      isActive: (p) =>
-        isLoggedIn && profile
-          ? p === `/users/${profile.username}`
-          : p === "/login",
+      label: lastTab.label,
+      href: lastTab.href,
+      icon: <UserIcon active={pathname === lastTab.href} />,
+      isActive: (p) => p === lastTab.href,
     },
   ];
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200">
+    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const active = item.isActive(pathname);
@@ -91,9 +92,7 @@ export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
               }`}
             >
               {item.label === "記録する" ? (
-                <span className={`flex items-center justify-center w-8 h-8 rounded-full ${
-                  active ? "bg-rose-500 text-white" : "bg-rose-500 text-white"
-                }`}>
+                <span className="flex items-center justify-center w-8 h-8 rounded-full bg-rose-500 text-white">
                   {item.icon}
                 </span>
               ) : (
@@ -104,8 +103,6 @@ export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
           );
         })}
       </div>
-      {/* Safe area for iOS */}
-      <div className="h-[env(safe-area-inset-bottom)]" />
     </nav>
   );
 }

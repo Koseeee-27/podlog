@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile } from "@/hooks/useProfile";
 import { useUserListeningRecords, useUserReviews, useUserFavoritePodcasts } from "@/hooks/useUserPage";
 import Loading from "@/components/ui/Loading";
@@ -15,6 +17,8 @@ import UserReviewList from "@/components/profile/UserReviewList";
 export default function PublicProfileClient() {
   const params = useParams();
   const username = params.username as string;
+  const auth = useAuth();
+  const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
   const { profile, loading, error } = usePublicProfile(username);
   const profileReady = !loading && !error && !!profile;
   const {
@@ -68,6 +72,23 @@ export default function PublicProfileClient() {
           </div>
         </div>
       </Card>
+
+      {isOwnProfile && (
+        <div className="flex gap-3 sm:hidden">
+          <Link
+            href="/settings/profile"
+            className="flex-1 text-center px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+          >
+            プロフィール編集
+          </Link>
+          <Link
+            href="/settings"
+            className="flex-1 text-center px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
+          >
+            設定
+          </Link>
+        </div>
+      )}
 
       <UserFavoritePodcasts podcasts={favoritePodcasts} loading={favLoading} error={favError} />
 

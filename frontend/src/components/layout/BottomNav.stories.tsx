@@ -12,7 +12,6 @@ const meta = {
   decorators: [
     (Story) => (
       <div className="block sm:block">
-        {/* sm:hidden を無効化するため、Storybook 上では強制表示 */}
         <style>{`
           nav.sm\\:hidden { display: block !important; position: relative !important; }
         `}</style>
@@ -39,6 +38,7 @@ export const LoggedIn: Story = {
   args: {
     profile: mockProfile,
     isLoggedIn: true,
+    hasProfile: true,
   },
 };
 
@@ -46,5 +46,14 @@ export const NotLoggedIn: Story = {
   args: {
     profile: null,
     isLoggedIn: false,
+    hasProfile: false,
+  },
+};
+
+export const NoProfile: Story = {
+  args: {
+    profile: null,
+    isLoggedIn: true,
+    hasProfile: false,
   },
 };
