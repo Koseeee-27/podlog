@@ -12,7 +12,7 @@ interface BottomNavProps {
 
 interface NavItem {
   label: string;
-  href: string;
+  href: string | null;
   icon: React.ReactNode;
   isActive: (pathname: string) => boolean;
 }
@@ -41,8 +41,8 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-function getLastTab(profile: User | null, isLoggedIn: boolean, isLoading: boolean): { label: string; href: string } {
-  if (isLoading) return { label: "マイページ", href: "/" };
+function getLastTab(profile: User | null, isLoggedIn: boolean, isLoading: boolean): { label: string; href: string | null } {
+  if (isLoading) return { label: "マイページ", href: null };
   if (!isLoggedIn) return { label: "ログイン", href: "/login" };
   if (!profile) return { label: "プロフィール設定", href: "/profile/setup" };
   return { label: "マイページ", href: `/users/${profile.username}` };
@@ -85,14 +85,8 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const active = item.isActive(pathname);
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              className={`flex flex-col items-center justify-center gap-0.5 w-full h-full transition-colors ${
-                active ? "text-rose-500" : "text-stone-400"
-              }`}
-            >
+          const content = (
+            <>
               {item.label === "記録する" ? (
                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-rose-500 text-white">
                   {item.icon}
@@ -101,7 +95,20 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
                 item.icon
               )}
               <span className="text-[10px] font-medium">{item.label}</span>
+            </>
+          );
+          const className = `flex flex-col items-center justify-center gap-0.5 w-full h-full transition-colors ${
+            active ? "text-rose-500" : "text-stone-400"
+          }`;
+
+          return item.href ? (
+            <Link key={item.label} href={item.href} className={className}>
+              {content}
             </Link>
+          ) : (
+            <span key={item.label} className={className}>
+              {content}
+            </span>
           );
         })}
       </div>
