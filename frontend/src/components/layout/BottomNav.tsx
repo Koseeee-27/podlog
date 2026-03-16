@@ -14,6 +14,7 @@ interface NavItem {
   label: string;
   href: string | null;
   icon: React.ReactNode;
+  isPrimary?: boolean;
   isActive: (pathname: string) => boolean;
 }
 
@@ -67,16 +68,17 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
     },
     {
       label: "記録する",
-      // TODO: /record ページ実装後に遷移先を変更する（#92）
-      href: "/search",
+      // TODO: /record ページ実装後に遷移先を変更する
+      href: null,
       icon: <PlusIcon />,
+      isPrimary: true,
       isActive: () => false,
     },
     {
       label: lastTab.label,
       href: lastTab.href,
       icon: <UserIcon active={pathname === lastTab.href} />,
-      isActive: (p) => p === lastTab.href,
+      isActive: (p) => lastTab.href !== null && p === lastTab.href,
     },
   ];
 
@@ -87,7 +89,7 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
           const active = item.isActive(pathname);
           const content = (
             <>
-              {item.label === "記録する" ? (
+              {item.isPrimary ? (
                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-rose-500 text-white">
                   {item.icon}
                 </span>
@@ -106,7 +108,7 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
               {content}
             </Link>
           ) : (
-            <span key={item.label} className={className}>
+            <span key={item.label} className={`${className} opacity-50`}>
               {content}
             </span>
           );
