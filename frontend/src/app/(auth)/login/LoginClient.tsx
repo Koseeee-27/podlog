@@ -7,7 +7,7 @@ export default function LoginClient() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
       <div className="w-full max-w-md">
-        <div className="text-center mb-8">
+        <div className="text-center mb-12">
           <Link href="/" className="text-3xl font-bold text-stone-900 hover:text-rose-600 transition-colors">
             podlog
           </Link>
