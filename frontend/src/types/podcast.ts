@@ -13,3 +13,17 @@ export interface Podcast {
   created_at: string;
   updated_at: string;
 }
+
+export interface PodcastSearchItem {
+  id: string;
+  title: string;
+  author: string | null;
+  artwork_url: string | null;
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface PodcastSearchResult {
+  podcasts: PodcastSearchItem[];
+  total: number;
+}

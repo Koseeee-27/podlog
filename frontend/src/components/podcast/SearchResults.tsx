@@ -1,9 +1,9 @@
-import type { Podcast } from "@/types/podcast";
+import type { PodcastSearchItem } from "@/types/podcast";
 import PodcastCard from "./PodcastCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface SearchResultsProps {
-  results: Podcast[];
+  results: PodcastSearchItem[];
   query: string;
   loading: boolean;
   error: string | null;
