@@ -9,6 +9,13 @@ const meta = {
     viewport: { defaultViewport: "mobile1" },
     layout: "fullscreen",
   },
+  decorators: [
+    (Story) => (
+      <div style={{ position: "relative", height: "200px" }}>
+        <Story />
+      </div>
+    ),
+  ],
 } satisfies Meta<typeof BottomNav>;
 
 export default meta;
