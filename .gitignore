@@ -22,5 +22,8 @@ Thumbs.db
 *.swp
 *.swo
 
+# v0 sample code
+frontend/docs/v0-sample_code/
+
 # Docker
 docker-compose.override.yml
