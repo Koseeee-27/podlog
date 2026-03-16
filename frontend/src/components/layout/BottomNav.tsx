@@ -7,6 +7,7 @@ import type { User } from "@/types/user";
 interface BottomNavProps {
   profile: User | null;
   isLoggedIn: boolean;
+  isLoading: boolean;
 }
 
 interface NavItem {
@@ -40,15 +41,16 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-function getLastTab(profile: User | null, isLoggedIn: boolean): { label: string; href: string } {
+function getLastTab(profile: User | null, isLoggedIn: boolean, isLoading: boolean): { label: string; href: string } {
+  if (isLoading) return { label: "マイページ", href: "/" };
   if (!isLoggedIn) return { label: "ログイン", href: "/login" };
   if (!profile) return { label: "プロフィール設定", href: "/profile/setup" };
   return { label: "マイページ", href: `/users/${profile.username}` };
 }
 
-export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
+export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavProps) {
   const pathname = usePathname();
-  const lastTab = getLastTab(profile, isLoggedIn);
+  const lastTab = getLastTab(profile, isLoggedIn, isLoading);
 
   const navItems: NavItem[] = [
     {

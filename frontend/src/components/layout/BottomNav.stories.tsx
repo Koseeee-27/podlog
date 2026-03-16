@@ -38,6 +38,7 @@ export const LoggedIn: Story = {
   args: {
     profile: mockProfile,
     isLoggedIn: true,
+    isLoading: false,
   },
 };
 
@@ -45,6 +46,7 @@ export const NotLoggedIn: Story = {
   args: {
     profile: null,
     isLoggedIn: false,
+    isLoading: false,
   },
 };
 
@@ -52,5 +54,14 @@ export const NoProfile: Story = {
   args: {
     profile: null,
     isLoggedIn: true,
+    isLoading: false,
+  },
+};
+
+export const Loading: Story = {
+  args: {
+    profile: null,
+    isLoggedIn: false,
+    isLoading: true,
   },
 };
