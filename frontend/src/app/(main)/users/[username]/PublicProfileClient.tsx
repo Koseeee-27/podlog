@@ -76,7 +76,7 @@ export default function PublicProfileClient() {
       {isOwnProfile && (
         <div className="flex gap-3 sm:hidden">
           <Link
-            href="/settings/profile"
+            href="/profile"
             className="flex-1 text-center px-4 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-200 rounded-lg hover:bg-stone-50 transition-colors"
           >
             プロフィール編集

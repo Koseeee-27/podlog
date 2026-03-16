@@ -79,7 +79,7 @@ export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
   ];
 
   return (
-    <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
+    <nav aria-label="ボトムナビゲーション" className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-stone-200 pb-[env(safe-area-inset-bottom)]">
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const active = item.isActive(pathname);
