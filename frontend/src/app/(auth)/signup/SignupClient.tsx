@@ -8,7 +8,9 @@ export default function SignupClient() {
     <div className="min-h-screen flex items-center justify-center bg-stone-50 px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-stone-900">podlog</h1>
+          <Link href="/" className="text-3xl font-bold text-stone-900 hover:text-rose-600 transition-colors">
+            podlog
+          </Link>
           <p className="mt-2 text-stone-600">アカウントを作成</p>
         </div>
         <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
