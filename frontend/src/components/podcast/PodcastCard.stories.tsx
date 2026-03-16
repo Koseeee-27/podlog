@@ -29,6 +29,7 @@ export const NoReviews: Story = {
       id: "2",
       title: "ゆる言語学ラジオ",
       author: "ゆる言語学ラジオ",
+      artwork_url: null,
       average_rating: 0,
       total_reviews: 0,
     },
@@ -40,6 +41,8 @@ export const NoArtwork: Story = {
     podcast: {
       id: "3",
       title: "バイリンガルニュース",
+      author: null,
+      artwork_url: null,
       average_rating: 3.8,
       total_reviews: 5,
     },

@@ -17,8 +17,8 @@ export interface Podcast {
 export interface PodcastSearchItem {
   id: string;
   title: string;
-  author?: string;
-  artwork_url?: string;
+  author: string | null;
+  artwork_url: string | null;
   average_rating: number;
   total_reviews: number;
 }

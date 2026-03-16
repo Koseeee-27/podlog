@@ -3,7 +3,7 @@ import type { Podcast, PodcastSearchItem, PodcastSearchResult } from "@/types/po
 
 export async function searchPodcasts(query: string): Promise<PodcastSearchItem[]> {
   const result = await apiGet<PodcastSearchResult>(`/podcasts/search?q=${encodeURIComponent(query)}`);
-  return result.podcasts ?? [];
+  return result.podcasts;
 }
 
 export function getPodcast(id: string): Promise<Podcast> {
