@@ -104,13 +104,13 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
           }`;
 
           return item.href ? (
-            <Link key={item.label} href={item.href} className={className}>
+            <Link key={item.label} href={item.href} className={className} aria-current={active ? "page" : undefined}>
               {content}
             </Link>
           ) : (
-            <span key={item.label} className={`${className} opacity-50`}>
+            <button type="button" key={item.label} className={`${className} opacity-50`} disabled aria-disabled="true">
               {content}
-            </span>
+            </button>
           );
         })}
       </div>
