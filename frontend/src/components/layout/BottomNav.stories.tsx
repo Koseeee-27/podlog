@@ -11,7 +11,11 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <div style={{ position: "relative", height: "200px" }}>
+      <div className="block sm:block">
+        {/* sm:hidden を無効化するため、Storybook 上では強制表示 */}
+        <style>{`
+          nav.sm\\:hidden { display: block !important; position: relative !important; }
+        `}</style>
         <Story />
       </div>
     ),
