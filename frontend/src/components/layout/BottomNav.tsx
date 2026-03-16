@@ -7,7 +7,6 @@ import type { User } from "@/types/user";
 interface BottomNavProps {
   profile: User | null;
   isLoggedIn: boolean;
-  hasProfile: boolean;
 }
 
 interface NavItem {
@@ -41,15 +40,15 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-function getLastTab(profile: User | null, isLoggedIn: boolean, hasProfile: boolean): { label: string; href: string } {
+function getLastTab(profile: User | null, isLoggedIn: boolean): { label: string; href: string } {
   if (!isLoggedIn) return { label: "ログイン", href: "/login" };
-  if (!hasProfile) return { label: "プロフィール設定", href: "/profile/setup" };
-  return { label: "マイページ", href: `/users/${profile!.username}` };
+  if (!profile) return { label: "プロフィール設定", href: "/profile/setup" };
+  return { label: "マイページ", href: `/users/${profile.username}` };
 }
 
-export default function BottomNav({ profile, isLoggedIn, hasProfile }: BottomNavProps) {
+export default function BottomNav({ profile, isLoggedIn }: BottomNavProps) {
   const pathname = usePathname();
-  const lastTab = getLastTab(profile, isLoggedIn, hasProfile);
+  const lastTab = getLastTab(profile, isLoggedIn);
 
   const navItems: NavItem[] = [
     {
@@ -66,6 +65,7 @@ export default function BottomNav({ profile, isLoggedIn, hasProfile }: BottomNav
     },
     {
       label: "記録する",
+      // TODO: /record ページ実装後に遷移先を変更する（#92）
       href: "/search",
       icon: <PlusIcon />,
       isActive: () => false,
