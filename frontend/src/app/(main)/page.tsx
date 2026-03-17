@@ -17,7 +17,7 @@ export default async function TopPage() {
 
       {!isLoggedIn && <FeaturesSection />}
 
-      <TimelineSection />
+      <TimelineSection headingLevel={isLoggedIn ? "h1" : "h2"} />
 
       {!isLoggedIn && <CtaSection />}
     </div>

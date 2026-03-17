@@ -5,12 +5,17 @@ import TimelineCard from "@/components/timeline/TimelineCard";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
-export default function TimelineSection() {
+interface TimelineSectionProps {
+  headingLevel?: "h1" | "h2";
+}
+
+export default function TimelineSection({ headingLevel = "h2" }: TimelineSectionProps) {
   const { reviews, loading, error, hasMore, loadMore } = useTimeline();
+  const Heading = headingLevel;
 
   return (
     <section>
-      <h2 className="text-lg font-bold text-stone-900 mb-4">みんなのレビュー</h2>
+      <Heading className="text-lg font-bold text-stone-900 mb-4">みんなのレビュー</Heading>
 
       {loading && reviews.length === 0 && <Loading />}
       {error && <ErrorMessage message={error} />}
