@@ -38,7 +38,7 @@ export default function TimelineCard({ item }: TimelineCardProps) {
             </div>
             <Link
               href={`/users/${item.user.username}`}
-              className="text-xs font-medium text-stone-700 hover:text-rose-600 truncate"
+              className="text-xs font-medium text-stone-700 hover:text-rose-600 truncate min-w-0"
             >
               {item.user.display_name}
             </Link>
