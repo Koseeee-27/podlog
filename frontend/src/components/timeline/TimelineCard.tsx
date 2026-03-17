@@ -12,7 +12,7 @@ export default function TimelineCard({ item }: TimelineCardProps) {
     <div className="rounded-xl border border-stone-200 bg-white p-4">
       <div className="flex gap-3">
         {/* アートワーク */}
-        <Link href={`/podcasts/${item.podcast.id}`} className="shrink-0" aria-label={`${item.podcast.title} のページへ`}>
+        <Link href={`/podcasts/${item.podcast.id}`} className="shrink-0" aria-label={`${item.podcast.title}のページへ`}>
           {item.podcast.artwork_url ? (
             <Image
               src={item.podcast.artwork_url}
