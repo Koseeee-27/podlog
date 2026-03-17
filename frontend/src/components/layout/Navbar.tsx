@@ -59,6 +59,7 @@ export default function Navbar() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="番組を検索..."
+                  aria-label="番組を検索"
                   className="w-full rounded-lg border border-stone-200 bg-stone-50 py-1.5 pl-9 pr-3 text-sm text-stone-900 placeholder:text-stone-400 focus:border-rose-500 focus:bg-white focus:ring-1 focus:ring-rose-500 focus:outline-none transition-colors"
                 />
               </div>
@@ -85,8 +86,9 @@ export default function Navbar() {
                       type="button"
                       onClick={() => setDropdownOpen(!dropdownOpen)}
                       className="flex items-center hover:opacity-80 transition-opacity"
+                      aria-label="ユーザーメニュー"
                       aria-expanded={dropdownOpen}
-                      aria-haspopup="true"
+                      aria-haspopup="menu"
                     >
                       <Avatar src={profile.avatar_url} alt={profile.display_name} size="sm" />
                     </button>
