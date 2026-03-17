@@ -4,6 +4,7 @@ import { usePodcastSearch } from "@/hooks/usePodcastSearch";
 import SearchBar from "@/components/podcast/SearchBar";
 import SearchResults from "@/components/podcast/SearchResults";
 
+// TODO: URL の ?q= パラメータを読み取り、ヘッダー検索バーからの遷移に対応する（#100）
 export default function SearchClient() {
   const { query, setQuery, results, loading: searchLoading, error } = usePodcastSearch();
 
