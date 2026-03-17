@@ -11,6 +11,7 @@ interface BottomNavProps {
 }
 
 interface NavItem {
+  id: string;
   label: string;
   href: string | null;
   icon: React.ReactNode;
@@ -55,18 +56,21 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
 
   const navItems: NavItem[] = [
     {
+      id: "home",
       label: "ホーム",
       href: "/",
       icon: <HomeIcon active={pathname === "/"} />,
       isActive: (p) => p === "/",
     },
     {
+      id: "search",
       label: "探す",
       href: "/search",
       icon: <SearchIcon active={pathname === "/search"} />,
       isActive: (p) => p === "/search",
     },
     {
+      id: "record",
       label: "記録する",
       // TODO: /record ページ実装後に遷移先を変更する
       href: null,
@@ -75,6 +79,7 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
       isActive: () => false,
     },
     {
+      id: "user",
       label: lastTab.label,
       href: lastTab.href,
       icon: <UserIcon active={pathname === lastTab.href} />,
@@ -104,11 +109,11 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
           }`;
 
           return item.href ? (
-            <Link key={item.label} href={item.href} className={className} aria-current={active ? "page" : undefined}>
+            <Link key={item.id} href={item.href} className={className} aria-current={active ? "page" : undefined}>
               {content}
             </Link>
           ) : (
-            <button type="button" key={item.label} className={`${className} opacity-50`} disabled aria-disabled="true">
+            <button type="button" key={item.id} className={`${className} opacity-50`} disabled aria-disabled="true">
               {content}
             </button>
           );
