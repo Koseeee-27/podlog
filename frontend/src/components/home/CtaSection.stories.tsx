@@ -1,14 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import WelcomeSection from "./WelcomeSection";
+import CtaSection from "./CtaSection";
 
 const meta = {
-  title: "Home/WelcomeSection",
-  component: WelcomeSection,
+  title: "Home/CtaSection",
+  component: CtaSection,
   tags: ["autodocs"],
-  parameters: {
-    layout: "padded",
-  },
-} satisfies Meta<typeof WelcomeSection>;
+} satisfies Meta<typeof CtaSection>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

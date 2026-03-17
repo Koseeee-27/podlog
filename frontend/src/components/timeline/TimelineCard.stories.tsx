@@ -10,7 +10,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const WithComment: Story = {
+export const WithArtwork: Story = {
   args: {
     item: {
       id: "t1",
@@ -27,6 +27,7 @@ export const WithComment: Story = {
       podcast: {
         id: "p1",
         title: "テック最前線",
+        artwork_url: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts/v4/dummy/300x300.jpg",
       },
       rating: 5,
       comment: "非常に興味深い内容でした。AIの将来について考えさせられます。",
@@ -35,7 +36,7 @@ export const WithComment: Story = {
   },
 };
 
-export const WithoutComment: Story = {
+export const WithoutArtwork: Story = {
   args: {
     item: {
       id: "t2",
@@ -59,7 +60,7 @@ export const WithoutComment: Story = {
   },
 };
 
-export const LowRating: Story = {
+export const WithComment: Story = {
   args: {
     item: {
       id: "t3",

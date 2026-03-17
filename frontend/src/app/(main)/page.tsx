@@ -1,5 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import WelcomeSection from "@/components/home/WelcomeSection";
+import HeroSection from "@/components/home/HeroSection";
+import FeaturesSection from "@/components/home/FeaturesSection";
+import CtaSection from "@/components/home/CtaSection";
 import TimelineSection from "@/components/home/TimelineSection";
 
 export default async function TopPage() {
@@ -10,20 +12,14 @@ export default async function TopPage() {
   const isLoggedIn = !!user;
 
   return (
-    <div>
-      {!isLoggedIn && (
-        <div className="mb-8">
-          <WelcomeSection />
-        </div>
-      )}
+    <div className="space-y-8">
+      {!isLoggedIn && <HeroSection />}
 
-      <div className="mb-6">
-        <h1 className="text-lg font-bold text-stone-900">
-          みんなのレビュー
-        </h1>
-      </div>
+      {!isLoggedIn && <FeaturesSection />}
 
-      <TimelineSection />
+      <TimelineSection headingLevel={isLoggedIn ? "h1" : "h2"} />
+
+      {!isLoggedIn && <CtaSection />}
     </div>
   );
 }
