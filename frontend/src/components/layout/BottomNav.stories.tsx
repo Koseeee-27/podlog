@@ -1,39 +1,41 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import MobileNav from "./MobileNav";
-
-const noop = () => {};
-const asyncNoop = async () => {};
+import BottomNav from "./BottomNav";
 
 const meta = {
-  title: "Layout/MobileNav",
-  component: MobileNav,
+  title: "Layout/BottomNav",
+  component: BottomNav,
   tags: ["autodocs"],
   parameters: {
     viewport: { defaultViewport: "mobile1" },
     layout: "fullscreen",
   },
-  args: {
-    onClose: noop,
-    onSignOut: asyncNoop,
-  },
-} satisfies Meta<typeof MobileNav>;
+  decorators: [
+    (Story) => (
+      <div className="block sm:block">
+        <style>{`
+          nav.sm\\:hidden { display: block !important; position: relative !important; }
+        `}</style>
+        <Story />
+      </div>
+    ),
+  ],
+} satisfies Meta<typeof BottomNav>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
 const mockProfile = {
-  id: "user-1",
+  id: "u1",
   username: "tanaka",
   display_name: "田中太郎",
   avatar_url: null,
-  bio: "ラジオが好きです",
+  bio: null,
   created_at: "2026-01-01T00:00:00Z",
   updated_at: "2026-01-01T00:00:00Z",
 };
 
 export const LoggedIn: Story = {
   args: {
-    open: true,
     profile: mockProfile,
     isLoggedIn: true,
     isLoading: false,
@@ -42,27 +44,24 @@ export const LoggedIn: Story = {
 
 export const NotLoggedIn: Story = {
   args: {
-    open: true,
     profile: null,
     isLoggedIn: false,
+    isLoading: false,
+  },
+};
+
+export const NoProfile: Story = {
+  args: {
+    profile: null,
+    isLoggedIn: true,
     isLoading: false,
   },
 };
 
 export const Loading: Story = {
   args: {
-    open: true,
     profile: null,
     isLoggedIn: false,
     isLoading: true,
-  },
-};
-
-export const Closed: Story = {
-  args: {
-    open: false,
-    profile: null,
-    isLoggedIn: false,
-    isLoading: false,
   },
 };
