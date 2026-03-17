@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -17,7 +18,7 @@ export default function Navbar() {
   const profile = auth.status === "authenticated" ? auth.profile : null;
   const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
@@ -84,7 +85,7 @@ export default function Navbar() {
                   <div className="relative" ref={dropdownRef}>
                     <button
                       type="button"
-                      onClick={() => setDropdownOpen(!dropdownOpen)}
+                      onClick={() => setDropdownOpen((v) => !v)}
                       className="flex items-center hover:opacity-80 transition-opacity"
                       aria-label="ユーザーメニュー"
                       aria-expanded={dropdownOpen}
@@ -94,12 +95,13 @@ export default function Navbar() {
                     </button>
 
                     {dropdownOpen && (
-                      <div className="absolute right-0 mt-2 w-56 rounded-xl border border-stone-200 bg-white shadow-lg py-2 z-50">
+                      <div role="menu" aria-label="ユーザーメニュー" className="absolute right-0 mt-2 w-56 rounded-xl border border-stone-200 bg-white shadow-lg py-2 z-50">
                         <div className="px-4 py-2 border-b border-stone-100">
                           <p className="text-sm font-medium text-stone-900">{profile.display_name}</p>
                           <p className="text-xs text-stone-500">@{profile.username}</p>
                         </div>
                         <Link
+                          role="menuitem"
                           href={`/users/${profile.username}`}
                           className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           onClick={() => setDropdownOpen(false)}
@@ -107,6 +109,7 @@ export default function Navbar() {
                           マイページ
                         </Link>
                         <Link
+                          role="menuitem"
                           href="/settings"
                           className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           onClick={() => setDropdownOpen(false)}
@@ -116,6 +119,7 @@ export default function Navbar() {
                         <div className="border-t border-stone-100 mt-1 pt-1">
                           <button
                             type="button"
+                            role="menuitem"
                             onClick={() => {
                               setDropdownOpen(false);
                               auth.signOut();
