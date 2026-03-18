@@ -43,6 +43,12 @@ func (m *mockPodcastRepoForSearch) GetPopular(_ context.Context, _ int) ([]repos
 func (m *mockPodcastRepoForSearch) ExistsByIDs(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepoForSearch) UpdateGenre(_ context.Context, _ uuid.UUID, _ string) error {
+	return fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepoForSearch) ListWithoutGenre(_ context.Context) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── テスト: Search ──
 

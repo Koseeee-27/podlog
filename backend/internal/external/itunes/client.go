@@ -50,6 +50,12 @@ func NewClient() *Client {
 	}
 }
 
+// SetBaseURL はテスト用に API のベース URL を差し替えるメソッドです。
+// httptest.NewServer で立てたモックサーバーの URL を設定する際に使います。
+func (c *Client) SetBaseURL(url string) {
+	c.baseURL = url
+}
+
 // SearchPodcasts はキーワードでポッドキャストを検索します。
 //
 // パラメータ:
@@ -97,4 +103,42 @@ func (c *Client) SearchPodcasts(ctx context.Context, term string, limit int) ([]
 	}
 
 	return searchResp.Results, nil
+}
+
+// LookupByID は iTunes ID（collectionId）を指定して1件のポッドキャスト情報を取得します。
+//
+// iTunes Lookup API を使います。Search API とはエンドポイントが異なり、
+// ID を直接指定して情報を取得できます。
+// バッチ処理で既存番組のジャンル情報を埋める際に使用します。
+//
+// 見つからなかった場合は nil を返します（エラーにはしません）。
+func (c *Client) LookupByID(ctx context.Context, itunesID int64) (*SearchResult, error) {
+	reqURL := fmt.Sprintf("%s/lookup?id=%d&entity=podcast", c.baseURL, itunesID)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send request to iTunes API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("iTunes API returned status %d", resp.StatusCode)
+	}
+
+	var searchResp SearchResponse
+	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+		return nil, fmt.Errorf("failed to decode iTunes API response: %w", err)
+	}
+
+	// Lookup API は resultCount=0 で見つからなかったことを示す
+	if searchResp.ResultCount == 0 || len(searchResp.Results) == 0 {
+		return nil, nil
+	}
+
+	return &searchResp.Results[0], nil
 }

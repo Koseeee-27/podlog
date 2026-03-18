@@ -68,6 +68,12 @@ func (m *mockPodcastRepo) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([]u
 	}
 	return m.existsByIDsFn(ctx, ids)
 }
+func (m *mockPodcastRepo) UpdateGenre(_ context.Context, _ uuid.UUID, _ string) error {
+	return fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) ListWithoutGenre(_ context.Context) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── テスト: GetByUsername ──
 
