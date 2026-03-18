@@ -125,6 +125,56 @@ func TestPodcastUsecase_Search(t *testing.T) {
 		}
 	})
 
+	t.Run("正常系: genre を指定して検索", func(t *testing.T) {
+		author := "テスト配信者"
+		artworkURL := "https://example.com/artwork.jpg"
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, q string, genre string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
+				if q != "テスト" {
+					t.Errorf("query = %q, want %q", q, "テスト")
+				}
+				if genre != "Comedy" {
+					t.Errorf("genre = %q, want %q", genre, "Comedy")
+				}
+				if limit != 20 {
+					t.Errorf("limit = %d, want 20", limit)
+				}
+				if offset != 0 {
+					t.Errorf("offset = %d, want 0", offset)
+				}
+				return []repository.PodcastSearchRow{
+					{
+						ID:            uuid.New(),
+						Title:         "コメディ番組",
+						Author:        &author,
+						ArtworkURL:    &artworkURL,
+						AverageRating: 3.5,
+						TotalReviews:  8,
+					},
+				}, 1, nil
+			},
+		})
+
+		result, err := uc.Search(ctx, "テスト", "Comedy", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 1 {
+			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if len(result.Podcasts) != 1 {
+			t.Fatalf("podcasts count = %d, want 1", len(result.Podcasts))
+		}
+		p := result.Podcasts[0]
+		if p.Title != "コメディ番組" {
+			t.Errorf("title = %q, want %q", p.Title, "コメディ番組")
+		}
+		if p.AverageRating != 3.5 {
+			t.Errorf("average_rating = %f, want 3.5", p.AverageRating)
+		}
+	})
+
 	t.Run("limit が 0 以下 → デフォルト 20 に補正", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
 			searchFn: func(_ context.Context, _ string, _ string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
