@@ -71,13 +71,11 @@ flowchart TD
 
     subgraph リダイレクト
         SIGNUP["/signup"]
-        SEARCH["/search"]
         NOT_FOUND["404"]
     end
 
     %% リダイレクトページ
     SIGNUP -- "middleware でリダイレクト" --> LOGIN
-    SEARCH -- "/discover へリダイレクト" --> DISCOVER
     NOT_FOUND -- "「トップページに戻る」押下" --> HOME
 
     %% 認証フロー
@@ -168,7 +166,7 @@ flowchart LR
     subgraph PC["PC: ヘッダーナビ"]
         PC_LOGO["ロゴ → /"]
         PC_SEARCH["検索バー → /discover?q=..."]
-        PC_RECORD["「記録する」ボタン → /search → /discover<br>（プロフィール設定済み時のみ表示）"]
+        PC_RECORD["「記録する」ボタン → /discover<br>（プロフィール設定済み時のみ表示）"]
         PC_AVATAR["アバター → ドロップダウン<br>（プロフィール設定済み時のみ表示）"]
         PC_LOGIN_BTN["「ログイン」ボタン → /login<br>（未ログイン時のみ表示）"]
         PC_SETUP_BTN["「プロフィール設定」→ /profile/setup<br>（プロフィール未設定時のみ表示）"]
@@ -195,8 +193,7 @@ flowchart LR
 ### 補足
 
 - `/signup` はミドルウェアで `/login` にリダイレクトされる（Google 認証のみのため統合）
-- `/search` は `/discover` にリダイレクトされる（互換性維持のための旧パス）
-- PC ヘッダーの「記録する」ボタンは、現在 `/search` を経由して `/discover` へリダイレクトされる。`/record` ページの実装後に遷移先が変更される予定
+- PC ヘッダーの「記録する」ボタンは、現在 `/discover` へ遷移する。`/record` ページの実装後に遷移先が変更される予定
 - SP ボトムナビの「記録する」タブは、`/record` ページ未実装のため現在 disabled 状態
 - `/profile` は `/settings/profile` へリダイレクトされる（#127 で統一済み）
 - OAuth コールバック (`/callback`) は `next` クエリパラメータでリダイレクト先を指定できるが、現在のログイン実装では常に `/`（デフォルト値）へリダイレクトする
