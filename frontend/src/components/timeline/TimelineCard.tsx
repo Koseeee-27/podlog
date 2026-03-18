@@ -9,7 +9,7 @@ interface TimelineCardProps {
 
 export default function TimelineCard({ item }: TimelineCardProps) {
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-4">
+    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
       <div className="flex gap-3">
         {/* アートワーク */}
         <Link href={`/podcasts/${item.podcast.id}`} className="shrink-0" aria-label={`${item.podcast.title}のページへ`}>

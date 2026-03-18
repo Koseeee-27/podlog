@@ -21,7 +21,7 @@ export default function MyReviewCard({
   actionLoading,
 }: MyReviewCardProps) {
   return (
-    <div className="rounded-lg border border-rose-200 bg-rose-50/30 p-4">
+    <div className="rounded-xl border border-rose-200 bg-rose-50/30 p-4 shadow-sm">
       <div className="flex items-center justify-between mb-1">
         <h3 className="text-sm font-medium text-stone-700">あなたのレビュー</h3>
         <span className="text-xs text-stone-500">{formatDate(review.created_at)}</span>

@@ -37,7 +37,7 @@ export default function PopularPodcastsSection() {
           {Array.from({ length: DISPLAY_COUNT }).map((_, i) => (
             <div
               key={i}
-              className="rounded-xl border border-stone-200 bg-white p-4 animate-pulse"
+              className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm animate-pulse"
             >
               <div className="flex gap-4">
                 <div className="w-20 h-20 rounded-lg bg-stone-100 flex-shrink-0" />

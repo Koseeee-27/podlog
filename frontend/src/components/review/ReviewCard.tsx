@@ -8,7 +8,7 @@ interface ReviewCardProps {
 
 export default function ReviewCard({ review }: ReviewCardProps) {
   return (
-    <div className="rounded-lg border border-stone-200 p-4">
+    <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
         <div className="flex h-8 w-8 items-center justify-center rounded-full bg-rose-100 text-sm font-medium text-rose-700">
           {review.user.display_name.charAt(0)}
