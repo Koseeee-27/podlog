@@ -19,11 +19,11 @@ export default function TimelineCard({ item }: TimelineCardProps) {
               alt={item.podcast.title}
               width={64}
               height={64}
-              className="w-16 h-16 rounded-lg object-cover"
+              className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg object-cover"
             />
           ) : (
-            <div className="w-16 h-16 rounded-lg bg-stone-100 flex items-center justify-center">
-              <svg className="h-6 w-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-lg bg-stone-100 flex items-center justify-center">
+              <svg className="h-5 w-5 sm:h-6 sm:w-6 text-stone-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
               </svg>
             </div>
