@@ -15,7 +15,7 @@ export interface Episode {
 }
 
 export interface EpisodeWithStats extends Episode {
-  review_count: number;
+  total_reviews: number;
   average_rating: number;
 }
 

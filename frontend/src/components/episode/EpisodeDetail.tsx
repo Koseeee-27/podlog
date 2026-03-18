@@ -18,9 +18,9 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-stone-500">
         {episode.published_at && <span>{formatDate(episode.published_at)}</span>}
         {episode.duration_ms && <span>{formatDuration(episode.duration_ms)}</span>}
-        {episode.review_count > 0 && (
+        {episode.total_reviews > 0 && (
           <span>
-            {episode.average_rating.toFixed(1)} ({episode.review_count}件のレビュー)
+            {episode.average_rating.toFixed(1)} ({episode.total_reviews}件のレビュー)
           </span>
         )}
       </div>
