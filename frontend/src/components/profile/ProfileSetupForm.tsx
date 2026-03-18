@@ -8,7 +8,7 @@ import Input from "@/components/ui/Input";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
 interface ProfileSetupFormProps {
-  onComplete: () => void;
+  onComplete: () => Promise<void>;
 }
 
 export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) {
@@ -36,9 +36,8 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
         display_name: displayName,
         bio: bio || undefined,
       });
-      onComplete();
+      await onComplete();
       router.push("/");
-      router.refresh();
     } catch (err) {
       if (err instanceof Error) {
         setError(err.message);
