@@ -58,12 +58,13 @@ export function usePodcastSearch(initialQuery = "") {
   return { query, setQuery, results, loading, error };
 }
 
-export function usePopularPodcasts() {
+export function usePopularPodcasts(enabled = true) {
   const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!enabled) return;
     let cancelled = false;
 
     async function fetch() {
@@ -81,7 +82,7 @@ export function usePopularPodcasts() {
 
     fetch();
     return () => { cancelled = true; };
-  }, []);
+  }, [enabled]);
 
   return { podcasts, loading, error };
 }

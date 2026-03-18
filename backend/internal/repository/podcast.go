@@ -188,14 +188,13 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 			p.title,
 			p.author,
 			p.artwork_url,
-			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
+			AVG(r.rating)::float8 AS average_rating,
+			COUNT(r.id)::int AS total_reviews
 		FROM podcasts p
-		LEFT JOIN episodes e ON p.id = e.podcast_id
-		LEFT JOIN reviews r ON e.id = r.episode_id
-		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		INNER JOIN episodes e ON p.id = e.podcast_id
+		INNER JOIN reviews r ON e.id = r.episode_id
+		INNER JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		GROUP BY p.id, p.title, p.author, p.artwork_url
-		HAVING COUNT(r.id) FILTER (WHERE u.id IS NOT NULL) > 0
 		ORDER BY total_reviews DESC, average_rating DESC
 		LIMIT $1
 	`

@@ -12,9 +12,8 @@ interface DiscoverClientProps {
 
 export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
   const { query, setQuery, results, loading: searchLoading, error: searchError } = usePodcastSearch(initialQuery);
-  const { podcasts: popular, loading: popularLoading, error: popularError } = usePopularPodcasts();
-
   const isSearching = query.trim().length > 0;
+  const { podcasts: popular, loading: popularLoading, error: popularError } = usePopularPodcasts(!isSearching);
 
   return (
     <div>
