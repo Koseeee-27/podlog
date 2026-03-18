@@ -14,7 +14,7 @@ export async function searchPodcasts(
 }
 
 export async function getPodcastsByGenre(genre: string): Promise<PodcastSearchItem[]> {
-  const params = new URLSearchParams({ genre, q: "" });
+  const params = new URLSearchParams({ genre });
   const result = await apiGet<PodcastSearchResult>(`/podcasts/search?${params.toString()}`);
   return result.podcasts;
 }
