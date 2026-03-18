@@ -15,8 +15,25 @@ export interface Episode {
 }
 
 export interface EpisodeWithStats extends Episode {
-  review_count: number;
+  total_reviews: number;
   average_rating: number;
+}
+
+/** エピソード一覧 API のレスポンス（各アイテムに評価情報を含む） */
+export interface EpisodeListItem {
+  id: string;
+  title: string;
+  description: string | null;
+  duration_ms: number | null;
+  published_at: string | null;
+  average_rating: number;
+  total_reviews: number;
+}
+
+/** エピソード一覧 API のレスポンス全体 */
+export interface EpisodeListResult {
+  episodes: EpisodeListItem[];
+  total: number;
 }
 
 export interface CreateEpisodeRequest {

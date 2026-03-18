@@ -1,9 +1,10 @@
 import Link from "next/link";
-import type { Episode } from "@/types/episode";
+import { StarIcon } from "@heroicons/react/24/solid";
+import type { EpisodeListItem } from "@/types/episode";
 import { formatDuration, formatDate } from "@/lib/utils";
 
 interface EpisodeCardProps {
-  episode: Episode;
+  episode: EpisodeListItem;
 }
 
 export default function EpisodeCard({ episode }: EpisodeCardProps) {
@@ -16,6 +17,12 @@ export default function EpisodeCard({ episode }: EpisodeCardProps) {
       <div className="mt-2 flex items-center gap-3 text-xs text-stone-500">
         {episode.published_at && <span>{formatDate(episode.published_at)}</span>}
         {episode.duration_ms && <span>{formatDuration(episode.duration_ms)}</span>}
+        {episode.total_reviews > 0 && (
+          <span className="inline-flex items-center gap-0.5">
+            <StarIcon className="h-3.5 w-3.5 text-amber-500" />
+            {episode.average_rating.toFixed(1)} ({episode.total_reviews}件)
+          </span>
+        )}
       </div>
       {episode.description && (
         <p className="mt-2 text-sm text-stone-600 line-clamp-2">{episode.description}</p>
