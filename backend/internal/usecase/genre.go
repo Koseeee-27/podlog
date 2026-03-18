@@ -228,7 +228,8 @@ func init() {
 // その値をそのまま1要素のスライスとして返します。
 func ExpandGenre(genre string) []string {
 	if subs, ok := parentToSubGenres[genre]; ok {
-		return subs
+		// グローバル map のスライスを直接返すと呼び出し側の変更で共有データが壊れるためコピーを返す
+		return append([]string(nil), subs...)
 	}
 	// マッピングにない場合はそのジャンル名で直接検索
 	return []string{genre}
