@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { searchPodcasts, getPopularPodcasts } from "@/lib/api/podcasts";
+import { searchPodcasts, getPopularPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
 
 const DEBOUNCE_MS = 400;
@@ -86,6 +86,44 @@ export function usePopularPodcasts(enabled = true, limit = 10) {
     fetch();
     return () => { cancelled = true; };
   }, [enabled, limit]);
+
+  return { podcasts, loading, error };
+}
+
+/**
+ * 選択されたジャンルの番組一覧を取得するフック。
+ * genre が null の場合はフェッチしない。
+ */
+export function useGenrePodcasts(genre: string | null) {
+  const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!genre) {
+      setPodcasts([]);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function fetchByGenre() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getPodcastsByGenre(genre!);
+        if (!cancelled) setPodcasts(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetchByGenre();
+    return () => { cancelled = true; };
+  }, [genre]);
 
   return { podcasts, loading, error };
 }

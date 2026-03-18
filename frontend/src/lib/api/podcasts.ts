@@ -1,8 +1,21 @@
 import { apiGet } from "./client";
 import type { Podcast, PodcastSearchItem, PodcastSearchResult } from "@/types/podcast";
 
-export async function searchPodcasts(query: string): Promise<PodcastSearchItem[]> {
-  const result = await apiGet<PodcastSearchResult>(`/podcasts/search?q=${encodeURIComponent(query)}`);
+export async function searchPodcasts(
+  query: string,
+  options?: { genre?: string }
+): Promise<PodcastSearchItem[]> {
+  const params = new URLSearchParams({ q: query });
+  if (options?.genre) {
+    params.set("genre", options.genre);
+  }
+  const result = await apiGet<PodcastSearchResult>(`/podcasts/search?${params.toString()}`);
+  return result.podcasts;
+}
+
+export async function getPodcastsByGenre(genre: string): Promise<PodcastSearchItem[]> {
+  const params = new URLSearchParams({ genre });
+  const result = await apiGet<PodcastSearchResult>(`/podcasts/search?${params.toString()}`);
   return result.podcasts;
 }
 
