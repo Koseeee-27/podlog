@@ -28,6 +28,7 @@ type PodcastRepository interface {
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 	GetByItunesID(ctx context.Context, itunesID int64) (*model.Podcast, error)
 	Search(ctx context.Context, query string, limit, offset int) ([]PodcastSearchRow, int, error)
+	GetPopular(ctx context.Context, limit int) ([]PodcastSearchRow, error)
 
 	// ExistsByIDs は指定された podcast_id のリストが全てDB上に存在するか確認します。
 	// 存在しない ID がある場合、存在しなかった ID のリストを返します。
@@ -170,4 +171,36 @@ func (r *podcastRepository) Search(ctx context.Context, query string, limit, off
 	}
 
 	return rows, total, nil
+}
+
+// GetPopular はレビュー件数の多い番組を取得します。
+// 人気の番組セクション（探す画面）で使用します。
+func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]PodcastSearchRow, error) {
+	if limit <= 0 || limit > 50 {
+		limit = 10
+	}
+
+	query := `
+		SELECT
+			p.id,
+			p.title,
+			p.author,
+			p.artwork_url,
+			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
+		FROM podcasts p
+		LEFT JOIN episodes e ON p.id = e.podcast_id
+		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		GROUP BY p.id, p.title, p.author, p.artwork_url
+		HAVING COUNT(r.id) FILTER (WHERE u.id IS NOT NULL) > 0
+		ORDER BY total_reviews DESC, average_rating DESC
+		LIMIT $1
+	`
+	var rows []PodcastSearchRow
+	if err := r.db.SelectContext(ctx, &rows, query, limit); err != nil {
+		return nil, fmt.Errorf("failed to get popular podcasts: %w", err)
+	}
+
+	return rows, nil
 }

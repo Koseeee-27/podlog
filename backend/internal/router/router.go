@@ -38,6 +38,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 
 	// Podcasts (公開)
 	v1.GET("/podcasts/search", h.Podcast.Search)
+	v1.GET("/podcasts/popular", h.Podcast.GetPopular)
 	v1.GET("/podcasts/:id", h.Podcast.GetByID)
 	v1.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
 

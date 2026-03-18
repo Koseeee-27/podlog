@@ -609,6 +609,35 @@
                 }
             }
         },
+        "/podcasts/popular": {
+            "get": {
+                "description": "レビュー件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "podcasts"
+                ],
+                "summary": "人気ポッドキャスト一覧",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 10,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.PodcastSearchResult"
+                        }
+                    }
+                }
+            }
+        },
         "/podcasts/request": {
             "post": {
                 "security": [

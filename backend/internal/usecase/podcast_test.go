@@ -37,6 +37,9 @@ func (m *mockPodcastRepoForSearch) Search(ctx context.Context, query string, lim
 	}
 	return m.searchFn(ctx, query, limit, offset)
 }
+func (m *mockPodcastRepoForSearch) GetPopular(_ context.Context, _ int) ([]repository.PodcastSearchRow, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 func (m *mockPodcastRepoForSearch) ExistsByIDs(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 	return nil, fmt.Errorf("not implemented")
 }

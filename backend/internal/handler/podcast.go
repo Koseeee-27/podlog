@@ -3,6 +3,7 @@ package handler
 import (
 	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
@@ -51,6 +52,30 @@ func (h *PodcastHandler) Search(c echo.Context) error {
 	result, err := h.podcastUsecase.Search(c.Request().Context(), query, limit, offset)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to search podcasts")
+	}
+
+	return response.Success(c, http.StatusOK, result)
+}
+
+// GetPopular はレビュー件数の多い人気番組を取得するハンドラーです。
+// @Summary 人気ポッドキャスト一覧
+// @Description レビュー件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。
+// @Tags podcasts
+// @Produce json
+// @Param limit query int false "最大取得件数" default(10)
+// @Success 200 {object} usecase.PodcastSearchResult
+// @Router /podcasts/popular [get]
+func (h *PodcastHandler) GetPopular(c echo.Context) error {
+	limit := 10
+	if l := c.QueryParam("limit"); l != "" {
+		if parsed, err := strconv.Atoi(l); err == nil && parsed > 0 {
+			limit = parsed
+		}
+	}
+
+	result, err := h.podcastUsecase.GetPopular(c.Request().Context(), limit)
+	if err != nil {
+		return response.Error(c, http.StatusInternalServerError, "failed to get popular podcasts")
 	}
 
 	return response.Success(c, http.StatusOK, result)

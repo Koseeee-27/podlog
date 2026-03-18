@@ -63,11 +63,11 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
       isActive: (p) => p === "/",
     },
     {
-      id: "search",
+      id: "discover",
       label: "探す",
-      href: "/search",
-      icon: <SearchIcon active={pathname === "/search"} />,
-      isActive: (p) => p === "/search",
+      href: "/discover",
+      icon: <SearchIcon active={pathname === "/discover"} />,
+      isActive: (p) => p === "/discover",
     },
     {
       id: "record",

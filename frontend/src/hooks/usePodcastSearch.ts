@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { searchPodcasts } from "@/lib/api/podcasts";
+import { searchPodcasts, getPopularPodcasts } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
 
 const DEBOUNCE_MS = 400;
 
-export function usePodcastSearch() {
-  const [query, setQuery] = useState("");
+export function usePodcastSearch(initialQuery = "") {
+  const [query, setQuery] = useState(initialQuery);
   const [results, setResults] = useState<PodcastSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,4 +51,32 @@ export function usePodcastSearch() {
   }, [query, search]);
 
   return { query, setQuery, results, loading, error };
+}
+
+export function usePopularPodcasts() {
+  const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetch() {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await getPopularPodcasts(10);
+        if (!cancelled) setPodcasts(data);
+      } catch (err) {
+        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+
+    fetch();
+    return () => { cancelled = true; };
+  }, []);
+
+  return { podcasts, loading, error };
 }
