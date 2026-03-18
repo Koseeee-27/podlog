@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getEpisodesByPodcast, getEpisode, createEpisode, fetchEpisodesFromFeed } from "@/lib/api/episodes";
-import type { Episode, EpisodeWithStats, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import type { Episode, EpisodeWithStats, EpisodeListItem, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
 
 const PAGE_SIZE = 20;
 
 export function useEpisodes(podcastId: string) {
-  const [episodes, setEpisodes] = useState<Episode[]>([]);
+  const [episodes, setEpisodes] = useState<EpisodeListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -20,7 +20,7 @@ export function useEpisodes(podcastId: string) {
       setError(null);
       try {
         const data = await getEpisodesByPodcast(podcastId, { limit: PAGE_SIZE, offset: 0 });
-        const list = Array.isArray(data) ? data : [];
+        const list = data.episodes ?? [];
         if (!cancelled) {
           setEpisodes(list);
           setHasMore(list.length >= PAGE_SIZE);
@@ -44,7 +44,7 @@ export function useEpisodes(podcastId: string) {
         limit: PAGE_SIZE,
         offset: episodesLength,
       });
-      const list = Array.isArray(data) ? data : [];
+      const list = data.episodes ?? [];
       setEpisodes((prev) => [...prev, ...list]);
       setHasMore(list.length >= PAGE_SIZE);
     } catch (err) {
@@ -59,7 +59,7 @@ export function useEpisodes(podcastId: string) {
     setError(null);
     try {
       const data = await getEpisodesByPodcast(podcastId, { limit: PAGE_SIZE, offset: 0 });
-      const list = Array.isArray(data) ? data : [];
+      const list = data.episodes ?? [];
       setEpisodes(list);
       setHasMore(list.length >= PAGE_SIZE);
     } catch (err) {

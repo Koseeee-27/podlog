@@ -19,6 +19,21 @@ export interface EpisodeWithStats extends Episode {
   average_rating: number;
 }
 
+export interface EpisodeListItem {
+  id: string;
+  title: string;
+  description: string | null;
+  duration_ms: number | null;
+  published_at: string | null;
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface EpisodeListResult {
+  episodes: EpisodeListItem[];
+  total: number;
+}
+
 export interface CreateEpisodeRequest {
   title: string;
   description?: string | null;
