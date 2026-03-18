@@ -117,7 +117,7 @@ export default function Navbar() {
                             type="button"
                             onClick={() => {
                               setDropdownOpen(false);
-                              auth.signOut();
+                              void auth.signOut();
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           >
