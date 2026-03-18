@@ -4,8 +4,10 @@ import { usePopularPodcasts } from "@/hooks/usePodcastSearch";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
 
+const DISPLAY_COUNT = 6;
+
 export default function PopularPodcastsSection() {
-  const { podcasts, loading, error } = usePopularPodcasts(true, 6);
+  const { podcasts, loading, error } = usePopularPodcasts(true, DISPLAY_COUNT);
 
   // データがない場合やエラー時はセクションごと非表示
   if (error) {
@@ -32,7 +34,7 @@ export default function PopularPodcastsSection() {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: DISPLAY_COUNT }).map((_, i) => (
             <div
               key={i}
               className="rounded-xl border border-stone-200 bg-white p-4 animate-pulse"

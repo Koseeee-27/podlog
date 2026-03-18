@@ -2,10 +2,12 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import Loading from "@/components/ui/Loading";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
+import { ChevronRightIcon } from "@heroicons/react/24/outline";
 
 export default function SettingsClient() {
   const auth = useAuth();
@@ -40,9 +42,25 @@ export default function SettingsClient() {
                 <dt className="text-stone-500 w-24">表示名</dt>
                 <dd className="text-stone-900">{profile.display_name}</dd>
               </div>
+              <div className="flex gap-2">
+                <dt className="text-stone-500 w-24">ログイン方法</dt>
+                <dd className="text-stone-900">Google</dd>
+              </div>
             </dl>
           </Card>
         )}
+
+        <Link href="/settings/profile" className="block">
+          <Card padding="lg" className="flex items-center justify-between hover:bg-stone-50 transition-colors cursor-pointer">
+            <div>
+              <h2 className="text-lg font-semibold text-stone-900">プロフィールを編集する</h2>
+              <p className="text-sm text-stone-500 mt-1">
+                表示名・アバター・自己紹介・好きな番組の編集
+              </p>
+            </div>
+            <ChevronRightIcon className="w-5 h-5 text-stone-400" />
+          </Card>
+        </Link>
 
         <Card padding="lg">
           <h2 className="text-lg font-semibold text-stone-900 mb-4">ログアウト</h2>
