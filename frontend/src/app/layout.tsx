@@ -14,8 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "podlog - ポッドキャスト記録アプリ",
-  description: "聴いたポッドキャストを記録・管理するWebアプリ",
+  title: "PodLog - ラジオの記録・レビューアプリ",
+  description:
+    "聴いたラジオの記録と感想を残し、新しい番組に出会えるサービス",
 };
 
 export default function RootLayout({

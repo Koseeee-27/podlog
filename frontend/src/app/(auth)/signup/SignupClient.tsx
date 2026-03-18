@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import SignupForm from "@/components/auth/SignupForm";
 
@@ -7,8 +8,14 @@ export default function SignupClient() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="px-4 py-4">
-        <Link href="/" className="text-xl font-bold text-rose-600 hover:text-rose-700 transition-colors">
-          PodLog
+        <Link href="/">
+          <Image
+            src="/logo-horizontal.png"
+            alt="PodLog"
+            width={120}
+            height={28}
+            priority
+          />
         </Link>
       </header>
       <div className="flex items-center justify-center px-4 pt-16 pb-24">
