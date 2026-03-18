@@ -98,6 +98,12 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, limit, offset
 
 // GetPopular はレビュー件数の多い人気番組を取得します。
 func (u *podcastUsecase) GetPopular(ctx context.Context, limit int) (*PodcastSearchResult, error) {
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 50 {
+		limit = 50
+	}
+
 	rows, err := u.podcastRepo.GetPopular(ctx, limit)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get popular podcasts: %w", err)

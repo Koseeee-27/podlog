@@ -176,8 +176,10 @@ func (r *podcastRepository) Search(ctx context.Context, query string, limit, off
 // GetPopular はレビュー件数の多い番組を取得します。
 // 人気の番組セクション（探す画面）で使用します。
 func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]PodcastSearchRow, error) {
-	if limit <= 0 || limit > 50 {
+	if limit <= 0 {
 		limit = 10
+	} else if limit > 50 {
+		limit = 50
 	}
 
 	query := `
