@@ -15,7 +15,7 @@ import (
 // mockPodcastRepoForSearch は PodcastRepository のモック実装です。
 // 検索テスト用に searchFn を差し替えて DB の振る舞いをシミュレートします。
 type mockPodcastRepoForSearch struct {
-	searchFn      func(ctx context.Context, query string, limit, offset int) ([]repository.PodcastSearchRow, int, error)
+	searchFn      func(ctx context.Context, query string, genre string, limit, offset int) ([]repository.PodcastSearchRow, int, error)
 	getByIDFn     func(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 }
 
@@ -31,11 +31,14 @@ func (m *mockPodcastRepoForSearch) GetByID(ctx context.Context, id uuid.UUID) (*
 func (m *mockPodcastRepoForSearch) GetByItunesID(_ context.Context, _ int64) (*model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
 }
-func (m *mockPodcastRepoForSearch) Search(ctx context.Context, query string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
+func (m *mockPodcastRepoForSearch) Search(ctx context.Context, query string, genre string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
 	if m.searchFn == nil {
 		return nil, 0, fmt.Errorf("not implemented")
 	}
-	return m.searchFn(ctx, query, limit, offset)
+	return m.searchFn(ctx, query, genre, limit, offset)
+}
+func (m *mockPodcastRepoForSearch) GetDistinctGenres(_ context.Context) ([]string, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 func (m *mockPodcastRepoForSearch) GetPopular(_ context.Context, _ int) ([]repository.PodcastSearchRow, error) {
 	return nil, fmt.Errorf("not implemented")
@@ -54,7 +57,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 		artworkURL := "https://example.com/artwork.jpg"
 
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, q string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, q string, _ string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
 				if q != "テスト" {
 					t.Errorf("query = %q, want %q", q, "テスト")
 				}
@@ -77,7 +80,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			},
 		})
 
-		result, err := uc.Search(ctx, "テスト", 20, 0)
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -105,12 +108,12 @@ func TestPodcastUsecase_Search(t *testing.T) {
 
 	t.Run("正常系: 検索結果が空の場合は空配列を返す", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, _ string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, _ string, _ string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
 				return []repository.PodcastSearchRow{}, 0, nil
 			},
 		})
 
-		result, err := uc.Search(ctx, "存在しない番組", 20, 0)
+		result, err := uc.Search(ctx, "存在しない番組", "", 20, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -124,7 +127,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 
 	t.Run("limit が 0 以下 → デフォルト 20 に補正", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, _ string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, _ string, _ string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
 				if limit != 20 {
 					t.Errorf("limit = %d, want 20 (default)", limit)
 				}
@@ -132,7 +135,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			},
 		})
 
-		_, err := uc.Search(ctx, "テスト", 0, 0)
+		_, err := uc.Search(ctx, "テスト", "", 0, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -140,7 +143,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 
 	t.Run("limit が 50 超 → デフォルト 20 に補正", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, _ string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, _ string, _ string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
 				if limit != 20 {
 					t.Errorf("limit = %d, want 20 (default)", limit)
 				}
@@ -148,7 +151,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			},
 		})
 
-		_, err := uc.Search(ctx, "テスト", 100, 0)
+		_, err := uc.Search(ctx, "テスト", "", 100, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -156,7 +159,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 
 	t.Run("offset が負 → 0 に補正", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, _ string, _, offset int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, _ string, _ string, _, offset int) ([]repository.PodcastSearchRow, int, error) {
 				if offset != 0 {
 					t.Errorf("offset = %d, want 0", offset)
 				}
@@ -164,7 +167,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			},
 		})
 
-		_, err := uc.Search(ctx, "テスト", 20, -5)
+		_, err := uc.Search(ctx, "テスト", "", 20, -5)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -172,12 +175,12 @@ func TestPodcastUsecase_Search(t *testing.T) {
 
 	t.Run("DB エラー → エラー伝播", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
-			searchFn: func(_ context.Context, _ string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+			searchFn: func(_ context.Context, _ string, _ string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
 				return nil, 0, fmt.Errorf("database connection error")
 			},
 		})
 
-		_, err := uc.Search(ctx, "テスト", 20, 0)
+		_, err := uc.Search(ctx, "テスト", "", 20, 0)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}

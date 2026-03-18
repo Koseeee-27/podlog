@@ -544,6 +544,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/genres": {
+            "get": {
+                "description": "DB に登録されている番組のジャンル一覧を取得します。英語名・日本語名の両方を含みます。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "genres"
+                ],
+                "summary": "ジャンル一覧取得",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.GenreListResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/health": {
             "get": {
                 "description": "サーバーの稼働状態を確認します",
@@ -703,7 +732,7 @@ const docTemplate = `{
         },
         "/podcasts/search": {
             "get": {
-                "description": "アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。",
+                "description": "アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。",
                 "produces": [
                     "application/json"
                 ],
@@ -718,6 +747,12 @@ const docTemplate = `{
                         "name": "q",
                         "in": "query",
                         "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ジャンル名（英語）で絞り込み",
+                        "name": "genre",
+                        "in": "query"
                     },
                     {
                         "type": "integer",
@@ -2026,6 +2061,31 @@ const docTemplate = `{
                 },
                 "skipped_count": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.GenreItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name_en": {
+                    "type": "string"
+                },
+                "name_ja": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.GenreListResult": {
+            "type": "object",
+            "properties": {
+                "genres": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.GenreItem"
+                    }
                 }
             }
         },

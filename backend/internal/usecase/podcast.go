@@ -43,7 +43,7 @@ type PodcastSearchItem struct {
 
 // PodcastUsecase はポッドキャストに関するビジネスロジックです。
 type PodcastUsecase interface {
-	Search(ctx context.Context, query string, limit, offset int) (*PodcastSearchResult, error)
+	Search(ctx context.Context, query string, genre string, limit, offset int) (*PodcastSearchResult, error)
 	GetPopular(ctx context.Context, limit int) (*PodcastSearchResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 }
@@ -65,7 +65,7 @@ func NewPodcastUsecase(podcastRepo repository.PodcastRepository) PodcastUsecase 
 // 以前は iTunes API を叩いていましたが、機能要件書の仕様に合わせて
 // 「アプリ内 DB に登録済みの番組をキーワードで検索する」に変更しました。
 // レスポンスには平均評価とレビュー件数を含みます。
-func (u *podcastUsecase) Search(ctx context.Context, query string, limit, offset int) (*PodcastSearchResult, error) {
+func (u *podcastUsecase) Search(ctx context.Context, query string, genre string, limit, offset int) (*PodcastSearchResult, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
 	}
@@ -73,7 +73,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, limit, offset
 		offset = 0
 	}
 
-	rows, total, err := u.podcastRepo.Search(ctx, query, limit, offset)
+	rows, total, err := u.podcastRepo.Search(ctx, query, genre, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search podcasts: %w", err)
 	}

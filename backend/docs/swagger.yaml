@@ -254,6 +254,22 @@ definitions:
       skipped_count:
         type: integer
     type: object
+  usecase.GenreItem:
+    properties:
+      id:
+        type: string
+      name_en:
+        type: string
+      name_ja:
+        type: string
+    type: object
+  usecase.GenreListResult:
+    properties:
+      genres:
+        items:
+          $ref: '#/definitions/usecase.GenreItem'
+        type: array
+    type: object
   usecase.ListeningRecordEpisodeInfo:
     properties:
       artwork_url:
@@ -847,6 +863,25 @@ paths:
       summary: レビュー更新
       tags:
       - reviews
+  /genres:
+    get:
+      description: DB に登録されている番組のジャンル一覧を取得します。英語名・日本語名の両方を含みます。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.GenreListResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: ジャンル一覧取得
+      tags:
+      - genres
   /health:
     get:
       description: サーバーの稼働状態を確認します
@@ -1117,12 +1152,16 @@ paths:
       - podcast-requests
   /podcasts/search:
     get:
-      description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。
+      description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。
       parameters:
       - description: 検索キーワード
         in: query
         name: q
         required: true
+        type: string
+      - description: ジャンル名（英語）で絞り込み
+        in: query
+        name: genre
         type: string
       - default: 20
         description: 最大取得件数

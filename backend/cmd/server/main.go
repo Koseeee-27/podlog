@@ -90,6 +90,7 @@ func main() {
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
+	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
 
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),
@@ -100,6 +101,7 @@ func main() {
 		Review:          handler.NewReviewHandler(reviewUsecase),
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
+		Genre:           handler.NewGenreHandler(genreUsecase),
 	}
 
 	// 9. ルーティングを設定
