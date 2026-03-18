@@ -5,10 +5,14 @@ import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
 
 export default function PopularPodcastsSection() {
-  const { podcasts, loading, error } = usePopularPodcasts(true);
+  const { podcasts, loading, error } = usePopularPodcasts(true, 6);
 
   // データがない場合やエラー時はセクションごと非表示
-  if (error || (!loading && podcasts.length === 0)) {
+  if (error) {
+    console.error("PopularPodcastsSection: 人気番組の取得に失敗しました", error);
+    return null;
+  }
+  if (!loading && podcasts.length === 0) {
     return null;
   }
 
@@ -45,7 +49,7 @@ export default function PopularPodcastsSection() {
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {podcasts.slice(0, 6).map((podcast) => (
+          {podcasts.map((podcast) => (
             <PodcastCard key={podcast.id} podcast={podcast} />
           ))}
         </div>
