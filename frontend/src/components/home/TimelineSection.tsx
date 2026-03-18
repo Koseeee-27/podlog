@@ -4,6 +4,8 @@ import { useTimeline } from "@/hooks/useReviews";
 import TimelineCard from "@/components/timeline/TimelineCard";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 
 interface TimelineSectionProps {
   headingLevel?: "h1" | "h2";
@@ -21,7 +23,13 @@ export default function TimelineSection({ headingLevel = "h2" }: TimelineSection
       {error && <ErrorMessage message={error} />}
 
       {!loading && reviews.length === 0 && !error && (
-        <p className="text-sm text-stone-500">まだレビューはありません</p>
+        <EmptyState
+          icon={<ChatBubbleLeftRightIcon className="h-12 w-12" />}
+          message="まだレビューがありません"
+          description="最初のレビューを書いてみましょう！"
+          ctaLabel="番組を探す"
+          ctaHref="/discover"
+        />
       )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

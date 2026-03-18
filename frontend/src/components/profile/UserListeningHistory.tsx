@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { ListeningRecordItem } from "@/types/listening-record";
 import { formatDate } from "@/lib/utils";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { MusicalNoteIcon } from "@heroicons/react/24/outline";
 
 interface UserListeningHistoryProps {
   records: ListeningRecordItem[];
@@ -30,7 +32,13 @@ export default function UserListeningHistory({
       {loading && records.length === 0 ? (
         <p className="text-sm text-stone-500">読み込み中...</p>
       ) : records.length === 0 && !error ? (
-        <p className="text-sm text-stone-500">まだ聴取記録がありません</p>
+        <EmptyState
+          icon={<MusicalNoteIcon className="h-12 w-12" />}
+          message="まだ聴取記録がありません"
+          description="エピソードを聴いたら記録してみましょう"
+          ctaLabel="番組を探す"
+          ctaHref="/discover"
+        />
       ) : (
         <div className="space-y-2">
           {records.map((record) => (

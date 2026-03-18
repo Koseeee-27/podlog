@@ -2,6 +2,8 @@ import Link from "next/link";
 import Image from "next/image";
 import type { FavoritePodcastItem } from "@/types/user";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { HeartIcon } from "@heroicons/react/24/outline";
 
 interface UserFavoritePodcastsProps {
   podcasts: FavoritePodcastItem[];
@@ -28,7 +30,17 @@ export default function UserFavoritePodcasts({ podcasts, loading, error }: UserF
     );
   }
 
-  if (podcasts.length === 0) return null;
+  if (podcasts.length === 0) {
+    return (
+      <section>
+        <h2 className="text-lg font-semibold text-stone-900 mb-3">好きな番組</h2>
+        <EmptyState
+          icon={<HeartIcon className="h-12 w-12" />}
+          message="好きな番組がまだありません"
+        />
+      </section>
+    );
+  }
 
   return (
     <section>

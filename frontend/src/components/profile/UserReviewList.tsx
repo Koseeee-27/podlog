@@ -2,6 +2,8 @@ import Link from "next/link";
 import type { UserReviewItem } from "@/types/review";
 import { formatDate } from "@/lib/utils";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import EmptyState from "@/components/ui/EmptyState";
+import { BookOpenIcon } from "@heroicons/react/24/outline";
 
 interface UserReviewListProps {
   reviews: UserReviewItem[];
@@ -30,7 +32,13 @@ export default function UserReviewList({
       {loading && reviews.length === 0 ? (
         <p className="text-sm text-stone-500">読み込み中...</p>
       ) : reviews.length === 0 && !error ? (
-        <p className="text-sm text-stone-500">まだレビューがありません</p>
+        <EmptyState
+          icon={<BookOpenIcon className="h-12 w-12" />}
+          message="まだレビューがありません"
+          description="聴いたエピソードの感想を書いてみましょう"
+          ctaLabel="番組を探す"
+          ctaHref="/discover"
+        />
       ) : (
         <div className="space-y-3">
           {reviews.map((review) => (
