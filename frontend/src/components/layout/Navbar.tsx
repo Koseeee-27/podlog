@@ -99,7 +99,6 @@ export default function Navbar() {
                           <p className="text-xs text-stone-500">@{profile.username}</p>
                         </div>
                         <Link
-
                           href={`/users/${profile.username}`}
                           className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           onClick={() => setDropdownOpen(false)}
@@ -107,7 +106,6 @@ export default function Navbar() {
                           マイページ
                         </Link>
                         <Link
-
                           href="/settings"
                           className="block px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           onClick={() => setDropdownOpen(false)}
@@ -117,7 +115,6 @@ export default function Navbar() {
                         <div className="border-t border-stone-100 mt-1 pt-1">
                           <button
                             type="button"
-  
                             onClick={() => {
                               setDropdownOpen(false);
                               auth.signOut();
