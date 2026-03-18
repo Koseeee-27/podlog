@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -32,11 +33,14 @@ export default function LoginClient() {
   return (
     <div className="min-h-screen bg-stone-50">
       <header className="px-4 py-4">
-        <Link
-          href="/"
-          className="text-xl font-bold text-rose-600 hover:text-rose-700 transition-colors"
-        >
-          PodLog
+        <Link href="/">
+          <Image
+            src="/logo-horizontal.png"
+            alt="PodLog"
+            width={120}
+            height={28}
+            priority
+          />
         </Link>
       </header>
 

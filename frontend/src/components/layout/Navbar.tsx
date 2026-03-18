@@ -1,6 +1,7 @@
 "use client";
 
 import type { FormEvent } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
@@ -44,8 +45,14 @@ export default function Navbar() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center justify-between h-14 gap-4">
             {/* 左: ロゴ */}
-            <Link href="/" className="text-lg font-bold text-rose-600 shrink-0">
-              PodLog
+            <Link href="/" className="shrink-0">
+              <Image
+                src="/logo-horizontal.png"
+                alt="PodLog"
+                width={120}
+                height={28}
+                priority
+              />
             </Link>
 
             {/* 中央: 検索バー */}
