@@ -18,6 +18,7 @@ import (
 	"log"
 
 	"github.com/jmoiron/sqlx"
+	dbmigrate "github.com/Koseeee-27/podlog/backend/db"
 	"github.com/Koseeee-27/podlog/backend/internal/config"
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
@@ -55,6 +56,14 @@ func main() {
 	db.SetMaxIdleConns(5)
 
 	log.Println("Connected to database successfully")
+
+	// 2.5. データベースマイグレーションを自動実行
+	// サーバー起動前に未適用のマイグレーションを全て適用する。
+	// schema_migrations テーブルで適用済みバージョンを追跡するため、
+	// 既に適用済みのマイグレーションは再実行されない。
+	if err := dbmigrate.RunMigrations(cfg.DatabaseDSN()); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
 
 	// 3. Echo インスタンスを作成
 	e := echo.New()
