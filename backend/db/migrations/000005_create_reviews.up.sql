@@ -1,7 +1,7 @@
 -- レビューテーブル
 -- ユーザーがエピソードに対して評価とコメントを残す。1ユーザー1エピソードにつき1レビュー。
 
-CREATE TABLE reviews (
+CREATE TABLE IF NOT EXISTS reviews (
     id         UUID          NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id    UUID          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     episode_id UUID          NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
@@ -12,17 +12,17 @@ CREATE TABLE reviews (
 );
 
 -- 同じユーザーが同じエピソードに2つレビューを書けないようにする
-CREATE UNIQUE INDEX idx_reviews_user_episode
+CREATE UNIQUE INDEX IF NOT EXISTS idx_reviews_user_episode
     ON reviews (user_id, episode_id);
 
 -- エピソードのレビュー一覧取得・平均評価集計用
-CREATE INDEX idx_reviews_episode_id
+CREATE INDEX IF NOT EXISTS idx_reviews_episode_id
     ON reviews (episode_id);
 
 -- ユーザーのレビュー一覧取得用
-CREATE INDEX idx_reviews_user_id_created_at
+CREATE INDEX IF NOT EXISTS idx_reviews_user_id_created_at
     ON reviews (user_id, created_at DESC);
 
 -- タイムライン（全ユーザーの最新レビュー）用
-CREATE INDEX idx_reviews_created_at
+CREATE INDEX IF NOT EXISTS idx_reviews_created_at
     ON reviews (created_at DESC);

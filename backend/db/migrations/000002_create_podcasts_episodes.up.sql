@@ -18,10 +18,10 @@ CREATE TABLE IF NOT EXISTS podcasts (
 );
 
 -- iTunes ID での検索を高速化
-CREATE INDEX idx_podcasts_itunes_id ON podcasts (itunes_id) WHERE itunes_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_podcasts_itunes_id ON podcasts (itunes_id) WHERE itunes_id IS NOT NULL;
 
 -- タイトル検索用（部分一致対応のため pg_trgm を使うことも検討）
-CREATE INDEX idx_podcasts_title ON podcasts (title);
+CREATE INDEX IF NOT EXISTS idx_podcasts_title ON podcasts (title);
 
 -- episodes テーブル
 CREATE TABLE IF NOT EXISTS episodes (
@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS episodes (
 );
 
 -- ポッドキャストIDでのエピソード取得を高速化
-CREATE INDEX idx_episodes_podcast_id ON episodes (podcast_id);
+CREATE INDEX IF NOT EXISTS idx_episodes_podcast_id ON episodes (podcast_id);
 
 -- 公開日順でのソートを高速化
-CREATE INDEX idx_episodes_published_at ON episodes (published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_episodes_published_at ON episodes (published_at DESC);

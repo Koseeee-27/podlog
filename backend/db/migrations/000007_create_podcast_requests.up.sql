@@ -11,5 +11,5 @@ CREATE TABLE IF NOT EXISTS podcast_requests (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX idx_podcast_requests_user_id ON podcast_requests (user_id);
-CREATE INDEX idx_podcast_requests_status ON podcast_requests (status);
+CREATE INDEX IF NOT EXISTS idx_podcast_requests_user_id ON podcast_requests (user_id);
+CREATE INDEX IF NOT EXISTS idx_podcast_requests_status ON podcast_requests (status);

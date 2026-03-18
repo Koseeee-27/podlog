@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS favorite_podcasts (
 );
 
 -- 1ユーザー1番組につき1レコード
-CREATE UNIQUE INDEX idx_favorite_podcasts_user_podcast ON favorite_podcasts (user_id, podcast_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_podcasts_user_podcast ON favorite_podcasts (user_id, podcast_id);
 
 -- ユーザーごとに表示順で取得する用
-CREATE UNIQUE INDEX idx_favorite_podcasts_user_position ON favorite_podcasts (user_id, position);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_favorite_podcasts_user_position ON favorite_podcasts (user_id, position);
