@@ -40,3 +40,7 @@ export interface FavoritePodcastItem {
 export interface FavoritePodcastListResult {
   podcasts: FavoritePodcastItem[];
 }
+
+export interface AvatarUploadResult {
+  avatar_url: string;
+}
