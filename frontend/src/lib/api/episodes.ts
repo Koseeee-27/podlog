@@ -1,15 +1,15 @@
 import { apiGet, apiPost } from "./client";
-import type { Episode, EpisodeWithStats, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import type { Episode, EpisodeWithStats, EpisodeListResult, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
 
 export function getEpisodesByPodcast(
   podcastId: string,
   params?: { limit?: number; offset?: number }
-): Promise<Episode[]> {
+): Promise<EpisodeListResult> {
   const searchParams = new URLSearchParams();
   if (params?.limit) searchParams.set("limit", String(params.limit));
   if (params?.offset) searchParams.set("offset", String(params.offset));
   const query = searchParams.toString();
-  return apiGet<Episode[]>(
+  return apiGet<EpisodeListResult>(
     `/podcasts/${encodeURIComponent(podcastId)}/episodes${query ? `?${query}` : ""}`
   );
 }

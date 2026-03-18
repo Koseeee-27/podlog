@@ -1,4 +1,4 @@
-import type { Episode } from "@/types/episode";
+import type { EpisodeListItem } from "@/types/episode";
 import EpisodeCard from "./EpisodeCard";
 import Button from "@/components/ui/Button";
 import Loading from "@/components/ui/Loading";
@@ -6,7 +6,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import { MicrophoneIcon } from "@heroicons/react/24/outline";
 
 interface EpisodeListProps {
-  episodes: Episode[];
+  episodes: EpisodeListItem[];
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;

@@ -14,18 +14,40 @@ export const Default: Story = {
   args: {
     episode: {
       id: "1",
-      podcast_id: "p1",
-      itunes_track_id: null,
-      guid: null,
       title: "Episode 300: The Future of AI",
       description: "In this episode we discuss the future of artificial intelligence and its impact on society.",
-      audio_url: null,
-      artwork_url: null,
-      source_url: null,
       duration_ms: 3600000,
       published_at: "2024-06-15T00:00:00Z",
-      created_at: "2024-06-15T00:00:00Z",
-      updated_at: "2024-06-15T00:00:00Z",
+      average_rating: 4.2,
+      total_reviews: 8,
+    },
+  },
+};
+
+export const WithHighRating: Story = {
+  args: {
+    episode: {
+      id: "2",
+      title: "Episode 299: Deep Dive into TypeScript",
+      description: "A comprehensive look at TypeScript's type system and advanced patterns.",
+      duration_ms: 5400000,
+      published_at: "2024-06-08T00:00:00Z",
+      average_rating: 4.8,
+      total_reviews: 25,
+    },
+  },
+};
+
+export const NoReviews: Story = {
+  args: {
+    episode: {
+      id: "3",
+      title: "Episode 1: Getting Started",
+      description: null,
+      duration_ms: null,
+      published_at: null,
+      average_rating: 0,
+      total_reviews: 0,
     },
   },
 };
@@ -33,19 +55,13 @@ export const Default: Story = {
 export const MinimalInfo: Story = {
   args: {
     episode: {
-      id: "2",
-      podcast_id: "p1",
-      itunes_track_id: null,
-      guid: null,
+      id: "4",
       title: "Episode 1",
       description: null,
-      audio_url: null,
-      artwork_url: null,
-      source_url: null,
       duration_ms: null,
       published_at: null,
-      created_at: "2024-01-01T00:00:00Z",
-      updated_at: "2024-01-01T00:00:00Z",
+      average_rating: 0,
+      total_reviews: 0,
     },
   },
 };
