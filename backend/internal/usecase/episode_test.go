@@ -632,6 +632,148 @@ func TestFetchFromFeed_UniqueViolationSkipped(t *testing.T) {
 	}
 }
 
+func TestFetchFromFeed_LimitsTo50Episodes(t *testing.T) {
+	// 60件のエピソードがフィードにある場合、最新50件のみ処理されることを確認
+	podcastID := uuid.New()
+	totalItems := 60
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			items := make([]rss.FeedItem, totalItems)
+			baseTime := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+			for i := 0; i < totalItems; i++ {
+				// i=0 が最も古く、i=59 が最も新しい
+				pubDate := baseTime.Add(time.Duration(i) * time.Hour)
+				items[i] = rss.FeedItem{
+					Title:   fmt.Sprintf("エピソード %d", i+1),
+					GUID:    fmt.Sprintf("guid-%03d", i+1),
+					PubDate: &pubDate,
+				}
+			}
+			return items, nil
+		},
+	}
+
+	// 処理されたエピソード数をカウント
+	createdCount := 0
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil // 全て未登録
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			createdCount++
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	result, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	// 50件のみ処理されるべき
+	if result.NewCount != 50 {
+		t.Errorf("expected 50 new episodes (limited), got %d", result.NewCount)
+	}
+	if createdCount != 50 {
+		t.Errorf("expected 50 create calls, got %d", createdCount)
+	}
+}
+
+func TestFetchFromFeed_SortsByPubDateDescending(t *testing.T) {
+	// 公開日がバラバラの順序で返されても、新しい順にソートされることを確認
+	podcastID := uuid.New()
+
+	oldDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	midDate := time.Date(2025, 6, 1, 0, 0, 0, 0, time.UTC)
+	newDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "古い", GUID: "old", PubDate: &oldDate},
+				{Title: "新しい", GUID: "new", PubDate: &newDate},
+				{Title: "中間", GUID: "mid", PubDate: &midDate},
+			}, nil
+		},
+	}
+
+	// 処理された順序を記録
+	var processedGUIDs []string
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			processedGUIDs = append(processedGUIDs, guid)
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	_, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// 新しい順に処理されるべき: new → mid → old
+	expected := []string{"new", "mid", "old"}
+	if len(processedGUIDs) != len(expected) {
+		t.Fatalf("expected %d processed items, got %d", len(expected), len(processedGUIDs))
+	}
+	for i, guid := range processedGUIDs {
+		if guid != expected[i] {
+			t.Errorf("position %d: expected GUID %q, got %q", i, expected[i], guid)
+		}
+	}
+}
+
+func TestFetchFromFeed_NilPubDatesSortedToEnd(t *testing.T) {
+	// PubDate が nil のアイテムはソート時に末尾に回されることを確認
+	podcastID := uuid.New()
+
+	newDate := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	oldDate := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			return []rss.FeedItem{
+				{Title: "日付なし", GUID: "no-date", PubDate: nil},
+				{Title: "新しい", GUID: "new", PubDate: &newDate},
+				{Title: "古い", GUID: "old", PubDate: &oldDate},
+			}, nil
+		},
+	}
+
+	var processedGUIDs []string
+	repo := &mockEpisodeRepo{
+		getByGUIDFunc: func(ctx context.Context, pid uuid.UUID, guid string) (*model.Episode, error) {
+			processedGUIDs = append(processedGUIDs, guid)
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, fetcher)
+	_, err := uc.FetchFromFeed(context.Background(), podcastID, "https://example.com/feed.xml")
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+
+	// 日付あり（新しい順）→ 日付なし の順で処理されるべき
+	expected := []string{"new", "old", "no-date"}
+	if len(processedGUIDs) != len(expected) {
+		t.Fatalf("expected %d processed items, got %d", len(expected), len(processedGUIDs))
+	}
+	for i, guid := range processedGUIDs {
+		if guid != expected[i] {
+			t.Errorf("position %d: expected GUID %q, got %q", i, expected[i], guid)
+		}
+	}
+}
+
 // ── GetByPodcastIDWithStats テスト ──
 
 func TestGetByPodcastIDWithStats_Success(t *testing.T) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 	"time"
 
@@ -12,6 +13,11 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
+
+// maxEpisodesPerFetch は FetchFromFeed で1回に処理するエピソードの上限数です。
+// エピソード数が多い番組（数千件）で取得が重くなるのを防ぐため、
+// 公開日の新しい順に最新50件のみを DB に保存します。
+const maxEpisodesPerFetch = 50
 
 // EpisodeDetailResult はエピソード詳細のレスポンスです。
 // API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_reviews を含みます。
@@ -255,14 +261,36 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 //
 // 処理の流れ:
 //  1. RSS フィードを取得してパース
-//  2. 各アイテムの GUID で重複チェック
-//  3. 新規エピソードのみ DB に保存
-//  4. UNIQUE 違反はスキップとして扱う（並行リクエスト対応）
+//  2. 公開日の新しい順にソートし、最新50件に絞る
+//  3. 各アイテムの GUID で重複チェック
+//  4. 新規エピソードのみ DB に保存
+//  5. UNIQUE 違反はスキップとして扱う（並行リクエスト対応）
 func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error) {
 	// 1. RSS フィードを取得
 	items, err := u.rssFetcher.Fetch(ctx, feedURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch RSS feed: %w", err)
+	}
+
+	// 2. 公開日の新しい順にソートし、最新 maxEpisodesPerFetch 件に絞る
+	// sort.SliceStable は元の順序を保ちつつソートする安定ソートです。
+	// PubDate が nil（公開日不明）のアイテムは末尾に回します。
+	sort.SliceStable(items, func(i, j int) bool {
+		// どちらかが nil の場合: nil でない方を前に
+		if items[i].PubDate == nil && items[j].PubDate == nil {
+			return false // 両方 nil なら元の順序を維持
+		}
+		if items[i].PubDate == nil {
+			return false // i が nil → j を前に
+		}
+		if items[j].PubDate == nil {
+			return true // j が nil → i を前に
+		}
+		// 両方 nil でない場合: 新しい日付を前に（降順）
+		return items[i].PubDate.After(*items[j].PubDate)
+	})
+	if len(items) > maxEpisodesPerFetch {
+		items = items[:maxEpisodesPerFetch]
 	}
 
 	result := &FetchFromFeedResult{
@@ -274,7 +302,7 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 	const maxConsecutiveFailures = 3
 	consecutiveFailures := 0
 
-	// 2. 各アイテムを処理
+	// 3. 各アイテムを処理
 	for _, item := range items {
 		// タイトルのバリデーション（Create メソッドと同じルール）
 		title := strings.TrimSpace(item.Title)
@@ -310,7 +338,7 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 			continue
 		}
 
-		// 3. 新規エピソードを構築して保存
+		// 4. 新規エピソードを構築して保存
 		episode := &model.Episode{
 			ID:         uuid.New(),
 			PodcastID:  podcastID,
