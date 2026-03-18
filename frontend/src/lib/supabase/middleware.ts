@@ -52,12 +52,15 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // 認証済みユーザーが /login, /signup にアクセスしたらトップへ
-  if (
-    user &&
-    (request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/signup")
-  ) {
+  // /signup は /login にリダイレクト（Google 認証のみのため統合）
+  if (request.nextUrl.pathname === "/signup") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
+  // 認証済みユーザーが /login にアクセスしたらトップへ
+  if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
     return NextResponse.redirect(url);
