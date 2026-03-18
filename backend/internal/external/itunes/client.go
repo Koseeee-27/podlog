@@ -113,7 +113,7 @@ func (c *Client) SearchPodcasts(ctx context.Context, term string, limit int) ([]
 //
 // 見つからなかった場合は nil を返します（エラーにはしません）。
 func (c *Client) LookupByID(ctx context.Context, itunesID int64) (*SearchResult, error) {
-	reqURL := fmt.Sprintf("%s/lookup?id=%d&entity=podcast", c.baseURL, itunesID)
+	reqURL := fmt.Sprintf("%s/lookup?id=%d&entity=podcast&country=JP", c.baseURL, itunesID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, reqURL, nil)
 	if err != nil {
