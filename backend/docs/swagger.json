@@ -743,7 +743,7 @@
                     },
                     {
                         "type": "string",
-                        "description": "ジャンル名（英語）で絞り込み",
+                        "description": "親カテゴリ名（ジャンル一覧 API の id を指定。サブカテゴリに自動展開される）",
                         "name": "genre",
                         "in": "query"
                     },
