@@ -42,6 +42,12 @@ func (m *mockPodcastRepoForGenre) GetDistinctGenres(ctx context.Context) ([]stri
 func (m *mockPodcastRepoForGenre) ExistsByIDs(_ context.Context, _ []uuid.UUID) ([]uuid.UUID, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepoForGenre) UpdateGenre(_ context.Context, _ uuid.UUID, _ string) error {
+	return fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepoForGenre) ListWithoutGenre(_ context.Context) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── テスト: ListGenres ──
 

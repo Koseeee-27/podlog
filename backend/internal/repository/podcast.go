@@ -37,6 +37,14 @@ type PodcastRepository interface {
 	// ExistsByIDs は指定された podcast_id のリストが全てDB上に存在するか確認します。
 	// 存在しない ID がある場合、存在しなかった ID のリストを返します。
 	ExistsByIDs(ctx context.Context, ids []uuid.UUID) (missingIDs []uuid.UUID, err error)
+
+	// UpdateGenre は指定したポッドキャストの genre カラムを更新します。
+	// バッチ処理や iTunes API からのデータ取得時にジャンルを後から埋める用途で使います。
+	UpdateGenre(ctx context.Context, id uuid.UUID, genre string) error
+
+	// ListWithoutGenre は genre が NULL かつ itunes_id が NOT NULL のポッドキャストを返します。
+	// バッチ処理で iTunes API から genre を一括取得する際に対象を特定するために使います。
+	ListWithoutGenre(ctx context.Context) ([]model.Podcast, error)
 }
 
 type podcastRepository struct {
@@ -188,6 +196,39 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genre stri
 	}
 
 	return rows, total, nil
+}
+
+// UpdateGenre は指定したポッドキャストの genre カラムを更新します。
+// updated_at も同時に更新して、最終更新日時を記録します。
+func (r *podcastRepository) UpdateGenre(ctx context.Context, id uuid.UUID, genre string) error {
+	query := `UPDATE podcasts SET genre = $1, updated_at = NOW() WHERE id = $2`
+	result, err := r.db.ExecContext(ctx, query, genre, id)
+	if err != nil {
+		return fmt.Errorf("failed to update podcast genre: %w", err)
+	}
+
+	// RowsAffected で更新対象が存在したかを確認
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("podcast not found: %s", id)
+	}
+
+	return nil
+}
+
+// ListWithoutGenre は genre が NULL かつ itunes_id が NOT NULL のポッドキャストを返します。
+// itunes_id がある番組だけが対象なのは、iTunes API で genre を取得できるのは
+// iTunes 経由で登録された番組のみだからです。
+func (r *podcastRepository) ListWithoutGenre(ctx context.Context) ([]model.Podcast, error) {
+	query := `SELECT * FROM podcasts WHERE genre IS NULL AND itunes_id IS NOT NULL ORDER BY created_at`
+	var podcasts []model.Podcast
+	if err := r.db.SelectContext(ctx, &podcasts, query); err != nil {
+		return nil, fmt.Errorf("failed to list podcasts without genre: %w", err)
+	}
+	return podcasts, nil
 }
 
 // GetDistinctGenres は DB に登録されている番組のジャンル一覧を重複なしで取得します。

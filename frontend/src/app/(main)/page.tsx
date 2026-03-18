@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
+import PopularPodcastsSection from "@/components/home/PopularPodcastsSection";
 import CtaSection from "@/components/home/CtaSection";
 import TimelineSection from "@/components/home/TimelineSection";
 
@@ -16,6 +17,8 @@ export default async function TopPage() {
       {!isLoggedIn && <HeroSection />}
 
       {!isLoggedIn && <FeaturesSection />}
+
+      {!isLoggedIn && <PopularPodcastsSection />}
 
       <TimelineSection headingLevel={isLoggedIn ? "h1" : "h2"} />
 

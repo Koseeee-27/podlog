@@ -58,7 +58,7 @@ export function usePodcastSearch(initialQuery = "") {
   return { query, setQuery, results, loading, error };
 }
 
-export function usePopularPodcasts(enabled = true) {
+export function usePopularPodcasts(enabled = true, limit = 10) {
   const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -74,7 +74,7 @@ export function usePopularPodcasts(enabled = true) {
       setLoading(true);
       setError(null);
       try {
-        const data = await getPopularPodcasts(10);
+        const data = await getPopularPodcasts(limit);
         if (!cancelled) setPodcasts(data);
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
@@ -85,7 +85,7 @@ export function usePopularPodcasts(enabled = true) {
 
     fetch();
     return () => { cancelled = true; };
-  }, [enabled]);
+  }, [enabled, limit]);
 
   return { podcasts, loading, error };
 }

@@ -10,6 +10,14 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.next({ request });
   }
 
+  // /signup は /login にリダイレクト（Google 認証のみのため統合）
+  // 認証チェック不要なので Supabase クライアント生成前に処理する
+  if (request.nextUrl.pathname === "/signup") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    return NextResponse.redirect(url);
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -49,18 +57,22 @@ export async function updateSession(request: NextRequest) {
   if (!user && isProtectedPath) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
   }
 
-  // 認証済みユーザーが /login, /signup にアクセスしたらトップへ
-  if (
-    user &&
-    (request.nextUrl.pathname === "/login" ||
-      request.nextUrl.pathname === "/signup")
-  ) {
+  // 認証済みユーザーが /login にアクセスしたらトップへ
+  if (user && request.nextUrl.pathname === "/login") {
     const url = request.nextUrl.clone();
     url.pathname = "/";
-    return NextResponse.redirect(url);
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
   }
 
   return supabaseResponse;
