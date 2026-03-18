@@ -62,9 +62,11 @@ func NewPodcastUsecase(podcastRepo repository.PodcastRepository) PodcastUsecase 
 
 // Search はアプリ内 DB でポッドキャストをキーワード検索します。
 //
-// 以前は iTunes API を叩いていましたが、機能要件書の仕様に合わせて
-// 「アプリ内 DB に登録済みの番組をキーワードで検索する」に変更しました。
-// レスポンスには平均評価とレビュー件数を含みます。
+// genre パラメータが指定された場合、ExpandGenre を使って親カテゴリに属する
+// 全サブカテゴリに展開してから検索します。
+// 例: genre="Comedy" → ["Comedy", "Comedy Fiction", "Comedy Interviews", "Improv", "Stand-Up"]
+// これにより、フロントエンドが親カテゴリ「コメディ」を選択したとき、
+// サブカテゴリの番組も全てヒットします。
 func (u *podcastUsecase) Search(ctx context.Context, query string, genre string, limit, offset int) (*PodcastSearchResult, error) {
 	if limit <= 0 || limit > 50 {
 		limit = 20
@@ -73,7 +75,14 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 		offset = 0
 	}
 
-	rows, total, err := u.podcastRepo.Search(ctx, query, genre, limit, offset)
+	// genre が指定されている場合、親カテゴリに属するサブカテゴリ一覧に展開します。
+	// genre が空の場合は空スライスを渡し、ジャンル絞り込みなしで検索します。
+	var genres []string
+	if genre != "" {
+		genres = ExpandGenre(genre)
+	}
+
+	rows, total, err := u.podcastRepo.Search(ctx, query, genres, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to search podcasts: %w", err)
 	}

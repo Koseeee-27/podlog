@@ -27,7 +27,10 @@ type PodcastRepository interface {
 	Create(ctx context.Context, podcast *model.Podcast) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 	GetByItunesID(ctx context.Context, itunesID int64) (*model.Podcast, error)
-	Search(ctx context.Context, query string, genre string, limit, offset int) ([]PodcastSearchRow, int, error)
+	// Search はキーワードとジャンルで番組を検索します。
+	// genres が空でなければ、いずれかのジャンルに一致する番組に絞り込みます（IN 句）。
+	// これにより、親カテゴリに属する複数のサブカテゴリで同時に検索できます。
+	Search(ctx context.Context, query string, genres []string, limit, offset int) ([]PodcastSearchRow, int, error)
 	GetPopular(ctx context.Context, limit int) ([]PodcastSearchRow, error)
 
 	// GetDistinctGenres は DB に登録されている番組のジャンル一覧を重複なしで取得します。
@@ -142,21 +145,34 @@ func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([
 // ILIKE は大文字小文字を区別しない LIKE 検索です（PostgreSQL固有）。
 // レビューテーブルとの LEFT JOIN で平均評価とレビュー件数も一緒に取得します。
 // total（マッチした件数）も返し、ページネーションに対応します。
-// genre が空でなければ、そのジャンルに一致する番組のみに絞り込みます。
+// genres が空でなければ、いずれかのジャンルに一致する番組のみに絞り込みます（IN 句）。
 //
 // 総件数（total）とデータ取得を2つの別クエリで行います。
 // COUNT(*) OVER() を使う1クエリ方式だと、offset が結果件数を超えた場合に
 // 行が0件になり total が取得できないバグがあるため、2クエリ方式を採用しています。
-func (r *podcastRepository) Search(ctx context.Context, query string, genre string, limit, offset int) ([]PodcastSearchRow, int, error) {
+func (r *podcastRepository) Search(ctx context.Context, query string, genres []string, limit, offset int) ([]PodcastSearchRow, int, error) {
 	likePattern := "%" + query + "%"
 
 	// ジャンル絞り込みの有無で WHERE 句を動的に組み立てます。
-	// genre が空文字なら全ジャンルが対象、指定があればそのジャンルに絞ります。
+	// genres が空なら全ジャンルが対象、指定があれば IN 句で複数ジャンルに絞ります。
+	//
+	// sqlx.In を使って IN (?) のプレースホルダを展開します。
+	// 例: genres = ["Comedy", "Improv", "Stand-Up"] の場合
+	//   → WHERE p.genre IN ($2, $3, $4) に展開されます。
 	genreFilter := ""
 	args := []interface{}{likePattern}
-	if genre != "" {
-		genreFilter = " AND p.genre = $2"
-		args = append(args, genre)
+	if len(genres) > 0 {
+		// プレースホルダを手動で組み立てます
+		// $2, $3, $4, ... のように連番のプレースホルダを生成します
+		placeholders := ""
+		for i, g := range genres {
+			if i > 0 {
+				placeholders += ", "
+			}
+			placeholders += fmt.Sprintf("$%d", i+2) // $1 は likePattern なので $2 から開始
+			args = append(args, g)
+		}
+		genreFilter = fmt.Sprintf(" AND p.genre IN (%s)", placeholders)
 	}
 
 	// 1. 総件数を取得するクエリ
@@ -168,8 +184,6 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genre stri
 
 	// 2. データ取得クエリ
 	// プレースホルダの番号をジャンル指定の有無で切り替えます。
-	// genre が指定されている場合: $1=likePattern, $2=genre, $3=limit, $4=offset
-	// genre が未指定の場合:     $1=likePattern, $2=limit, $3=offset
 	limitIdx := len(args) + 1
 	offsetIdx := len(args) + 2
 	dataQuery := fmt.Sprintf(`

@@ -37,7 +37,7 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usec
 // @Tags podcasts
 // @Produce json
 // @Param q query string false "検索キーワード（genre 指定時は省略可）"
-// @Param genre query string false "ジャンル名（英語）で絞り込み"
+// @Param genre query string false "親カテゴリ名（ジャンル一覧 API の id を指定。サブカテゴリに自動展開される）"
 // @Param limit query int false "最大取得件数" default(20)
 // @Param offset query int false "オフセット" default(0)
 // @Success 200 {object} usecase.PodcastSearchResult
