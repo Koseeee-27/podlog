@@ -46,7 +46,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             {popularError && <ErrorMessage message={popularError} />}
 
             {!popularLoading && popular.length === 0 && !popularError && (
-              <p className="text-sm text-stone-500">まだ番組がありません</p>
+              <p className="text-sm text-stone-500">まだレビューのある番組がありません</p>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

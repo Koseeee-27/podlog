@@ -195,7 +195,7 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 		INNER JOIN reviews r ON e.id = r.episode_id
 		INNER JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		GROUP BY p.id, p.title, p.author, p.artwork_url
-		ORDER BY total_reviews DESC, average_rating DESC
+		ORDER BY total_reviews DESC, average_rating DESC, p.id
 		LIMIT $1
 	`
 	var rows []PodcastSearchRow
