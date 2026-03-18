@@ -83,8 +83,12 @@ func RunMigrations(databaseDSN string) error {
 	}
 
 	// 適用後のバージョンをログに出力
-	version, dirty, _ := m.Version()
-	log.Printf("マイグレーション完了: バージョン %d (dirty: %v)", version, dirty)
+	version, dirty, verErr := m.Version()
+	if verErr != nil {
+		log.Printf("マイグレーション完了（バージョン取得失敗: %v）", verErr)
+	} else {
+		log.Printf("マイグレーション完了: バージョン %d (dirty: %v)", version, dirty)
+	}
 
 	return nil
 }
