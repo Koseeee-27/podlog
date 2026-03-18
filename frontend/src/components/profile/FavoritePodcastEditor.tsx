@@ -141,6 +141,13 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   function handleInputChange(value: string) {
     setQuery(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    if (value.trim().length === 0) {
+      setResults([]);
+      setSearching(false);
+      return;
+    }
+
     debounceRef.current = setTimeout(() => performSearch(value), 300);
   }
 
