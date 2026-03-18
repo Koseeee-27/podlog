@@ -96,7 +96,7 @@ export default function EpisodeReviewSectionView({
               />
             </>
           ) : myReview && editing ? (
-            <div className="rounded-lg border border-stone-200 p-4">
+            <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-medium text-stone-700">レビューを編集</h3>
                 <button
@@ -117,7 +117,7 @@ export default function EpisodeReviewSectionView({
               />
             </div>
           ) : !submitted ? (
-            <div className="rounded-lg border border-stone-200 p-4">
+            <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
               <h3 className="text-sm font-medium text-stone-700 mb-3">レビューを書く</h3>
               {actionError && <ErrorMessage message={actionError} />}
               <ReviewForm onSubmit={onSubmit} loading={actionLoading} />
@@ -127,7 +127,7 @@ export default function EpisodeReviewSectionView({
           )}
         </>
       ) : (
-        <div className="rounded-lg border border-stone-200 p-4">
+        <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
           <LoginPromptButton label="ログインしてレビューを書く" />
         </div>
       )}

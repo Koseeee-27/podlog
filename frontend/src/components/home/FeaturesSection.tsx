@@ -41,7 +41,7 @@ export default function FeaturesSection() {
         {features.map((feature) => (
           <div
             key={feature.title}
-            className="rounded-xl border border-stone-200 bg-white p-6 text-center"
+            className="rounded-xl border border-stone-200 bg-white p-6 text-center shadow-sm"
           >
             <div className="flex justify-center mb-4">{feature.icon}</div>
             <h3 className="font-semibold text-stone-900">{feature.title}</h3>

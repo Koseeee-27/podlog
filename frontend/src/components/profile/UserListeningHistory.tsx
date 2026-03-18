@@ -42,7 +42,7 @@ export default function UserListeningHistory({
       ) : (
         <div className="space-y-2">
           {records.map((record) => (
-            <div key={record.id} className="rounded-lg border border-stone-200 p-3">
+            <div key={record.id} className="rounded-xl border border-stone-200 bg-white p-3 shadow-sm">
               <Link
                 href={`/episodes/${record.episode.id}`}
                 className="text-sm font-medium text-stone-900 hover:text-rose-600"

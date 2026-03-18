@@ -10,7 +10,7 @@ export default function EpisodeCard({ episode }: EpisodeCardProps) {
   return (
     <Link
       href={`/episodes/${episode.id}`}
-      className="block p-4 bg-white rounded-lg border border-stone-200 hover:shadow-sm transition-shadow"
+      className="block p-4 bg-white rounded-xl border border-stone-200 shadow-sm hover:shadow-md transition-shadow"
     >
       <h3 className="font-medium text-stone-900 line-clamp-2">{episode.title}</h3>
       <div className="mt-2 flex items-center gap-3 text-xs text-stone-500">
