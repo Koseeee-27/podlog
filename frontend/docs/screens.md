@@ -60,7 +60,7 @@ flowchart TD
     end
 
     subgraph メイン画面
-        HOME["/&lt;br&gt;トップページ"]
+        HOME["/<br>トップページ"]
         DISCOVER["/discover<br>探す"]
         PODCAST["/podcasts/[id]<br>番組詳細"]
         EPISODE["/episodes/[id]<br>エピソード詳細"]
@@ -85,7 +85,6 @@ flowchart TD
     LOGIN -- "Google OAuth 開始" --> CALLBACK
     CALLBACK -- "認証成功" --> HOME
     CALLBACK -- "認証失敗" --> LOGIN
-    HOME -- "useAuth: プロフィール未設定を検知" --> SETUP
     SETUP -- "設定完了 → refreshProfile" --> HOME
     SETUP -- "未認証" --> LOGIN
     SETUP -- "設定済み" --> HOME
@@ -121,7 +120,7 @@ flowchart TD
 
     %% 設定画面からの遷移
     SETTINGS -- "「プロフィールを編集する」押下" --> PROFILE_EDIT
-    SETTINGS -- "「ログアウト」押下" --> LOGIN
+    SETTINGS -- "「ログアウト」→ signOut()" --> LOGIN
     SETTINGS -- "未認証" --> LOGIN
 
     %% プロフィール編集からの遷移
@@ -158,8 +157,9 @@ flowchart TD
 
     %% ログイン済み・プロフィール未設定
     NOPROFILE_CHECK -- "/, /discover,<br>/podcasts/[id],<br>/episodes/[id],<br>/users/[username]" --> VIEW_OK["閲覧可能"]
-    NOPROFILE_CHECK -- "/login" --> REDIRECT_HOME_MW["/  へリダイレクト<br>（middleware）"]
-    NOPROFILE_CHECK -- "/settings,<br>/settings/profile" --> REDIRECT_SETUP_CLIENT["/profile/setup へリダイレクト<br>（クライアント側）"]
+    NOPROFILE_CHECK -- "/login" --> REDIRECT_HOME_MW["/ へリダイレクト<br>（middleware）"]
+    NOPROFILE_CHECK -- "/settings" --> VIEW_SETTINGS["閲覧可能<br>（プロフィール編集は<br>/profile/setup へリダイレクト）"]
+    NOPROFILE_CHECK -- "/settings/profile" --> REDIRECT_SETUP_CLIENT["/profile/setup へリダイレクト<br>（クライアント側）"]
     NOPROFILE_CHECK -- "/profile/setup" --> SETUP_PAGE["プロフィール初期設定<br>画面を表示"]
 ```
 
@@ -181,7 +181,7 @@ flowchart LR
     subgraph DROPDOWN["PC: ドロップダウンメニュー"]
         DD_MYPAGE["マイページ → /users/{username}"]
         DD_SETTINGS["設定 → /settings"]
-        DD_LOGOUT["ログアウト → / （状態リセット）"]
+        DD_LOGOUT["ログアウト → 状態リセット<br>（ページ遷移なし）"]
     end
 
     subgraph SP["SP: ボトムナビ"]
@@ -204,7 +204,8 @@ flowchart LR
 - SP ボトムナビの「記録する」タブは、`/record` ページ未実装のため現在 disabled 状態
 - `/profile` は `/settings/profile`（プロフィール編集）とは別のページとして存在するが、#127 で削除予定。現在はユーザーページ（SP）の「プロフィール編集」リンクから遷移する
 - OAuth コールバック (`/callback`) は `next` クエリパラメータでリダイレクト先を指定できるが、現在のログイン実装では常に `/`（デフォルト値）へリダイレクトする
-- SettingsClient のログアウト処理は `/login` へ遷移する（仕様書の「`/` へ遷移」とは異なる。コード上の実装を記載）
+- SettingsClient のログアウト処理は `signOut()` 後に `/login` へ遷移する（仕様書の「`/` へ遷移」とは異なる。コード上の実装を記載）
+- Navbar ドロップダウンのログアウトは `signOut()` のみを呼び、明示的なページ遷移はしない（状態が `unauthenticated` に変わり、UI が再レンダーされる）
 
 ---
 
