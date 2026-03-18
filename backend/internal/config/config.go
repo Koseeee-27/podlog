@@ -55,12 +55,38 @@ func (c *Config) DatabaseDSN() string {
 	return u.String()
 }
 
+// Validate は必須の設定値が正しくセットされているかチェックします。
+// 未設定の場合はどの環境変数が足りないかを明示したエラーを返します。
+func (c *Config) Validate() error {
+	var missing []string
+
+	if c.SupabaseURL == "" {
+		missing = append(missing, "SUPABASE_URL")
+	}
+
+	if len(missing) > 0 {
+		return fmt.Errorf(
+			"必須の環境変数が設定されていません: %s\n"+
+				"  → .env.example を参考に .env ファイルを作成してください:\n"+
+				"    cp .env.example .env\n"+
+				"  → SUPABASE_URL は Supabase ダッシュボード → Settings → API → Project URL から取得できます",
+			fmt.Sprintf("%v", missing),
+		)
+	}
+
+	return nil
+}
+
 // Load は環境変数から Config を読み込みます。
 // env.Parse が構造体の `env` タグを読み取り、対応する環境変数の値をセットします。
+// 読み込み後に Validate() で必須値のチェックも行います。
 func Load() (*Config, error) {
 	cfg := &Config{}
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
+	}
+	if err := cfg.Validate(); err != nil {
+		return nil, err
 	}
 	return cfg, nil
 }

@@ -38,6 +38,9 @@ services:
       DB_SSLMODE: "disable"
       APP_ENV: "development"
       CORS_ALLOW_ORIGINS: "http://localhost:3000"
+      # Supabase プロジェクト URL（必須）
+      # .env ファイルから読み込まれる。未設定だと JWT 検証（JWK 取得）に失敗する。
+      # 設定手順: cp .env.example .env して SUPABASE_URL を記入する
       SUPABASE_URL: "${SUPABASE_URL}"
     depends_on:
       db:
