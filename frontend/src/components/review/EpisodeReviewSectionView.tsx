@@ -4,6 +4,8 @@ import ReviewCard from "./ReviewCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import MyReviewCard from "./MyReviewCard";
+import EmptyState from "@/components/ui/EmptyState";
+import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
 
 export interface EpisodeReviewSectionViewProps {
   reviews: ReviewItem[];
@@ -133,9 +135,10 @@ export default function EpisodeReviewSectionView({
       {listError && <ErrorMessage message={listError} />}
 
       {otherReviews.length === 0 && !listLoading && !hasMore ? (
-        <p className="text-sm text-stone-500">
-          {myReview ? "他のレビューはありません" : "まだレビューはありません"}
-        </p>
+        <EmptyState
+          icon={<ChatBubbleLeftRightIcon className="h-12 w-12" />}
+          message={myReview ? "他のレビューはありません" : "まだレビューはありません"}
+        />
       ) : (
         <div className="space-y-3">
           {otherReviews.map((review) => (

@@ -8,6 +8,8 @@ import PodcastCard from "@/components/podcast/PodcastCard";
 import GenreChips from "@/components/discover/GenreChips";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Loading from "@/components/ui/Loading";
+import EmptyState from "@/components/ui/EmptyState";
+import { MagnifyingGlassIcon, MicrophoneIcon } from "@heroicons/react/24/outline";
 
 interface DiscoverClientProps {
   initialQuery: string;
@@ -65,9 +67,11 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             {searchError && <ErrorMessage message={searchError} />}
 
             {!searchLoading && results.length === 0 && !searchError && (
-              <p className="text-center py-12 text-stone-500">
-                &ldquo;{query}&rdquo; に一致するポッドキャストが見つかりませんでした
-              </p>
+              <EmptyState
+                icon={<MagnifyingGlassIcon className="h-12 w-12" />}
+                message={`"${query}" に一致するポッドキャストが見つかりませんでした`}
+                description="別のキーワードで試してみてください"
+              />
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -87,9 +91,11 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             {genreError && <ErrorMessage message={genreError} />}
 
             {!genreLoading && genrePodcasts.length === 0 && !genreError && (
-              <p className="text-sm text-stone-500">
-                このジャンルの番組はまだありません
-              </p>
+              <EmptyState
+                icon={<MicrophoneIcon className="h-12 w-12" />}
+                message="このジャンルの番組はまだありません"
+                description="他のジャンルを探してみましょう"
+              />
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
