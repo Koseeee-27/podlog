@@ -41,7 +41,7 @@ export function useListeningStatus(episodeId: string) {
     return () => { cancelled = true; };
   }, [episodeId]);
 
-  const toggle = useCallback(async () => {
+  const toggle = useCallback(async (): Promise<boolean> => {
     setToggling(true);
     setError(null);
     try {
@@ -52,8 +52,10 @@ export function useListeningStatus(episodeId: string) {
         await addListeningRecord(episodeId);
         setListened(true);
       }
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "操作に失敗しました");
+      return false;
     } finally {
       setToggling(false);
     }
