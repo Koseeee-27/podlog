@@ -122,9 +122,10 @@ export default function Navbar() {
                         <div className="border-t border-stone-100 mt-1 pt-1">
                           <button
                             type="button"
-                            onClick={() => {
+                            onClick={async () => {
                               setDropdownOpen(false);
-                              void auth.signOut();
+                              await auth.signOut();
+                              router.push("/login");
                             }}
                             className="block w-full text-left px-4 py-2 text-sm text-stone-700 hover:bg-stone-50 transition-colors"
                           >
