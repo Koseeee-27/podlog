@@ -59,6 +59,9 @@ func (m *mockPodcastRepo) GetByItunesID(_ context.Context, _ int64) (*model.Podc
 func (m *mockPodcastRepo) Search(_ context.Context, _ string, _ int, _ int) ([]repository.PodcastSearchRow, int, error) {
 	return nil, 0, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepo) GetPopular(_ context.Context, _ int) ([]repository.PodcastSearchRow, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 func (m *mockPodcastRepo) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([]uuid.UUID, error) {
 	if m.existsByIDsFn == nil {
 		return nil, fmt.Errorf("mockPodcastRepo.ExistsByIDs: not implemented")

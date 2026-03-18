@@ -21,7 +21,7 @@ export default function Navbar() {
   const handleSearch = (e: FormEvent) => {
     e.preventDefault();
     const q = searchQuery.trim();
-    router.push(q ? `/search?q=${encodeURIComponent(q)}` : "/search");
+    router.push(q ? `/discover?q=${encodeURIComponent(q)}` : "/discover");
   };
 
   // ドロップダウン外クリックで閉じる

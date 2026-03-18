@@ -44,6 +44,7 @@ type PodcastSearchItem struct {
 // PodcastUsecase はポッドキャストに関するビジネスロジックです。
 type PodcastUsecase interface {
 	Search(ctx context.Context, query string, limit, offset int) (*PodcastSearchResult, error)
+	GetPopular(ctx context.Context, limit int) (*PodcastSearchResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 }
 
@@ -92,6 +93,37 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, limit, offset
 	return &PodcastSearchResult{
 		Podcasts: items,
 		Total:    total,
+	}, nil
+}
+
+// GetPopular はレビュー件数の多い人気番組を取得します。
+func (u *podcastUsecase) GetPopular(ctx context.Context, limit int) (*PodcastSearchResult, error) {
+	if limit <= 0 {
+		limit = 10
+	} else if limit > 50 {
+		limit = 50
+	}
+
+	rows, err := u.podcastRepo.GetPopular(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get popular podcasts: %w", err)
+	}
+
+	items := make([]PodcastSearchItem, 0, len(rows))
+	for _, row := range rows {
+		items = append(items, PodcastSearchItem{
+			ID:            row.ID,
+			Title:         row.Title,
+			Author:        row.Author,
+			ArtworkURL:    row.ArtworkURL,
+			AverageRating: roundToOneDecimal(row.AverageRating),
+			TotalReviews:  row.TotalReviews,
+		})
+	}
+
+	return &PodcastSearchResult{
+		Podcasts: items,
+		Total:    len(items),
 	}, nil
 }
 

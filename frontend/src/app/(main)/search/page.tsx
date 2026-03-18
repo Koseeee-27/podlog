@@ -1,5 +1,11 @@
-import SearchClient from "./SearchClient";
+import { redirect } from "next/navigation";
 
-export default function SearchPage() {
-  return <SearchClient />;
+interface SearchPageProps {
+  searchParams: Promise<{ q?: string | string[] }>;
+}
+
+export default async function SearchPage({ searchParams }: SearchPageProps) {
+  const { q } = await searchParams;
+  const query = Array.isArray(q) ? q[0] ?? "" : q ?? "";
+  redirect(query ? `/discover?q=${encodeURIComponent(query)}` : "/discover");
 }

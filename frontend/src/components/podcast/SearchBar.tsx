@@ -18,7 +18,8 @@ export default function SearchBar({ value, onChange, loading }: SearchBarProps) 
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="ポッドキャストを検索..."
+        placeholder="番組名で検索..."
+        aria-label="番組を検索"
         className="block w-full pl-10 pr-10 py-3 rounded-xl border border-stone-300 text-sm shadow-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
       />
       {loading && (
