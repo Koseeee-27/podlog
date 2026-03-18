@@ -64,7 +64,10 @@ export function usePopularPodcasts(enabled = true) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled) {
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
 
     async function fetch() {
