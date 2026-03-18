@@ -15,7 +15,8 @@ async function hasProfile(accessToken: string): Promise<boolean> {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
     if (res.status === 404) return false;
-    return res.ok;
+    // 404 以外のエラー（500等）は「プロフィール有無が不明」なので安全側（true）
+    return true;
   } catch {
     // ネットワークエラー等の場合はホームへ遷移させる
     return true;
