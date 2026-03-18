@@ -125,7 +125,7 @@ flowchart TD
 
     %% プロフィール編集からの遷移
     PROFILE_EDIT -- "「保存する」押下" --> USER
-    PROFILE_EDIT -- "「キャンセル」押下" --> HOME
+    PROFILE_EDIT -- "「キャンセル」押下 ※1" --> HOME
     PROFILE_EDIT -- "未認証" --> LOGIN
     PROFILE_EDIT -- "プロフィール未設定" --> SETUP
 
@@ -137,6 +137,8 @@ flowchart TD
     LOGIN -- "認証済みでアクセス（middleware）" --> HOME
     LOGIN -- "ロゴ押下" --> HOME
 ```
+
+> **※1** 実装上は `router.back()` で前のページに戻る。遷移先は固定ではない。
 
 ### 認証状態による分岐
 
@@ -172,8 +174,8 @@ flowchart LR
     subgraph PC["PC: ヘッダーナビ"]
         PC_LOGO["ロゴ → /"]
         PC_SEARCH["検索バー → /discover?q=..."]
-        PC_RECORD["「記録する」ボタン → /search → /discover<br>（ログイン済み時のみ表示）"]
-        PC_AVATAR["アバター → ドロップダウン"]
+        PC_RECORD["「記録する」ボタン → /search → /discover<br>（プロフィール設定済み時のみ表示）"]
+        PC_AVATAR["アバター → ドロップダウン<br>（プロフィール設定済み時のみ表示）"]
         PC_LOGIN_BTN["「ログイン」ボタン → /login<br>（未ログイン時のみ表示）"]
         PC_SETUP_BTN["「プロフィール設定」→ /profile/setup<br>（プロフィール未設定時のみ表示）"]
     end
@@ -238,12 +240,12 @@ flowchart LR
 | --------- | --------- | ------------------------------ |
 | ロゴ        | 左         | 「PodLog」。クリックで `/` へ遷移         |
 | 検索バー      | 中央        | キーワード入力で `/discover?q=...` へ遷移 |
-| 「＋ 記録」ボタン | 右（ログイン済み） | `/record` へ遷移                  |
-| アバター      | 右（ログイン済み） | クリックでドロップダウンメニュー               |
+| 「＋ 記録」ボタン | 右（プロフィール設定済み） | `/record` へ遷移                  |
+| アバター      | 右（プロフィール設定済み） | クリックでドロップダウンメニュー               |
 | ログインボタン   | 右（未ログイン）  | `/login` へ遷移                   |
 
 
-**アバタードロップダウン（ログイン済み時）:**
+**アバタードロップダウン（プロフィール設定済み時）:**
 
 - 表示名、@username
 - マイページ → `/users/{username}`
