@@ -110,7 +110,16 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
-    dialogRef.current?.showModal();
+    const dialog = dialogRef.current;
+    dialog?.showModal();
+
+    // cleanup: unmount 時に debounce タイマーをクリアし、dialog を閉じる
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+      dialog?.close();
+    };
   }, []);
 
   const performSearch = useCallback(async (q: string) => {

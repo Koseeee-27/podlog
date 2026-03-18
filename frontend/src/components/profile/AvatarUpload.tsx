@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { type ChangeEvent, useRef, useState, useTransition, useEffect, useCallback } from "react";
 import Image from "next/image";
 import { uploadAvatar } from "@/lib/api/users";
 import { CameraIcon } from "@heroicons/react/24/outline";
@@ -27,21 +27,40 @@ export default function AvatarUpload({
 
   const avatarSrc = previewUrl ?? currentAvatarUrl;
 
-  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+  // ObjectURL のメモリリーク防止: 古い ObjectURL を解放するヘルパー
+  const revokePreview = useCallback(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+  }, [previewUrl]);
+
+  // previewUrl が変わるたびにクリーンアップ関数を更新し、unmount 時に解放する
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  function handleFileSelect(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (!ALLOWED_TYPES.includes(file.type)) {
       onError("JPEG または PNG 形式の画像を選択してください");
+      e.target.value = "";
       return;
     }
 
     if (file.size > MAX_FILE_SIZE) {
       onError("ファイルサイズは 2MB 以下にしてください");
+      e.target.value = "";
       return;
     }
 
-    // プレビュー表示
+    // 古い ObjectURL を解放してからプレビュー表示
+    revokePreview();
     const objectUrl = URL.createObjectURL(file);
     setPreviewUrl(objectUrl);
 
@@ -49,8 +68,13 @@ export default function AvatarUpload({
     startTransition(async () => {
       try {
         const result = await uploadAvatar(file);
+        // アップロード成功: プレビューをサーバーの URL に切り替え、ObjectURL を解放
+        URL.revokeObjectURL(objectUrl);
+        setPreviewUrl(null);
         onUploadComplete(result.avatar_url);
       } catch (err) {
+        // エラー時: ObjectURL を解放してプレビューをクリア
+        URL.revokeObjectURL(objectUrl);
         setPreviewUrl(null);
         onError(err instanceof Error ? err.message : "アバターのアップロードに失敗しました");
       }

@@ -33,6 +33,7 @@ export default function ProfileEditPage({
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
   const [loadingFavorites, setLoadingFavorites] = useState(true);
+  const [favoritesLoadError, setFavoritesLoadError] = useState(false);
 
   // 好きな番組を取得（外部データの同期なので useEffect が適切）
   useEffect(() => {
@@ -45,7 +46,10 @@ export default function ProfileEditPage({
         }
       })
       .catch(() => {
-        // エラー時は空配列のまま
+        if (!cancelled) {
+          setFavoritesLoadError(true);
+          setError("好きな番組の取得に失敗しました。お気に入りの編集はできません。");
+        }
       })
       .finally(() => {
         if (!cancelled) setLoadingFavorites(false);
@@ -64,16 +68,20 @@ export default function ProfileEditPage({
     startTransition(async () => {
       try {
         // プロフィール更新（表示名・自己紹介）
+        // bio は空文字を明示的に送信して、バックエンドで bio をクリアできるようにする
         await updateMyProfile({
           display_name: displayName.trim(),
-          bio: bio.trim() || undefined,
+          bio: bio.trim(),
         });
 
         // 好きな番組が変更されている場合のみ更新
-        const currentIds = favoritePodcasts.map((p) => p.id).sort().join(",");
-        const initialIds = initialFavoritePodcastsRef.current.map((p) => p.id).sort().join(",");
-        if (currentIds !== initialIds) {
-          await updateMyFavoritePodcasts(favoritePodcasts.map((p) => p.id));
+        // お気に入り取得に失敗していた場合はデータ欠損を防ぐため更新をスキップ
+        if (!favoritesLoadError) {
+          const currentIds = favoritePodcasts.map((p) => p.id).sort().join(",");
+          const initialIds = initialFavoritePodcastsRef.current.map((p) => p.id).sort().join(",");
+          if (currentIds !== initialIds) {
+            await updateMyFavoritePodcasts(favoritePodcasts.map((p) => p.id));
+          }
         }
 
         // プロフィールを再取得してから遷移
@@ -132,6 +140,15 @@ export default function ProfileEditPage({
                 好きな番組
               </label>
               <p className="text-sm text-stone-500">読み込み中...</p>
+            </div>
+          ) : favoritesLoadError ? (
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                好きな番組
+              </label>
+              <p className="text-sm text-red-500">
+                好きな番組の読み込みに失敗しました。このまま保存すると、好きな番組は変更されません。
+              </p>
             </div>
           ) : (
             <FavoritePodcastEditor
