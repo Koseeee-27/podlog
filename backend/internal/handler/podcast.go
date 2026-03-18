@@ -36,7 +36,7 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usec
 // @Description アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。
 // @Tags podcasts
 // @Produce json
-// @Param q query string true "検索キーワード"
+// @Param q query string false "検索キーワード（genre 指定時は省略可）"
 // @Param genre query string false "ジャンル名（英語）で絞り込み"
 // @Param limit query int false "最大取得件数" default(20)
 // @Param offset query int false "オフセット" default(0)
@@ -45,11 +45,12 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usec
 // @Router /podcasts/search [get]
 func (h *PodcastHandler) Search(c echo.Context) error {
 	query := c.QueryParam("q")
-	if query == "" {
-		return response.Error(c, http.StatusBadRequest, "query parameter 'q' is required")
-	}
-
 	genre := c.QueryParam("genre")
+
+	// genre が指定されていればキーワード無しでのブラウズを許可する
+	if query == "" && genre == "" {
+		return response.Error(c, http.StatusBadRequest, "query parameter 'q' is required (can be omitted when 'genre' is specified)")
+	}
 	limit, offset := parsePagination(c)
 
 	result, err := h.podcastUsecase.Search(c.Request().Context(), query, genre, limit, offset)

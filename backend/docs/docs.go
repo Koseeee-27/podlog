@@ -743,10 +743,9 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "検索キーワード",
+                        "description": "検索キーワード（genre 指定時は省略可）",
                         "name": "q",
-                        "in": "query",
-                        "required": true
+                        "in": "query"
                     },
                     {
                         "type": "string",

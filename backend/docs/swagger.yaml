@@ -1154,10 +1154,9 @@ paths:
     get:
       description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。
       parameters:
-      - description: 検索キーワード
+      - description: 検索キーワード（genre 指定時は省略可）
         in: query
         name: q
-        required: true
         type: string
       - description: ジャンル名（英語）で絞り込み
         in: query
