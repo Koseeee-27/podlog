@@ -38,7 +38,9 @@ func TestLookupByID_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode response: %v", err)
+			t.Errorf("failed to encode response: %v", err)
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
 		}
 	}))
 	defer server.Close()
@@ -72,7 +74,9 @@ func TestLookupByID_NotFound(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode response: %v", err)
+			t.Errorf("failed to encode response: %v", err)
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
 		}
 	}))
 	defer server.Close()
@@ -127,7 +131,9 @@ func TestSearchPodcasts_Success(t *testing.T) {
 
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode response: %v", err)
+			t.Errorf("failed to encode response: %v", err)
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
 		}
 	}))
 	defer server.Close()

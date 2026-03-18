@@ -64,7 +64,8 @@ func TestRun_NoPodcastsToUpdate(t *testing.T) {
 
 	// iTunes API は呼ばれないはずなので、呼ばれたらテスト失敗
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		t.Fatal("iTunes API should not be called when no podcasts need updating")
+		t.Error("iTunes API should not be called when no podcasts need updating")
+		http.Error(w, "unexpected call", http.StatusInternalServerError)
 	}))
 	defer server.Close()
 
@@ -116,7 +117,9 @@ func TestRun_UpdatesGenreSuccessfully(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode response: %v", err)
+			t.Errorf("failed to encode response: %v", err)
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
 		}
 	}))
 	defer server.Close()
@@ -165,7 +168,9 @@ func TestRun_SkipsWhenItunesReturnsNotFound(t *testing.T) {
 		}
 		w.Header().Set("Content-Type", "application/json")
 		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			t.Fatalf("failed to encode response: %v", err)
+			t.Errorf("failed to encode response: %v", err)
+			http.Error(w, "encode error", http.StatusInternalServerError)
+			return
 		}
 	}))
 	defer server.Close()
