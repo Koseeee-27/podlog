@@ -67,7 +67,6 @@ flowchart TD
         USER["/users/[username]<br>ユーザーページ"]
         SETTINGS["/settings<br>設定"]
         PROFILE_EDIT["/settings/profile<br>プロフィール編集"]
-        PROFILE["&#47;profile<br>プロフィール<br>（#127 で削除予定）"]
     end
 
     subgraph リダイレクト
@@ -115,8 +114,7 @@ flowchart TD
     USER -- "聴取履歴の番組名押下" --> PODCAST
     USER -- "レビューのエピソードタイトル押下" --> EPISODE
     USER -- "レビューの番組名押下" --> PODCAST
-    USER -- "「プロフィール編集」押下（自分・SP のみ）" --> PROFILE
-    USER -- "「設定」押下（自分・SP のみ）" --> SETTINGS
+    USER -- "歯車アイコン押下（自分・SP のみ）" --> SETTINGS
 
     %% 設定画面からの遷移
     SETTINGS -- "「プロフィールを編集する」押下" --> PROFILE_EDIT
@@ -128,10 +126,6 @@ flowchart TD
     PROFILE_EDIT -- "「キャンセル」押下 ※1" --> HOME
     PROFILE_EDIT -- "未認証" --> LOGIN
     PROFILE_EDIT -- "プロフィール未設定" --> SETUP
-
-    %% /profile からの遷移（#127 で削除予定）
-    PROFILE -- "未認証" --> LOGIN
-    PROFILE -- "プロフィール未設定" --> SETUP
 
     %% ログイン画面の分岐
     LOGIN -- "認証済みでアクセス（middleware）" --> HOME
@@ -204,7 +198,7 @@ flowchart LR
 - `/search` は `/discover` にリダイレクトされる（互換性維持のための旧パス）
 - PC ヘッダーの「記録する」ボタンは、現在 `/search` を経由して `/discover` へリダイレクトされる。`/record` ページの実装後に遷移先が変更される予定
 - SP ボトムナビの「記録する」タブは、`/record` ページ未実装のため現在 disabled 状態
-- `/profile` は `/settings/profile`（プロフィール編集）とは別のページとして存在するが、#127 で削除予定。現在はユーザーページ（SP）の「プロフィール編集」リンクから遷移する
+- `/profile` は `/settings/profile` へリダイレクトされる（#127 で統一済み）
 - OAuth コールバック (`/callback`) は `next` クエリパラメータでリダイレクト先を指定できるが、現在のログイン実装では常に `/`（デフォルト値）へリダイレクトする
 - SettingsClient のログアウト処理は `signOut()` 後に `/login` へ遷移する（仕様書の「`/` へ遷移」とは異なる。コード上の実装を記載）
 - Navbar ドロップダウンのログアウトは `signOut()` のみを呼び、明示的なページ遷移はしない（状態が `unauthenticated` に変わり、UI が再レンダーされる）
