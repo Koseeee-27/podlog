@@ -43,6 +43,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to load config: %v", err)
 	}
+	// サーバー起動に必要な環境変数のバリデーション
+	// バッチ（backfill-genre 等）では不要なため、Load() とは分離している
+	if err := cfg.Validate(); err != nil {
+		log.Fatalf("config validation failed: %v", err)
+	}
 
 	// 2. データベースに接続
 	// DatabaseDSN() は net/url を使ってユーザー名・パスワードを安全にエスケープする

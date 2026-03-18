@@ -48,6 +48,34 @@ func TestDatabaseDSN_SpecialCharsInPassword(t *testing.T) {
 	}
 }
 
+func TestValidate_MissingSupabaseURL(t *testing.T) {
+	// SUPABASE_URL が空の場合、Validate はエラーを返すべき
+	cfg := &Config{
+		SupabaseURL: "",
+	}
+
+	err := cfg.Validate()
+	if err == nil {
+		t.Fatal("expected error when SUPABASE_URL is empty, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "SUPABASE_URL") {
+		t.Errorf("error message should mention SUPABASE_URL, got: %s", err.Error())
+	}
+}
+
+func TestValidate_WithSupabaseURL(t *testing.T) {
+	// SUPABASE_URL が設定されている場合、Validate はエラーを返さない
+	cfg := &Config{
+		SupabaseURL: "https://example.supabase.co",
+	}
+
+	err := cfg.Validate()
+	if err != nil {
+		t.Errorf("expected no error when SUPABASE_URL is set, got: %v", err)
+	}
+}
+
 func TestDatabaseDSN_SpecialCharsInUser(t *testing.T) {
 	// ユーザー名に特殊文字が含まれるケース
 	cfg := &Config{
