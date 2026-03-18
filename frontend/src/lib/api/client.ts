@@ -55,6 +55,24 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
   return handleResponse<T>(response);
 }
 
+export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
+  const supabase = createClient();
+  const { data: { session } } = await supabase.auth.getSession();
+
+  const headers: HeadersInit = {};
+  if (session?.access_token) {
+    headers["Authorization"] = `Bearer ${session.access_token}`;
+  }
+  // Content-Type は設定しない（ブラウザが multipart/form-data の boundary を自動付与する）
+
+  const response = await fetch(`${API_BASE_URL}${path}`, {
+    method: "POST",
+    headers,
+    body: formData,
+  });
+  return handleResponse<T>(response);
+}
+
 export async function apiDelete(path: string): Promise<void> {
   const headers = await getAuthHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, {
