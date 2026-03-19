@@ -102,10 +102,16 @@ func (u *podcastUsecase) Create(ctx context.Context, input CreatePodcastInput) (
 
 	// 3. DB に保存
 	if err := u.podcastRepo.Create(ctx, podcast); err != nil {
-		return nil, fmt.Errorf("failed to create podcast: %w", err)
+		return nil, err
 	}
 
-	return podcast, nil
+	// 4. DB から読み直して created_at / updated_at を含む完全なデータを返す
+	created, err := u.podcastRepo.GetByID(ctx, podcast.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve created podcast: %w", err)
+	}
+
+	return created, nil
 }
 
 // Search はアプリ内 DB でポッドキャストをキーワード検索します。

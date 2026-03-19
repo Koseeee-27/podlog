@@ -73,7 +73,6 @@ func TestPodcastUsecase_Create(t *testing.T) {
 
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
 			createFn: func(_ context.Context, podcast *model.Podcast) error {
-				// source_type が "manual" に設定されていることを確認
 				if podcast.SourceType != "manual" {
 					t.Errorf("source_type = %q, want %q", podcast.SourceType, "manual")
 				}
@@ -81,6 +80,14 @@ func TestPodcastUsecase_Create(t *testing.T) {
 					t.Errorf("title = %q, want %q", podcast.Title, "テスト番組")
 				}
 				return nil
+			},
+			getByIDFn: func(_ context.Context, id uuid.UUID) (*model.Podcast, error) {
+				return &model.Podcast{
+					ID:         id,
+					Title:      "テスト番組",
+					Author:     &author,
+					SourceType: "manual",
+				}, nil
 			},
 		})
 
