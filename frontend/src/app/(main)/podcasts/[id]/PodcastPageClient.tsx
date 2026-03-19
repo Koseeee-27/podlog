@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
@@ -34,8 +34,6 @@ export default function PodcastPageClient() {
     fetchFailed: favoriteFetchFailed,
   } = useFavoritePodcast(id, username);
   const hasFetchedRef = useRef(false);
-  // トースト表示用: 初回ロード完了後にフラグを立て、以降の変化のみトーストを出す
-  const hasInitializedFavoriteRef = useRef(false);
 
   // favoriteError が発生したらエラートーストを表示
   useEffect(() => {
@@ -44,16 +42,15 @@ export default function PodcastPageClient() {
     }
   }, [favoriteError, showToast]);
 
-  // isFavorite の変化を検知してトーストを表示（初期ロード時は除外）
-  useEffect(() => {
-    if (favoriteLoading) return;
-    // 初回ロード完了時はフラグを立てるだけでトーストは出さない
-    if (!hasInitializedFavoriteRef.current) {
-      hasInitializedFavoriteRef.current = true;
-      return;
+  // toggle の結果に応じてトーストを表示（isFavorite の監視ではなく操作の結果で判定）
+  const handleToggleFavorite = useCallback(async () => {
+    const result = await toggleFavorite();
+    if (result === "added") {
+      showToast("好きな番組に追加しました");
+    } else if (result === "removed") {
+      showToast("好きな番組から削除しました");
     }
-    showToast(isFavorite ? "好きな番組に追加しました" : "好きな番組から削除しました");
-  }, [isFavorite, favoriteLoading, showToast]);
+  }, [toggleFavorite, showToast]);
 
   // ログイン済みかつ feed_url がある場合のみ、初回エピソードロード完了後に
   // 自動で RSS フィードからエピソードを取得する。
@@ -103,7 +100,7 @@ export default function PodcastPageClient() {
             <FavoriteButton
               isFavorite={isFavorite}
               isPending={favoritePending}
-              onClick={toggleFavorite}
+              onClick={handleToggleFavorite}
             />
           ) : undefined
         }
