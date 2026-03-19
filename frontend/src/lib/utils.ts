@@ -38,13 +38,16 @@ export function formatStars(rating: number): string {
 /**
  * HTML タグを除去してプレーンテキストを返す。
  * RSS フィードの説明文などに含まれる <p>, <a> 等のタグを取り除く。
- * 段落・改行タグはスペースに置換してからタグ除去し、連続する空白を正規化する。
+ * 段落・改行タグは改行に置換して段落構造を保持し、
+ * 連続する改行を最大2つに正規化する。
  */
 export function stripHtmlTags(html: string): string {
   return html
-    .replace(/<\/?(p|br|div|li|tr|h[1-6])[^>]*>/gi, " ")
+    .replace(/<\/?(p|br|div|li|tr|h[1-6])[^>]*>/gi, "\n")
     .replace(/<[^>]*>/g, "")
-    .replace(/\s+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
+    .replace(/[^\S\n]+/g, " ")
+    .replace(/^ +| +$/gm, "")
     .trim();
 }
 
