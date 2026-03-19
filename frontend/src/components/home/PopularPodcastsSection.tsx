@@ -1,12 +1,12 @@
 import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
 import { serverGet } from "@/lib/api/server";
-import type { PodcastSearchResult } from "@/types/podcast";
+import type { PodcastSearchItem, PodcastSearchResult } from "@/types/podcast";
 
 const DISPLAY_COUNT = 6;
 
 export default async function PopularPodcastsSection() {
-  let podcasts;
+  let podcasts: PodcastSearchItem[] = [];
   try {
     const result = await serverGet<PodcastSearchResult>(
       `/podcasts/popular?limit=${DISPLAY_COUNT}`,

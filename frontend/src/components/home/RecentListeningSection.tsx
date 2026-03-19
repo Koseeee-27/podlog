@@ -3,7 +3,10 @@ import EmptyState from "@/components/ui/EmptyState";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
 import { serverGet } from "@/lib/api/server";
 import { formatDate } from "@/lib/utils";
-import type { ListeningRecordListResult } from "@/types/listening-record";
+import type {
+  ListeningRecordItem,
+  ListeningRecordListResult,
+} from "@/types/listening-record";
 
 const DISPLAY_LIMIT = 5;
 
@@ -14,7 +17,7 @@ interface RecentListeningSectionProps {
 export default async function RecentListeningSection({
   username,
 }: RecentListeningSectionProps) {
-  let records;
+  let records: ListeningRecordItem[] = [];
   try {
     const result = await serverGet<ListeningRecordListResult>(
       `/users/me/listening-records?limit=${DISPLAY_LIMIT}`
