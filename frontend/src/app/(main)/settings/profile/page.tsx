@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
 import ProfileEditClient from "./ProfileEditClient";
 import type { User } from "@/types/user";
 
@@ -17,11 +18,15 @@ export default async function ProfileEditPage() {
   let profile: User | null = null;
   try {
     profile = await serverGet<User>("/users/me");
-  } catch {
-    // プロフィール未設定
+  } catch (err) {
+    // 404 = プロフィール未設定 → セットアップへ
+    if (err instanceof ApiRequestError && err.status === 404) {
+      redirect("/profile/setup");
+    }
+    // その他のエラー（500等）は throw して Next.js エラーページに任せる
+    throw err;
   }
 
-  // プロフィール未設定のユーザーはセットアップへリダイレクト
   if (!profile) {
     redirect("/profile/setup");
   }
