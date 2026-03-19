@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import EpisodeDetail from "@/components/episode/EpisodeDetail";
 import type { EpisodeWithStats } from "@/types/episode";
@@ -17,23 +18,26 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     notFound();
   }
 
-  // エピソードデータ取得と認証チェックを並列で実行
-  const [episodeResult, supabase] = await Promise.all([
-    serverGet<EpisodeWithStats>(`/episodes/${encodeURIComponent(id)}`, {
-      noAuth: true,
-      revalidate: 60,
-    }).catch(() => null),
-    createClient(),
-  ]);
-
-  if (!episodeResult) {
-    notFound();
+  let episode: EpisodeWithStats;
+  try {
+    episode = await serverGet<EpisodeWithStats>(
+      `/episodes/${encodeURIComponent(id)}`,
+      { noAuth: true, revalidate: 60 },
+    );
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
 
+  const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
-  return <EpisodeDetail key={episodeResult.id} episode={episodeResult} isLoggedIn={isLoggedIn} />;
+  return (
+    <EpisodeDetail key={episode.id} episode={episode} isLoggedIn={isLoggedIn} />
+  );
 }

@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
 import PodcastPageClient from "./PodcastPageClient";
 import type { Podcast } from "@/types/podcast";
 import type { EpisodeListResult } from "@/types/episode";
@@ -23,8 +24,11 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
       noAuth: true,
       revalidate: 60,
     });
-  } catch {
-    notFound();
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
 
   // エピソードと評価は並列で取得（失敗しても画面は表示する）
