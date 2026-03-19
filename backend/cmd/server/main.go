@@ -107,6 +107,11 @@ func main() {
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
 
 	adminUserIDs := cfg.GetAdminUserIDs()
+	if len(adminUserIDs) > 0 {
+		log.Printf("管理者ユーザー: %d 人設定済み", len(adminUserIDs))
+	} else {
+		log.Println("警告: ADMIN_USER_IDS が未設定です。管理用 API には誰もアクセスできません")
+	}
 
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),
