@@ -25,9 +25,9 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
     setError("");
 
     const result = createProfileRequestSchema.safeParse({
-      username,
-      display_name: displayName,
-      bio: bio || undefined,
+      username: username.trim(),
+      display_name: displayName.trim(),
+      bio: bio.trim() || undefined,
     });
 
     if (!result.success) {

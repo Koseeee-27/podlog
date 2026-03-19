@@ -32,7 +32,6 @@ export type CreateProfileRequest = z.infer<typeof createProfileRequestSchema>;
 
 /** プロフィール更新リクエスト */
 export const updateProfileRequestSchema = z.object({
-  username: z.string().optional(),
   display_name: displayNameSchema.optional(),
   avatar_url: z.string().optional(),
   bio: z.string().optional(),
