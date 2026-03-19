@@ -154,33 +154,49 @@ func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([
 // 総件数（total）とデータ取得を2つの別クエリで行います。
 // COUNT(*) OVER() を使う1クエリ方式だと、offset が結果件数を超えた場合に
 // 行が0件になり total が取得できないバグがあるため、2クエリ方式を採用しています。
+//
+// query が空文字の場合（ジャンルブラウズ時）は ILIKE 条件を外し、
+// genre のみで絞り込みます。これにより ILIKE '%%' による全件スキャンを防ぎます。
 func (r *podcastRepository) Search(ctx context.Context, query string, genres []string, limit, offset int) ([]PodcastSearchRow, int, error) {
-	likePattern := "%" + query + "%"
+	// WHERE 句の条件とプレースホルダ引数を動的に組み立てます。
+	// conditions には "p.title ILIKE $1" や "p.genre IN ($2, $3)" のような
+	// SQL 条件式のパーツを追加していきます。
+	// args にはそれぞれの $N に対応する値を順番に追加します。
+	var conditions []string
+	var args []interface{}
 
-	// ジャンル絞り込みの有無で WHERE 句を動的に組み立てます。
-	// genres が空なら全ジャンルが対象、指定があれば IN 句で複数ジャンルに絞ります。
-	//
-	// sqlx.In を使って IN (?) のプレースホルダを展開します。
-	// 例: genres = ["Comedy", "Improv", "Stand-Up"] の場合
-	//   → WHERE p.genre IN ($2, $3, $4) に展開されます。
-	genreFilter := ""
-	args := []interface{}{likePattern}
+	// query が空でなければ ILIKE 条件を追加（キーワード検索）
+	if query != "" {
+		likePattern := "%" + query + "%"
+		args = append(args, likePattern)
+		conditions = append(conditions, fmt.Sprintf("p.title ILIKE $%d", len(args)))
+	}
+
+	// genres が空でなければ IN 句を追加（ジャンル絞り込み）
 	if len(genres) > 0 {
-		// プレースホルダを手動で組み立てます
-		// $2, $3, $4, ... のように連番のプレースホルダを生成します
 		placeholders := ""
 		for i, g := range genres {
 			if i > 0 {
 				placeholders += ", "
 			}
-			placeholders += fmt.Sprintf("$%d", i+2) // $1 は likePattern なので $2 から開始
 			args = append(args, g)
+			placeholders += fmt.Sprintf("$%d", len(args))
 		}
-		genreFilter = fmt.Sprintf(" AND p.genre IN (%s)", placeholders)
+		conditions = append(conditions, fmt.Sprintf("p.genre IN (%s)", placeholders))
+	}
+
+	// 条件が1つもない場合は WHERE 句なし（全件取得）、
+	// 条件がある場合は AND で連結して WHERE 句を組み立てます。
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + conditions[0]
+		for _, c := range conditions[1:] {
+			whereClause += " AND " + c
+		}
 	}
 
 	// 1. 総件数を取得するクエリ
-	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM podcasts p WHERE p.title ILIKE $1%s`, genreFilter)
+	countQuery := fmt.Sprintf(`SELECT COUNT(*) FROM podcasts p %s`, whereClause)
 	var total int
 	if err := r.db.GetContext(ctx, &total, countQuery, args...); err != nil {
 		return nil, 0, fmt.Errorf("failed to count podcasts: %w", err)
@@ -196,7 +212,7 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 		orderBy = "total_reviews DESC, average_rating DESC, p.title, p.id"
 	}
 
-	// プレースホルダの番号をジャンル指定の有無で切り替えます。
+	// LIMIT / OFFSET のプレースホルダ番号は、これまでの args の数 +1, +2 になります。
 	limitIdx := len(args) + 1
 	offsetIdx := len(args) + 2
 	dataQuery := fmt.Sprintf(`
@@ -211,11 +227,11 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 		LEFT JOIN episodes e ON p.id = e.podcast_id
 		LEFT JOIN reviews r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
-		WHERE p.title ILIKE $1%s
+		%s
 		GROUP BY p.id, p.title, p.author, p.artwork_url
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, genreFilter, orderBy, limitIdx, offsetIdx)
+	`, whereClause, orderBy, limitIdx, offsetIdx)
 	dataArgs := append(args, limit, offset)
 	var rows []PodcastSearchRow
 	if err := r.db.SelectContext(ctx, &rows, dataQuery, dataArgs...); err != nil {
