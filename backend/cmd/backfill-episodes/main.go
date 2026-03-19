@@ -87,8 +87,8 @@ func run(podcastRepo repository.PodcastRepository, episodeUC usecase.EpisodeUsec
 	var successCount, skipCount, failCount int
 
 	for i, podcast := range podcasts {
-		// feed_url が nil の場合はスキップ（ListWithoutEpisodes の条件で排除されるはずだが安全のため）
-		if podcast.FeedURL == nil {
+		// feed_url が nil または空文字の場合はスキップ
+		if podcast.FeedURL == nil || *podcast.FeedURL == "" {
 			log.Printf("[%d/%d] %s: feed_url が未設定のためスキップ", i+1, len(podcasts), podcast.Title)
 			skipCount++
 			continue

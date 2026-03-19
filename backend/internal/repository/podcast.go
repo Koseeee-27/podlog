@@ -264,8 +264,8 @@ func (r *podcastRepository) ListWithoutGenre(ctx context.Context) ([]model.Podca
 func (r *podcastRepository) ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error) {
 	query := `
 		SELECT * FROM podcasts
-		WHERE feed_url IS NOT NULL
-		AND id NOT IN (SELECT DISTINCT podcast_id FROM episodes)
+		WHERE feed_url IS NOT NULL AND feed_url != ''
+		AND NOT EXISTS (SELECT 1 FROM episodes e WHERE e.podcast_id = podcasts.id)
 		ORDER BY created_at
 	`
 	var podcasts []model.Podcast

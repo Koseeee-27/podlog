@@ -206,7 +206,7 @@ func TestRun_SkipsNilFeedURL(t *testing.T) {
 				{
 					ID:      uuid.New(),
 					Title:   "feed_url なし番組",
-					FeedURL: nil, // feed_url が nil
+					FeedURL: nil,
 				},
 			}, nil
 		},
@@ -215,6 +215,34 @@ func TestRun_SkipsNilFeedURL(t *testing.T) {
 	uc := &mockEpisodeUC{
 		fetchFromFeedFn: func(_ context.Context, _ uuid.UUID, _ string) (*usecase.FetchFromFeedResult, error) {
 			t.Fatal("FetchFromFeed should not be called for podcasts without feed_url")
+			return nil, nil
+		},
+	}
+
+	err := run(repo, uc)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+// TestRun_SkipsEmptyFeedURL は feed_url が空文字の番組をスキップするテストです。
+func TestRun_SkipsEmptyFeedURL(t *testing.T) {
+	emptyURL := ""
+	repo := &mockPodcastRepo{
+		listWithoutEpisodesFn: func(_ context.Context) ([]model.Podcast, error) {
+			return []model.Podcast{
+				{
+					ID:      uuid.New(),
+					Title:   "feed_url 空文字番組",
+					FeedURL: &emptyURL,
+				},
+			}, nil
+		},
+	}
+
+	uc := &mockEpisodeUC{
+		fetchFromFeedFn: func(_ context.Context, _ uuid.UUID, _ string) (*usecase.FetchFromFeedResult, error) {
+			t.Error("FetchFromFeed should not be called for podcasts with empty feed_url")
 			return nil, nil
 		},
 	}
