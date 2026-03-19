@@ -55,14 +55,6 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
         </Link>
       </div>
 
-      {episode.audio_url && (
-        <div className="mt-6">
-          <audio controls className="w-full" preload="none">
-            <source src={episode.audio_url} />
-          </audio>
-        </div>
-      )}
-
       {episode.description && (
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-stone-900 mb-2">説明</h2>
