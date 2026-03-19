@@ -109,16 +109,24 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    dialog?.showModal();
+  // cleanup 由来の close を無視するためのフラグ
+  const isCleanupRef = useRef(false);
 
-    // cleanup: unmount 時に debounce タイマーをクリアし、dialog を閉じる
+  useEffect(() => {
+    isCleanupRef.current = false;
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
+
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-      dialog?.close();
+      if (dialog?.open) {
+        isCleanupRef.current = true;
+        dialog.close();
+      }
     };
   }, []);
 
@@ -154,7 +162,12 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   return (
     <dialog
       ref={dialogRef}
-      onClose={onClose}
+      onClose={() => {
+        // cleanup 由来の close（React Strict Mode の二重実行）は無視する
+        if (!isCleanupRef.current) {
+          onClose();
+        }
+      }}
       className="fixed inset-0 w-full max-w-md mx-auto mt-20 p-0 rounded-xl border border-stone-200 shadow-lg backdrop:bg-black/30"
     >
       <div className="p-4">
