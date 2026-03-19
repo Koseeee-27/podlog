@@ -10,10 +10,10 @@ export default function ProfileSetupClient() {
   const auth = useAuth();
   const router = useRouter();
 
+  // 未認証リダイレクトは middleware で処理済み
+  // プロフィール設定済みのユーザーはトップへリダイレクト
   useEffect(() => {
-    if (auth.status === "unauthenticated") {
-      router.push("/login");
-    } else if (auth.status === "authenticated") {
+    if (auth.status === "authenticated") {
       router.push("/");
     }
   }, [auth.status, router]);

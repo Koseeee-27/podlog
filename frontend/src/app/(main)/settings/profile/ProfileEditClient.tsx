@@ -11,10 +11,10 @@ export default function ProfileEditClient() {
   const auth = useAuth();
   const router = useRouter();
 
+  // 未認証リダイレクトは middleware で処理済み
+  // プロフィール未設定のユーザーはセットアップへリダイレクト
   useEffect(() => {
-    if (auth.status === "unauthenticated") {
-      router.push("/login");
-    } else if (auth.status === "no_profile") {
+    if (auth.status === "no_profile") {
       router.push("/profile/setup");
     }
   }, [auth.status, router]);
