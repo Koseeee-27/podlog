@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import Avatar from "@/components/ui/Avatar";
+import AdminBadge from "@/components/ui/AdminBadge";
 import BottomNav from "./BottomNav";
 
 export default function Navbar() {
@@ -102,7 +103,10 @@ export default function Navbar() {
                     {dropdownOpen && (
                       <div className="absolute right-0 mt-2 w-56 rounded-xl border border-stone-200 bg-white shadow-lg py-2 z-50">
                         <div className="px-4 py-2 border-b border-stone-100">
-                          <p className="text-sm font-medium text-stone-900">{profile.display_name}</p>
+                          <div className="flex items-center gap-1.5">
+                            <p className="text-sm font-medium text-stone-900">{profile.display_name}</p>
+                            {profile.is_admin && <AdminBadge />}
+                          </div>
                           <p className="text-xs text-stone-500">@{profile.username}</p>
                         </div>
                         <Link
@@ -119,6 +123,15 @@ export default function Navbar() {
                         >
                           設定
                         </Link>
+                        {profile.is_admin && (
+                          <Link
+                            href="/admin"
+                            className="block px-4 py-2 text-sm text-rose-600 hover:bg-rose-50 transition-colors"
+                            onClick={() => setDropdownOpen(false)}
+                          >
+                            管理
+                          </Link>
+                        )}
                         <div className="border-t border-stone-100 mt-1 pt-1">
                           <button
                             type="button"
