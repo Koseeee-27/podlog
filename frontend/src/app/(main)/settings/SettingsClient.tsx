@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import Loading from "@/components/ui/Loading";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
-import { ChevronRightIcon } from "@heroicons/react/24/outline";
+import { ChevronRightIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
 
 export default function SettingsClient() {
   const auth = useAuth();
@@ -61,6 +61,23 @@ export default function SettingsClient() {
             <ChevronRightIcon className="w-5 h-5 text-stone-400" />
           </Card>
         </Link>
+
+        {profile?.is_admin && (
+          <Link href="/admin" className="block">
+            <Card padding="lg" className="flex items-center justify-between hover:bg-rose-50 transition-colors cursor-pointer border-rose-100">
+              <div className="flex items-center gap-3">
+                <ShieldCheckIcon className="w-5 h-5 text-rose-500" />
+                <div>
+                  <h2 className="text-lg font-semibold text-stone-900">管理画面</h2>
+                  <p className="text-sm text-stone-500 mt-1">
+                    番組の手動登録・管理用の機能
+                  </p>
+                </div>
+              </div>
+              <ChevronRightIcon className="w-5 h-5 text-stone-400" />
+            </Card>
+          </Link>
+        )}
 
         <Card padding="lg">
           <h2 className="text-lg font-semibold text-stone-900 mb-4">ログアウト</h2>

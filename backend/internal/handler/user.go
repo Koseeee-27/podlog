@@ -16,12 +16,14 @@ import (
 // UserHandler はユーザー関連のHTTPハンドラーです。
 // usecase を呼び出してビジネスロジックを実行し、結果をHTTPレスポンスとして返します。
 type UserHandler struct {
-	userUsecase usecase.UserUsecase
+	userUsecase  usecase.UserUsecase
+	adminUserIDs []string // 管理者ユーザー ID のリスト（GET /users/me で is_admin を返すために使用）
 }
 
 // NewUserHandler は UserHandler の新しいインスタンスを生成します。
-func NewUserHandler(userUsecase usecase.UserUsecase) *UserHandler {
-	return &UserHandler{userUsecase: userUsecase}
+// adminUserIDs は管理者ユーザー ID のリストで、GetMyProfile のレスポンスに is_admin を含めるために使います。
+func NewUserHandler(userUsecase usecase.UserUsecase, adminUserIDs []string) *UserHandler {
+	return &UserHandler{userUsecase: userUsecase, adminUserIDs: adminUserIDs}
 }
 
 // CreateProfile はプロフィール作成のハンドラーです。
@@ -69,11 +71,12 @@ func (h *UserHandler) CreateProfile(c echo.Context) error {
 }
 
 // GetMyProfile は自分のプロフィールを取得するハンドラーです。
+// レスポンスには is_admin フィールドが含まれ、管理者かどうかを判定できます。
 // @Summary 自分のプロフィール取得
-// @Description 認証済みユーザー自身のプロフィールを取得します
+// @Description 認証済みユーザー自身のプロフィールを取得します。is_admin フィールドで管理者かどうかを判定できます。
 // @Tags users
 // @Produce json
-// @Success 200 {object} model.User
+// @Success 200 {object} model.MyProfileResponse
 // @Failure 401 {object} map[string]string
 // @Failure 404 {object} map[string]string
 // @Security BearerAuth
@@ -93,7 +96,10 @@ func (h *UserHandler) GetMyProfile(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get profile")
 	}
 
-	return response.Success(c, http.StatusOK, user)
+	// mw.IsAdmin でユーザー ID が管理者リストに含まれるか判定し、
+	// is_admin フィールドを含むレスポンスを返す
+	isAdmin := mw.IsAdmin(userID, h.adminUserIDs)
+	return response.Success(c, http.StatusOK, user.ToMyProfileResponse(isAdmin))
 }
 
 // UpdateMyProfile はプロフィール更新のハンドラーです。

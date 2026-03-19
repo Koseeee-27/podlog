@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/joho/godotenv"
 	"github.com/jmoiron/sqlx"
 	dbmigrate "github.com/Koseeee-27/podlog/backend/db"
 	"github.com/Koseeee-27/podlog/backend/internal/config"
@@ -38,6 +39,13 @@ import (
 )
 
 func main() {
+	// 0. .env ファイルから環境変数を読み込み（存在しなくても OK）
+	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
+	// ファイルが存在しない場合（Docker 環境等）はエラーを無視する。
+	if err := godotenv.Load(); err != nil {
+		log.Println(".env ファイルが見つかりません（環境変数から設定を読み込みます）")
+	}
+
 	// 1. 設定を環境変数から読み込み
 	cfg, err := config.Load()
 	if err != nil {
@@ -106,9 +114,16 @@ func main() {
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
 
+	adminUserIDs := cfg.GetAdminUserIDs()
+	if len(adminUserIDs) > 0 {
+		log.Printf("管理者ユーザー: %d 人設定済み", len(adminUserIDs))
+	} else {
+		log.Println("警告: ADMIN_USER_IDS が未設定です。管理用 API には誰もアクセスできません")
+	}
+
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),
-		User:            handler.NewUserHandler(userUsecase),
+		User:            handler.NewUserHandler(userUsecase, adminUserIDs),
 		Podcast:         handler.NewPodcastHandler(podcastUsecase, reviewUsecase, ogpScraper),
 		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, reviewUsecase),
 		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
@@ -120,7 +135,8 @@ func main() {
 	}
 
 	// 9. ルーティングを設定
-	router.Setup(e, handlers, cfg.SupabaseURL)
+	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
+	router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs)
 
 	// 10. サーバーを起動
 	addr := fmt.Sprintf(":%s", cfg.Port)

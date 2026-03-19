@@ -14,6 +14,7 @@ import UserFavoritePodcasts from "@/components/profile/UserFavoritePodcasts";
 import UserListeningHistory from "@/components/profile/UserListeningHistory";
 import UserReviewList from "@/components/profile/UserReviewList";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
+import AdminBadge from "@/components/ui/AdminBadge";
 
 export default function PublicProfileClient() {
   const params = useParams();
@@ -72,7 +73,12 @@ export default function PublicProfileClient() {
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
             <Avatar src={profile.avatar_url} alt={profile.display_name} size="xl" />
             <div className="text-center sm:text-left">
-              <h1 className="text-2xl font-bold text-stone-900">{profile.display_name}</h1>
+              <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
+                <h1 className="text-2xl font-bold text-stone-900">{profile.display_name}</h1>
+                {isOwnProfile && auth.status === "authenticated" && auth.profile.is_admin && (
+                  <AdminBadge />
+                )}
+              </div>
               <p className="text-stone-500">@{profile.username}</p>
               {profile.bio && (
                 <p className="mt-3 text-sm text-stone-700 leading-relaxed">{profile.bio}</p>

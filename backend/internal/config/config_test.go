@@ -76,6 +76,56 @@ func TestValidate_WithSupabaseURL(t *testing.T) {
 	}
 }
 
+// ── GetAdminUserIDs テスト ──
+
+func TestGetAdminUserIDs_Empty(t *testing.T) {
+	cfg := &Config{AdminUserIDs: ""}
+	ids := cfg.GetAdminUserIDs()
+	if len(ids) != 0 {
+		t.Errorf("expected empty slice, got %v", ids)
+	}
+}
+
+func TestGetAdminUserIDs_SingleID(t *testing.T) {
+	cfg := &Config{AdminUserIDs: "550e8400-e29b-41d4-a716-446655440000"}
+	ids := cfg.GetAdminUserIDs()
+	if len(ids) != 1 {
+		t.Fatalf("expected 1 ID, got %d", len(ids))
+	}
+	if ids[0] != "550e8400-e29b-41d4-a716-446655440000" {
+		t.Errorf("expected '550e8400-e29b-41d4-a716-446655440000', got '%s'", ids[0])
+	}
+}
+
+func TestGetAdminUserIDs_MultipleIDs(t *testing.T) {
+	cfg := &Config{AdminUserIDs: "id1,id2,id3"}
+	ids := cfg.GetAdminUserIDs()
+	if len(ids) != 3 {
+		t.Fatalf("expected 3 IDs, got %d", len(ids))
+	}
+}
+
+func TestGetAdminUserIDs_WithSpaces(t *testing.T) {
+	// カンマの前後にスペースがあってもトリミングされること
+	cfg := &Config{AdminUserIDs: " id1 , id2 , id3 "}
+	ids := cfg.GetAdminUserIDs()
+	if len(ids) != 3 {
+		t.Fatalf("expected 3 IDs, got %d", len(ids))
+	}
+	if ids[0] != "id1" || ids[1] != "id2" || ids[2] != "id3" {
+		t.Errorf("expected trimmed IDs, got %v", ids)
+	}
+}
+
+func TestGetAdminUserIDs_TrailingComma(t *testing.T) {
+	// 末尾にカンマがあっても空文字列は含まれないこと
+	cfg := &Config{AdminUserIDs: "id1,id2,"}
+	ids := cfg.GetAdminUserIDs()
+	if len(ids) != 2 {
+		t.Fatalf("expected 2 IDs (trailing comma ignored), got %d: %v", len(ids), ids)
+	}
+}
+
 func TestDatabaseDSN_SpecialCharsInUser(t *testing.T) {
 	// ユーザー名に特殊文字が含まれるケース
 	cfg := &Config{

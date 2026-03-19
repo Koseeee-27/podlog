@@ -26,7 +26,8 @@ type Handlers struct {
 // Setup は全ルートを Echo インスタンスに登録します。
 // supabaseURL は Supabase プロジェクトの URL（例: https://xxx.supabase.co）です。
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
-func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
+// adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
+func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) {
 	v1 := e.Group("/api/v1")
 
 	// ── 認証不要のルート ──
@@ -94,11 +95,10 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 	// Podcast Requests (認証必要)
 	auth.POST("/podcasts/request", h.PodcastRequest.Create)
 
-	// ── 管理用ルート（認証必要） ──
-	// MVP では認証済みユーザーなら誰でもアクセス可能。
-	// 将来的に管理者権限チェックを追加する場合は、
-	// admin グループに管理者判定ミドルウェアを追加する。
-	admin := auth.Group("/admin")
+	// ── 管理用ルート（認証 + 管理者権限が必要） ──
+	// AdminAuth ミドルウェアで、認証済みユーザーが管理者リストに含まれるかチェックする。
+	// 管理者でない場合は 403 Forbidden が返される。
+	admin := auth.Group("/admin", mw.AdminAuth(adminUserIDs))
 	admin.POST("/podcasts", h.Admin.CreatePodcast)
 	admin.POST("/podcasts/:id/episodes", h.Admin.CreateEpisode)
 }
