@@ -106,9 +106,11 @@ func main() {
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
 
+	adminUserIDs := cfg.GetAdminUserIDs()
+
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(),
-		User:            handler.NewUserHandler(userUsecase),
+		User:            handler.NewUserHandler(userUsecase, adminUserIDs),
 		Podcast:         handler.NewPodcastHandler(podcastUsecase, reviewUsecase, ogpScraper),
 		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, reviewUsecase),
 		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
@@ -120,7 +122,8 @@ func main() {
 	}
 
 	// 9. ルーティングを設定
-	router.Setup(e, handlers, cfg.SupabaseURL)
+	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
+	router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs)
 
 	// 10. サーバーを起動
 	addr := fmt.Sprintf(":%s", cfg.Port)

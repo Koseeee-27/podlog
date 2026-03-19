@@ -1223,7 +1223,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証済みユーザー自身のプロフィールを取得します",
+                "description": "認証済みユーザー自身のプロフィールを取得します。is_admin フィールドで管理者かどうかを判定できます。",
                 "produces": [
                     "application/json"
                 ],
@@ -1235,7 +1235,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.User"
+                            "$ref": "#/definitions/model.MyProfileResponse"
                         }
                     },
                     "401": {
@@ -1900,6 +1900,35 @@ const docTemplate = `{
                 }
             }
         },
+        "model.MyProfileResponse": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "bio": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "is_admin": {
+                    "type": "boolean"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Podcast": {
             "type": "object",
             "properties": {
@@ -1980,32 +2009,6 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "display_name": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.User": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "bio": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                },
-                "username": {
                     "type": "string"
                 }
             }

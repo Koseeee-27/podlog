@@ -40,6 +40,11 @@ type Config struct {
 
 	// 環境 (development / production)
 	Environment string `env:"APP_ENV" envDefault:"development"`
+
+	// 管理者ユーザー ID（カンマ区切り）
+	// 例: "550e8400-e29b-41d4-a716-446655440000,6ba7b810-9dad-11d1-80b4-00c04fd430c8"
+	// この ID を持つユーザーのみが /admin API にアクセスできる
+	AdminUserIDs string `env:"ADMIN_USER_IDS" envDefault:""`
 }
 
 // DatabaseDSN はデータベース接続用の DSN 文字列を組み立てます。
@@ -54,6 +59,27 @@ func (c *Config) DatabaseDSN() string {
 		RawQuery: fmt.Sprintf("sslmode=%s", url.QueryEscape(c.DBSSLMode)),
 	}
 	return u.String()
+}
+
+// GetAdminUserIDs は AdminUserIDs をカンマで分割してスライス（配列のようなもの）として返します。
+// 環境変数が空の場合は空のスライスを返します。
+// 前後の空白はトリミングされるので、"id1, id2" のようにスペースが含まれていても問題ありません。
+func (c *Config) GetAdminUserIDs() []string {
+	if c.AdminUserIDs == "" {
+		return []string{}
+	}
+
+	// strings.Split: 文字列をカンマで分割してスライスにする
+	parts := strings.Split(c.AdminUserIDs, ",")
+	result := make([]string, 0, len(parts))
+	for _, part := range parts {
+		// strings.TrimSpace: 前後の空白を除去する
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			result = append(result, trimmed)
+		}
+	}
+	return result
 }
 
 // Validate は必須の設定値が正しくセットされているかチェックします。

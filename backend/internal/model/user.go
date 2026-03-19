@@ -56,6 +56,35 @@ type AvatarUploadResponse struct {
 	AvatarURL string `json:"avatar_url"`
 }
 
+// MyProfileResponse は GET /users/me のレスポンス構造体です。
+// User の全フィールドに加えて、管理者かどうかを示す is_admin フィールドを持ちます。
+// deleted_at は JSON に含めません（`json:"-"` タグで除外）。
+type MyProfileResponse struct {
+	ID          uuid.UUID  `json:"id"`
+	Username    string     `json:"username"`
+	DisplayName string     `json:"display_name"`
+	AvatarURL   *string    `json:"avatar_url,omitempty"`
+	Bio         *string    `json:"bio,omitempty"`
+	CreatedAt   time.Time  `json:"created_at"`
+	UpdatedAt   time.Time  `json:"updated_at"`
+	IsAdmin     bool       `json:"is_admin"`
+}
+
+// ToMyProfileResponse は User から自分のプロフィールレスポンスに変換します。
+// isAdmin には、このユーザーが管理者かどうかの判定結果を渡します。
+func (u *User) ToMyProfileResponse(isAdmin bool) MyProfileResponse {
+	return MyProfileResponse{
+		ID:          u.ID,
+		Username:    u.Username,
+		DisplayName: u.DisplayName,
+		AvatarURL:   u.AvatarURL,
+		Bio:         u.Bio,
+		CreatedAt:   u.CreatedAt,
+		UpdatedAt:   u.UpdatedAt,
+		IsAdmin:     isAdmin,
+	}
+}
+
 // ToPublicProfile は User から公開用プロフィールに変換します。
 func (u *User) ToPublicProfile() UserPublicProfile {
 	return UserPublicProfile{
