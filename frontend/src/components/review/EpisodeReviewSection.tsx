@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
+import { useToast } from "@/components/ui/Toast";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 import type { Review, MyReviewResult } from "@/types/review";
 
@@ -26,6 +27,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
   const { myReview, loading: myReviewLoading, error: myReviewError, clearMyReview, updateMyReview } =
     useMyReviewForEpisode(episodeId, isLoggedIn);
+  const { showToast } = useToast();
   const [submitted, setSubmitted] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -40,6 +42,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       updateMyReview(toMyReviewResult(review));
       setSubmitted(true);
       refresh();
+      showToast("レビューを投稿しました");
     }
   };
 
@@ -52,6 +55,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       updateMyReview(toMyReviewResult(review));
       setEditing(false);
       refresh();
+      showToast("レビューを更新しました");
     }
   };
 
@@ -64,6 +68,7 @@ export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeR
       setConfirmDelete(false);
       setSubmitted(false);
       refresh();
+      showToast("レビューを削除しました");
     }
   };
 

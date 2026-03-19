@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useCallback } from "react";
 import { useListeningStatus } from "@/hooks/useListeningRecord";
+import { useToast } from "@/components/ui/Toast";
 import ListenButtonView from "./ListenButtonView";
 
 interface ListenButtonProps {
@@ -13,37 +14,21 @@ interface ListenButtonProps {
 }
 
 export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: ListenButtonProps) {
-  const { listened, loading, toggling, error, toggle, justMarked, clearJustMarked } =
-    useListeningStatus(episodeId);
+  const { listened, loading, toggling, error, toggle } = useListeningStatus(episodeId);
+  const { showToast } = useToast();
 
-  const onJustMarkedRef = useRef(onJustMarked);
-  const onUnmarkedRef = useRef(onUnmarked);
-  const prevListenedRef = useRef(listened);
-
-  useEffect(() => {
-    onJustMarkedRef.current = onJustMarked;
-    onUnmarkedRef.current = onUnmarked;
-  }, [onJustMarked, onUnmarked]);
-
-  useEffect(() => {
-    if (justMarked) {
-      onJustMarkedRef.current?.();
-      clearJustMarked();
+  const handleToggle = useCallback(async () => {
+    const wasListened = listened;
+    const success = await toggle();
+    if (success) {
+      showToast(wasListened ? "聴取記録を削除しました" : "聴取記録を追加しました");
+      if (wasListened) {
+        onUnmarked?.();
+      } else {
+        onJustMarked?.();
+      }
     }
-  }, [justMarked, clearJustMarked]);
-
-  // episodeId が変わったら prevListenedRef をリセット（別エピソードへの遷移時に誤発火を防ぐ）
-  useEffect(() => {
-    prevListenedRef.current = listened;
-  }, [episodeId]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // 聴取記録が取り消された（true → false）時にコールバックを呼ぶ
-  useEffect(() => {
-    if (prevListenedRef.current && !listened && !loading) {
-      onUnmarkedRef.current?.();
-    }
-    prevListenedRef.current = listened;
-  }, [listened, loading]);
+  }, [listened, toggle, showToast, onJustMarked, onUnmarked]);
 
   return (
     <ListenButtonView
@@ -51,7 +36,7 @@ export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: Li
       loading={loading}
       toggling={toggling}
       error={error}
-      onToggle={toggle}
+      onToggle={handleToggle}
     />
   );
 }
