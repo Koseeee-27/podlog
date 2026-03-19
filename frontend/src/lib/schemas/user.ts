@@ -11,8 +11,8 @@ export const userSchema = z.object({
   id: uuidSchema,
   username: z.string(),
   display_name: z.string(),
-  avatar_url: z.string().nullable(),
-  bio: z.string().nullable(),
+  avatar_url: z.string().nullish(),
+  bio: z.string().nullish(),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
   is_admin: z.boolean().optional(),
@@ -44,8 +44,8 @@ export const userPublicProfileSchema = z.object({
   id: uuidSchema,
   username: z.string(),
   display_name: z.string(),
-  avatar_url: z.string().nullable(),
-  bio: z.string().nullable(),
+  avatar_url: z.string().nullish(),
+  bio: z.string().nullish(),
   created_at: datetimeSchema,
 });
 

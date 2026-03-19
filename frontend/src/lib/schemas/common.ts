@@ -21,7 +21,7 @@ export const usernameSchema = z
 export const displayNameSchema = z
   .string()
   .min(1, "表示名は必須です")
-  .max(100, "表示名は100文字以内で入力してください");
+  .max(50, "表示名は50文字以内で入力してください");
 
 /** URL 形式のバリデーション（http / https のみ許可） */
 export const httpUrlSchema = z
