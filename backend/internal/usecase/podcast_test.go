@@ -294,6 +294,85 @@ func TestPodcastUsecase_Search(t *testing.T) {
 		}
 	})
 
+	t.Run("正常系: genre のみ指定（query 空）でジャンルブラウズ", func(t *testing.T) {
+		// query が空（ジャンルブラウズ時）でも正常に動作することを確認。
+		// リポジトリ層で ILIKE '%%' を使わず genre のみで検索される。
+		author := "テスト配信者"
+		artworkURL := "https://example.com/artwork.jpg"
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, q string, genres []string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
+				// query は空文字であるべき
+				if q != "" {
+					t.Errorf("query = %q, want empty string", q)
+				}
+				// genre は展開されているはず
+				if len(genres) == 0 {
+					t.Error("genres should not be empty when genre is specified")
+				}
+				if limit != 20 {
+					t.Errorf("limit = %d, want 20", limit)
+				}
+				if offset != 0 {
+					t.Errorf("offset = %d, want 0", offset)
+				}
+				return []repository.PodcastSearchRow{
+					{
+						ID:            uuid.New(),
+						Title:         "コメディ番組A",
+						Author:        &author,
+						ArtworkURL:    &artworkURL,
+						AverageRating: 4.0,
+						TotalReviews:  5,
+					},
+					{
+						ID:            uuid.New(),
+						Title:         "コメディ番組B",
+						Author:        &author,
+						ArtworkURL:    &artworkURL,
+						AverageRating: 3.0,
+						TotalReviews:  2,
+					},
+				}, 2, nil
+			},
+		})
+
+		// query を空にして genre だけ指定
+		result, err := uc.Search(ctx, "", "Comedy", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 2 {
+			t.Errorf("total = %d, want 2", result.Total)
+		}
+		if len(result.Podcasts) != 2 {
+			t.Fatalf("podcasts count = %d, want 2", len(result.Podcasts))
+		}
+	})
+
+	t.Run("正常系: query も genre も空 → 全件検索", func(t *testing.T) {
+		// 両方空の場合でもエラーにならず全件検索として動作することを確認。
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, q string, genres []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				if q != "" {
+					t.Errorf("query = %q, want empty string", q)
+				}
+				if len(genres) != 0 {
+					t.Errorf("genres = %v, want empty", genres)
+				}
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+		})
+
+		result, err := uc.Search(ctx, "", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0", result.Total)
+		}
+	})
+
 	t.Run("limit が 0 以下 → デフォルト 20 に補正", func(t *testing.T) {
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
 			searchFn: func(_ context.Context, _ string, _ []string, limit, _ int) ([]repository.PodcastSearchRow, int, error) {
