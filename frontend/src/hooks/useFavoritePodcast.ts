@@ -17,6 +17,8 @@ export function useFavoritePodcast(podcastId: string, username: string | undefin
   const [loading, setLoading] = useState(!!username);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // お気に入り一覧の取得に成功したかどうか（失敗時は toggle を無効化してデータ欠損を防ぐ）
+  const [fetchFailed, setFetchFailed] = useState(false);
   // 現在の好きな番組リスト全体を保持（追加・削除時に一括更新 API を使うため）
   const favoritesRef = useRef<FavoritePodcastItem[]>([]);
 
@@ -34,7 +36,7 @@ export function useFavoritePodcast(podcastId: string, username: string | undefin
         }
       })
       .catch(() => {
-        // 取得失敗時はボタンを非表示にしないが、isFavorite は false のまま
+        if (!cancelled) setFetchFailed(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -66,5 +68,5 @@ export function useFavoritePodcast(podcastId: string, username: string | undefin
     });
   }, [podcastId, startTransition]);
 
-  return { isFavorite, loading, isPending, error, toggle };
+  return { isFavorite, loading, isPending, error, toggle, fetchFailed };
 }

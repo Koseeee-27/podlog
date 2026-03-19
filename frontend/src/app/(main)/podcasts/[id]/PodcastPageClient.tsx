@@ -31,10 +31,11 @@ export default function PodcastPageClient() {
     isPending: favoritePending,
     error: favoriteError,
     toggle: toggleFavorite,
+    fetchFailed: favoriteFetchFailed,
   } = useFavoritePodcast(id, username);
   const hasFetchedRef = useRef(false);
-  // トースト表示用: toggle 前の状態を記憶して、成功時に適切なメッセージを出す
-  const prevFavoriteRef = useRef(isFavorite);
+  // トースト表示用: 初回ロード完了後にフラグを立て、以降の変化のみトーストを出す
+  const hasInitializedFavoriteRef = useRef(false);
 
   // favoriteError が発生したらエラートーストを表示
   useEffect(() => {
@@ -45,13 +46,13 @@ export default function PodcastPageClient() {
 
   // isFavorite の変化を検知してトーストを表示（初期ロード時は除外）
   useEffect(() => {
-    // 初回ロード完了前はスキップ
     if (favoriteLoading) return;
-    // 値が変化したときのみトースト表示
-    if (prevFavoriteRef.current !== isFavorite) {
-      showToast(isFavorite ? "好きな番組に追加しました" : "好きな番組から削除しました");
+    // 初回ロード完了時はフラグを立てるだけでトーストは出さない
+    if (!hasInitializedFavoriteRef.current) {
+      hasInitializedFavoriteRef.current = true;
+      return;
     }
-    prevFavoriteRef.current = isFavorite;
+    showToast(isFavorite ? "好きな番組に追加しました" : "好きな番組から削除しました");
   }, [isFavorite, favoriteLoading, showToast]);
 
   // ログイン済みかつ feed_url がある場合のみ、初回エピソードロード完了後に
@@ -87,8 +88,8 @@ export default function PodcastPageClient() {
     return <ErrorMessage message="ポッドキャストが見つかりません" />;
   }
 
-  // ログイン済みかつお気に入り取得完了後のみボタンを表示
-  const showFavoriteButton = status === "authenticated" && !favoriteLoading;
+  // ログイン済みかつお気に入り取得完了かつ取得成功時のみボタンを表示
+  const showFavoriteButton = status === "authenticated" && !favoriteLoading && !favoriteFetchFailed;
 
   return (
     <div>
