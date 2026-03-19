@@ -1,60 +1,30 @@
-"use client";
-
-import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
-import { getMyListeningRecords } from "@/lib/api/listening-records";
-import { formatDate } from "@/lib/utils";
-import Loading from "@/components/ui/Loading";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
-import type { ListeningRecordItem } from "@/types/listening-record";
+import { serverGet } from "@/lib/api/server";
+import { formatDate } from "@/lib/utils";
+import type { ListeningRecordListResult } from "@/types/listening-record";
 
 const DISPLAY_LIMIT = 5;
 
-export default function RecentListeningSection() {
-  const auth = useAuth();
-  const [records, setRecords] = useState<ListeningRecordItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface RecentListeningSectionProps {
+  username: string;
+}
 
-  const username =
-    auth.status === "authenticated" ? auth.profile.username : null;
-
-  useEffect(() => {
-    if (auth.status === "loading") return;
-    if (auth.status !== "authenticated") {
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchRecords() {
-      try {
-        const result = await getMyListeningRecords({ limit: DISPLAY_LIMIT });
-        if (!cancelled) {
-          setRecords(result.records);
-        }
-      } catch {
-        if (!cancelled) {
-          setError("聴取記録の取得に失敗しました");
-        }
-      } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
-      }
-    }
-
-    fetchRecords();
-    return () => {
-      cancelled = true;
-    };
-  }, [auth.status]);
-
-  if (auth.status !== "authenticated") {
+export default async function RecentListeningSection({
+  username,
+}: RecentListeningSectionProps) {
+  let records;
+  try {
+    const result = await serverGet<ListeningRecordListResult>(
+      `/users/me/listening-records?limit=${DISPLAY_LIMIT}`
+    );
+    records = result.records;
+  } catch (error) {
+    console.error(
+      "RecentListeningSection: 聴取記録の取得に失敗しました",
+      error
+    );
     return null;
   }
 
@@ -62,7 +32,7 @@ export default function RecentListeningSection() {
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-bold text-stone-900">最近聴いた番組</h2>
-        {username && records.length > 0 && (
+        {records.length > 0 && (
           <Link
             href={`/users/${username}`}
             className="text-sm text-rose-500 hover:text-rose-600"
@@ -72,10 +42,7 @@ export default function RecentListeningSection() {
         )}
       </div>
 
-      {loading && <Loading />}
-      {error && <ErrorMessage message={error} />}
-
-      {!loading && !error && records.length === 0 && (
+      {records.length === 0 ? (
         <EmptyState
           icon={<MusicalNoteIcon className="h-12 w-12" />}
           message="まだ聴取記録がありません"
@@ -83,9 +50,7 @@ export default function RecentListeningSection() {
           ctaLabel="番組を探す"
           ctaHref="/discover"
         />
-      )}
-
-      {!loading && records.length > 0 && (
+      ) : (
         <div className="space-y-2">
           {records.map((record) => (
             <div
