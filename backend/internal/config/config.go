@@ -74,7 +74,8 @@ func (c *Config) GetAdminUserIDs() []string {
 	result := make([]string, 0, len(parts))
 	for _, part := range parts {
 		// strings.TrimSpace: 前後の空白を除去する
-		trimmed := strings.TrimSpace(part)
+		// UUID の大文字/小文字の違いで一致しないのを防ぐため、小文字に正規化する
+		trimmed := strings.ToLower(strings.TrimSpace(part))
 		if trimmed != "" {
 			result = append(result, trimmed)
 		}
