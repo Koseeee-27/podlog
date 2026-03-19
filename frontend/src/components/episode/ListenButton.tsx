@@ -7,9 +7,13 @@ import ListenButtonView from "./ListenButtonView";
 
 interface ListenButtonProps {
   episodeId: string;
+  /** 「聴いた」に記録した直後に呼ばれるコールバック */
+  onJustMarked?: () => void;
+  /** 聴取記録を取り消した直後に呼ばれるコールバック */
+  onUnmarked?: () => void;
 }
 
-export default function ListenButton({ episodeId }: ListenButtonProps) {
+export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: ListenButtonProps) {
   const { listened, loading, toggling, error, toggle } = useListeningStatus(episodeId);
   const { showToast } = useToast();
 
@@ -18,8 +22,13 @@ export default function ListenButton({ episodeId }: ListenButtonProps) {
     const success = await toggle();
     if (success) {
       showToast(wasListened ? "聴取記録を削除しました" : "聴取記録を追加しました");
+      if (wasListened) {
+        onUnmarked?.();
+      } else {
+        onJustMarked?.();
+      }
     }
-  }, [listened, toggle, showToast]);
+  }, [listened, toggle, showToast, onJustMarked, onUnmarked]);
 
   return (
     <ListenButtonView

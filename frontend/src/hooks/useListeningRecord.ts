@@ -20,6 +20,7 @@ export function useListeningStatus(episodeId: string) {
   const [loading, setLoading] = useState(true);
   const [toggling, setToggling] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justMarked, setJustMarked] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,9 +49,11 @@ export function useListeningStatus(episodeId: string) {
       if (listened) {
         await removeListeningRecord(episodeId);
         setListened(false);
+        setJustMarked(false);
       } else {
         await addListeningRecord(episodeId);
         setListened(true);
+        setJustMarked(true);
       }
       return true;
     } catch (err) {
@@ -61,7 +64,11 @@ export function useListeningStatus(episodeId: string) {
     }
   }, [episodeId, listened]);
 
-  return { listened, loading, toggling, error, toggle };
+  const clearJustMarked = useCallback(() => {
+    setJustMarked(false);
+  }, []);
+
+  return { listened, loading, toggling, error, toggle, justMarked, clearJustMarked };
 }
 
 /**

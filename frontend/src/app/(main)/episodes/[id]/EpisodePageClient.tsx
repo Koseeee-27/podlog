@@ -28,5 +28,5 @@ export default function EpisodePageClient({
     return <ErrorMessage message="エピソードが見つかりません" />;
   }
 
-  return <EpisodeDetail episode={episode} isLoggedIn={isLoggedIn} />;
+  return <EpisodeDetail key={episode.id} episode={episode} isLoggedIn={isLoggedIn} />;
 }

@@ -1,7 +1,11 @@
+"use client";
+
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import type { EpisodeWithStats } from "@/types/episode";
 import { formatDuration, formatDate } from "@/lib/utils";
 import ListenButton from "./ListenButton";
+import ReviewPrompt from "./ReviewPrompt";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
@@ -11,6 +15,11 @@ interface EpisodeDetailProps {
 }
 
 export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
+  const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+
+  const handleJustMarked = useCallback(() => {
+    setShowReviewPrompt(true);
+  }, []);
   return (
     <div>
       <h1 className="text-2xl font-bold text-stone-900">{episode.title}</h1>
@@ -27,7 +36,11 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       <div className="mt-4">
         {isLoggedIn ? (
-          <ListenButton episodeId={episode.id} />
+          <ListenButton
+            episodeId={episode.id}
+            onJustMarked={handleJustMarked}
+            onUnmarked={() => setShowReviewPrompt(false)}
+          />
         ) : (
           <LoginPromptButton label="ログインして記録する" />
         )}
@@ -75,9 +88,22 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
         </div>
       )}
 
+      {showReviewPrompt && (
+        <div className="mt-4">
+          <ReviewPrompt
+            onClickReview={() => {
+              setShowReviewPrompt(false);
+              document.getElementById("review-section")?.scrollIntoView({ behavior: "smooth" });
+            }}
+          />
+        </div>
+      )}
+
       <hr className="my-8 border-stone-200" />
 
-      <EpisodeReviewSection key={`${episode.id}-${isLoggedIn}`} episodeId={episode.id} isLoggedIn={isLoggedIn} />
+      <div id="review-section">
+        <EpisodeReviewSection key={`${episode.id}-${isLoggedIn}`} episodeId={episode.id} isLoggedIn={isLoggedIn} />
+      </div>
     </div>
   );
 }
