@@ -111,14 +111,26 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
 
   useEffect(() => {
     const dialog = dialogRef.current;
-    dialog?.showModal();
+    if (dialog && !dialog.open) {
+      dialog.showModal();
+    }
 
     // cleanup: unmount 時に debounce タイマーをクリアし、dialog を閉じる
+    // close() はネイティブ close イベントを発火するため、
+    // onClose コールバック経由で親 state がリセットされないよう
+    // 先にイベントリスナーを除去してから閉じる
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-      dialog?.close();
+      if (dialog?.open) {
+        // onClose 属性によるイベント伝播を防ぐため、
+        // close イベントを一時的に無効化して閉じる
+        const preventClose = (e: Event) => e.stopImmediatePropagation();
+        dialog.addEventListener("close", preventClose);
+        dialog.close();
+        dialog.removeEventListener("close", preventClose);
+      }
     };
   }, []);
 
