@@ -33,3 +33,10 @@ export const Pending: Story = {
     isPending: true,
   },
 };
+
+export const PendingFavorite: Story = {
+  args: {
+    isFavorite: true,
+    isPending: true,
+  },
+};
