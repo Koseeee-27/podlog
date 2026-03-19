@@ -7,9 +7,11 @@ interface PodcastDetailProps {
   averageRating?: number;
   totalReviews?: number;
   hasRatingError?: boolean;
+  /** 好きな番組ボタン（ログイン済みの場合のみ渡される） */
+  favoriteButton?: React.ReactNode;
 }
 
-export default function PodcastDetail({ podcast, averageRating, totalReviews, hasRatingError }: PodcastDetailProps) {
+export default function PodcastDetail({ podcast, averageRating, totalReviews, hasRatingError, favoriteButton }: PodcastDetailProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-6">
       {podcast.artwork_url ? (
@@ -60,7 +62,8 @@ export default function PodcastDetail({ podcast, averageRating, totalReviews, ha
             {stripHtmlTags(podcast.description)}
           </p>
         )}
-        <div className="mt-4 flex flex-wrap gap-3">
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {favoriteButton}
           {podcast.itunes_url && (
             <a
               href={podcast.itunes_url}

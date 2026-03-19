@@ -5,21 +5,55 @@ import { useParams } from "next/navigation";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
 import { usePodcastRating } from "@/hooks/useReviews";
+import { useFavoritePodcast } from "@/hooks/useFavoritePodcast";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/components/ui/Toast";
 import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import PodcastDetail from "@/components/podcast/PodcastDetail";
+import FavoriteButton from "@/components/podcast/FavoriteButton";
 import EpisodeList from "@/components/episode/EpisodeList";
 
 export default function PodcastPageClient() {
   const params = useParams();
   const id = params.id as string;
-  const { status } = useAuth();
+  const auth = useAuth();
+  const status = auth.status;
+  const username = status === "authenticated" ? auth.profile.username : undefined;
+  const { showToast } = useToast();
   const { podcast, loading: podcastLoading, error: podcastError } = usePodcast(id);
   const { episodes, loading: episodesLoading, error: episodesError, hasMore, loadMore, refresh } = useEpisodes(id);
   const { fetchFromFeed, loading: fetchLoading } = useFetchFromFeed(id);
   const { rating, error: ratingError } = usePodcastRating(id);
+  const {
+    isFavorite,
+    loading: favoriteLoading,
+    isPending: favoritePending,
+    error: favoriteError,
+    toggle: toggleFavorite,
+    fetchFailed: favoriteFetchFailed,
+  } = useFavoritePodcast(id, username);
   const hasFetchedRef = useRef(false);
+  // トースト表示用: 初回ロード完了後にフラグを立て、以降の変化のみトーストを出す
+  const hasInitializedFavoriteRef = useRef(false);
+
+  // favoriteError が発生したらエラートーストを表示
+  useEffect(() => {
+    if (favoriteError) {
+      showToast(favoriteError, "error");
+    }
+  }, [favoriteError, showToast]);
+
+  // isFavorite の変化を検知してトーストを表示（初期ロード時は除外）
+  useEffect(() => {
+    if (favoriteLoading) return;
+    // 初回ロード完了時はフラグを立てるだけでトーストは出さない
+    if (!hasInitializedFavoriteRef.current) {
+      hasInitializedFavoriteRef.current = true;
+      return;
+    }
+    showToast(isFavorite ? "好きな番組に追加しました" : "好きな番組から削除しました");
+  }, [isFavorite, favoriteLoading, showToast]);
 
   // ログイン済みかつ feed_url がある場合のみ、初回エピソードロード完了後に
   // 自動で RSS フィードからエピソードを取得する。
@@ -54,6 +88,9 @@ export default function PodcastPageClient() {
     return <ErrorMessage message="ポッドキャストが見つかりません" />;
   }
 
+  // ログイン済みかつお気に入り取得完了かつ取得成功時のみボタンを表示
+  const showFavoriteButton = status === "authenticated" && !favoriteLoading && !favoriteFetchFailed;
+
   return (
     <div>
       <PodcastDetail
@@ -61,6 +98,15 @@ export default function PodcastPageClient() {
         averageRating={rating?.average_rating}
         totalReviews={rating?.total_reviews}
         hasRatingError={!!ratingError}
+        favoriteButton={
+          showFavoriteButton ? (
+            <FavoriteButton
+              isFavorite={isFavorite}
+              isPending={favoritePending}
+              onClick={toggleFavorite}
+            />
+          ) : undefined
+        }
       />
 
       <div className="mt-8">
