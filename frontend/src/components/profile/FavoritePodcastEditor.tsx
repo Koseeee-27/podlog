@@ -109,24 +109,22 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
-  // cleanup 由来の close を無視するためのフラグ
-  const isCleanupRef = useRef(false);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
-    isCleanupRef.current = false;
+    isMountedRef.current = true;
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) {
       dialog.showModal();
     }
 
     return () => {
+      isMountedRef.current = false;
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
-      if (dialog?.open) {
-        isCleanupRef.current = true;
-        dialog.close();
-      }
+      // cleanup 時は close() を呼ばない（onClose 発火を防ぐ）
+      // React が DOM から除去するので dialog は自然に閉じる
     };
   }, []);
 
@@ -163,8 +161,8 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
     <dialog
       ref={dialogRef}
       onClose={() => {
-        // cleanup 由来の close（React Strict Mode の二重実行）は無視する
-        if (!isCleanupRef.current) {
+        // unmount 後の close イベント（Strict Mode 等）は無視
+        if (isMountedRef.current) {
           onClose();
         }
       }}
