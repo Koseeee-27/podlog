@@ -16,7 +16,7 @@ import type { PodcastRatingResult } from "@/types/review";
 interface PodcastPageClientProps {
   id: string;
   initialPodcast: Podcast;
-  initialEpisodes: EpisodeListItem[];
+  initialEpisodes?: EpisodeListItem[];
   initialRating: PodcastRatingResult | null;
 }
 

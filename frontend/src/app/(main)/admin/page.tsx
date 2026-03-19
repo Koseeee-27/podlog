@@ -12,17 +12,17 @@ export default async function AdminPage() {
 
   // 未認証はホームにリダイレクト（middleware でも処理されるがフォールバック）
   if (!user) {
-    redirect("/");
+    redirect("/login");
   }
 
   let profile: User | null = null;
   try {
     profile = await serverGet<User>("/users/me");
   } catch {
-    redirect("/");
+    redirect("/login");
   }
 
-  // 管理者でなければホームにリダイレクト
+  // 管理者でなければホームにリダイレクト（認証済みだが権限不足）
   if (!profile?.is_admin) {
     redirect("/");
   }

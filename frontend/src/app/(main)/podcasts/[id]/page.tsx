@@ -42,7 +42,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
   const initialEpisodes =
     episodesResult.status === "fulfilled"
       ? (episodesResult.value.episodes ?? [])
-      : [];
+      : undefined;
   const initialRating =
     ratingResult.status === "fulfilled" ? ratingResult.value : null;
 
