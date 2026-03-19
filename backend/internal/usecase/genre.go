@@ -23,191 +23,166 @@ type GenreListResult struct {
 }
 
 // genreParentMap はサブカテゴリ → 親カテゴリのマッピングです。
-// Apple Podcasts の公式カテゴリツリーに基づき、DB に保存されているサブカテゴリ名を
-// 親カテゴリに集約します。
+// Apple Podcasts の公式カテゴリツリーに基づき、DB に保存されている日本語のサブカテゴリ名を
+// 親カテゴリ（日本語）に集約します。
 //
-// 親カテゴリ自身もキーとして含めます（例: "Comedy" → "Comedy"）。
+// 重要: DB のジャンル名は日本語で保存されているため、キーも日本語にする必要があります。
+// 以前は英語名をキーにしていたため、マッピングにヒットせず集約が機能していませんでした。
+//
+// 親カテゴリ自身もキーとして含めます（例: "コメディ" → "コメディ"）。
 // これにより、親カテゴリ名がそのまま DB に入っている場合も正しく集約できます。
 //
 // マッピングに存在しないジャンル名は、そのまま独立したカテゴリとして扱います。
 var genreParentMap = map[string]string{
-	// Arts（アート）
-	"Arts":             "Arts",
-	"Books":            "Arts",
-	"Design":           "Arts",
-	"Fashion & Beauty": "Arts",
-	"Food":             "Arts",
-	"Performing Arts":  "Arts",
-	"Visual Arts":      "Arts",
+	// アート（Arts）
+	"アート":             "アート",
+	"ブック":             "アート",
+	"ファッション／美容":   "アート",
+	"フード":             "アート",
+	"パフォーマンスアート": "アート",
+	"ビジュアルアート":     "アート",
 
-	// Business（ビジネス）
-	"Business":         "Business",
-	"Careers":          "Business",
-	"Entrepreneurship": "Business",
-	"Investing":        "Business",
-	"Management":       "Business",
-	"Marketing":        "Business",
+	// ビジネス（Business）
+	"ビジネス":         "ビジネス",
+	"キャリア":         "ビジネス",
+	"起業":            "ビジネス",
+	"投資":            "ビジネス",
+	"マネージメント":    "ビジネス",
+	"マーケティング":    "ビジネス",
+	"非営利":          "ビジネス",
+	"ビジネスニュース": "ビジネス",
 
-	// Comedy（コメディ）
-	"Comedy":            "Comedy",
-	"Comedy Fiction":    "Comedy",
-	"Comedy Interviews": "Comedy",
-	"Improv":            "Comedy",
-	"Stand-Up":          "Comedy",
+	// コメディ（Comedy）
+	"コメディ":                 "コメディ",
+	"コメディ・インタビュー":     "コメディ",
+	"即興コメディ":             "コメディ",
+	"スタンドアップ・コメディ":   "コメディ",
 
-	// Education（教育）
-	"Education":         "Education",
-	"Courses":           "Education",
-	"How To":            "Education",
-	"Language Learning": "Education",
-	"Self-Improvement":  "Education",
-	"Training":          "Education",
+	// 教育（Education）
+	"教育":         "教育",
+	"コース":       "教育",
+	"ハウツー":      "教育",
+	"言語学習":      "教育",
+	"自己啓発":      "教育",
+	"子どもの教育":   "教育",
 
-	// Fiction（フィクション）
-	"Fiction":         "Fiction",
-	"Drama":           "Fiction",
-	"Science Fiction": "Fiction",
+	// フィクション（Fiction）
+	"ドラマ": "フィクション",
+	"SF":    "フィクション",
 
-	// Government（行政）
-	"Government": "Government",
+	// 行政（Government）
+	"行政": "行政",
 
-	// Health & Fitness（健康/フィットネス）
-	"Health & Fitness":  "Health & Fitness",
-	"Alternative Health": "Health & Fitness",
-	"Fitness":            "Health & Fitness",
-	"Medicine":           "Health & Fitness",
-	"Mental Health":      "Health & Fitness",
-	"Nutrition":          "Health & Fitness",
-	"Sexuality":          "Health & Fitness",
+	// 健康／フィットネス（Health & Fitness）
+	"健康／フィットネス": "健康／フィットネス",
+	"代替療法":         "健康／フィットネス",
+	"医学":            "健康／フィットネス",
+	"メンタルヘルス":    "健康／フィットネス",
+	"セクシャリティ":    "健康／フィットネス",
+	"ランニング":       "健康／フィットネス",
 
-	// History（歴史）
-	"History": "History",
+	// 歴史（History）
+	"歴史": "歴史",
 
-	// Kids & Family（キッズ/ファミリー）
-	"Kids & Family":    "Kids & Family",
-	"Parenting":        "Kids & Family",
-	"Pets & Animals":   "Kids & Family",
-	"Stories for Kids": "Kids & Family",
+	// キッズ／ファミリー（Kids & Family）
+	"キッズ／ファミリー": "キッズ／ファミリー",
+	"子育て":           "キッズ／ファミリー",
+	"子どもの読みもの":   "キッズ／ファミリー",
 
-	// Leisure（レジャー）
-	"Leisure":          "Leisure",
-	"Animation & Manga": "Leisure",
-	"Automotive":        "Leisure",
-	"Aviation":          "Leisure",
-	"Crafts":            "Leisure",
-	"Games":             "Leisure",
-	"Hobbies":           "Leisure",
-	"Home & Garden":     "Leisure",
-	"Video Games":       "Leisure",
-	"Tabletop":          "Leisure",
+	// レジャー（Leisure）
+	"レジャー":     "レジャー",
+	"ビデオゲーム":  "レジャー",
+	"趣味":        "レジャー",
+	"ホッケー":     "レジャー",
 
-	// Music（ミュージック）
-	"Music":            "Music",
-	"Music Commentary": "Music",
-	"Music History":    "Music",
-	"Music Interviews": "Music",
+	// 音楽（Music）
+	"音楽":             "音楽",
+	"音楽解説":          "音楽",
+	"音楽史":            "音楽",
+	"音楽インタビュー":   "音楽",
 
-	// News（ニュース）
-	"News":               "News",
-	"Daily News":         "News",
-	"Entertainment News": "News",
-	"News Commentary":    "News",
-	"Politics":           "News",
-	"Tech News":          "News",
-	"Sports News":        "News",
+	// ニュース（News）
+	"ニュース":                   "ニュース",
+	"今日のニュース":              "ニュース",
+	"エンターテインメントニュース": "ニュース",
+	"ニュース解説":               "ニュース",
+	"政治":                      "ニュース",
+	"技術ニュース":               "ニュース",
 
-	// Religion & Spirituality（宗教/スピリチュアル）
-	"Religion & Spirituality": "Religion & Spirituality",
-	"Buddhism":                "Religion & Spirituality",
-	"Christianity":            "Religion & Spirituality",
-	"Hinduism":                "Religion & Spirituality",
-	"Islam":                   "Religion & Spirituality",
-	"Judaism":                 "Religion & Spirituality",
-	"Religion":                "Religion & Spirituality",
-	"Spirituality":            "Religion & Spirituality",
+	// 宗教／スピリチュアル（Religion & Spirituality）
+	"仏教":           "宗教／スピリチュアル",
+	"宗教":           "宗教／スピリチュアル",
+	"スピリチュアル":   "宗教／スピリチュアル",
 
-	// Science（サイエンス）
-	"Science":        "Science",
-	"Astronomy":      "Science",
-	"Chemistry":      "Science",
-	"Earth Sciences": "Science",
-	"Life Sciences":  "Science",
-	"Mathematics":    "Science",
-	"Nature":         "Science",
-	"Physics":        "Science",
-	"Social Sciences": "Science",
+	// 科学（Science）
+	"科学":     "科学",
+	"自然科学":  "科学",
+	"社会科学":  "科学",
 
-	// Society & Culture（社会/文化）
-	"Society & Culture":  "Society & Culture",
-	"Documentary":        "Society & Culture",
-	"Personal Journals":  "Society & Culture",
-	"Philosophy":         "Society & Culture",
-	"Places & Travel":    "Society & Culture",
-	"Relationships":      "Society & Culture",
+	// 社会／文化（Society & Culture）
+	"社会／文化":         "社会／文化",
+	"ドキュメンタリー":    "社会／文化",
+	"個人ジャーナル":     "社会／文化",
+	"哲学":              "社会／文化",
+	"地域情報／トラベル":  "社会／文化",
+	"恋愛関係":           "社会／文化",
 
-	// Sports（スポーツ）
-	"Sports":           "Sports",
-	"Baseball":         "Sports",
-	"Basketball":       "Sports",
-	"Cricket":          "Sports",
-	"Fantasy Sports":   "Sports",
-	"Football":         "Sports",
-	"Golf":             "Sports",
-	"Japanese Baseball": "Sports",
-	"Rugby":            "Sports",
-	"Running":          "Sports",
-	"Soccer":           "Sports",
-	"Swimming":         "Sports",
-	"Tennis":           "Sports",
-	"Volleyball":       "Sports",
-	"Wilderness":       "Sports",
-	"Wrestling":        "Sports",
+	// スポーツ（Sports）
+	"スポーツ":             "スポーツ",
+	"アメリカンフットボール": "スポーツ",
+	"ゴルフ":              "スポーツ",
+	"サッカー":             "スポーツ",
 
-	// Technology（テクノロジー）
-	"Technology": "Technology",
+	// テクノロジー（Technology）
+	"テクノロジー": "テクノロジー",
 
-	// True Crime（トゥルークライム）
-	"True Crime": "True Crime",
+	// 事件／犯罪（True Crime）
+	"事件／犯罪": "事件／犯罪",
 
-	// TV & Film（テレビ/映画）
-	"TV & Film":     "TV & Film",
-	"After Shows":   "TV & Film",
-	"Film History":  "TV & Film",
-	"Film Reviews":  "TV & Film",
-	"TV Reviews":    "TV & Film",
+	// テレビ番組／映画（TV & Film）
+	"テレビ番組／映画": "テレビ番組／映画",
+	"映画レビュー":    "テレビ番組／映画",
+	"TV番組レビュー":  "テレビ番組／映画",
 }
 
-// parentGenreJAMap は親カテゴリの英語名 → 日本語名のマッピングです。
-// genreJAMap からの移行として、親カテゴリだけに絞った簡潔なマップです。
-var parentGenreJAMap = map[string]string{
-	"Arts":                     "アート",
-	"Business":                 "ビジネス",
-	"Comedy":                   "コメディ",
-	"Education":                "教育",
-	"Fiction":                  "フィクション",
-	"Government":               "行政",
-	"Health & Fitness":         "健康/フィットネス",
-	"History":                  "歴史",
-	"Kids & Family":            "キッズ/ファミリー",
-	"Leisure":                  "レジャー",
-	"Music":                    "ミュージック",
-	"News":                     "ニュース",
-	"Religion & Spirituality":  "宗教/スピリチュアル",
-	"Science":                  "サイエンス",
-	"Society & Culture":        "社会/文化",
-	"Sports":                   "スポーツ",
-	"Technology":               "テクノロジー",
-	"True Crime":               "トゥルークライム",
-	"TV & Film":                "テレビ/映画",
+// parentGenreENMap は親カテゴリの日本語名 → 英語名のマッピングです。
+// genreParentMap のキーが日本語になったため、英語名の逆引きに使います。
+// ListGenres() で id（英語名）と name_en を返すために必要です。
+var parentGenreENMap = map[string]string{
+	"アート":             "Arts",
+	"ビジネス":           "Business",
+	"コメディ":           "Comedy",
+	"教育":              "Education",
+	"フィクション":       "Fiction",
+	"行政":              "Government",
+	"健康／フィットネス":  "Health & Fitness",
+	"歴史":              "History",
+	"キッズ／ファミリー":  "Kids & Family",
+	"レジャー":           "Leisure",
+	"音楽":              "Music",
+	"ニュース":           "News",
+	"宗教／スピリチュアル": "Religion & Spirituality",
+	"科学":              "Science",
+	"社会／文化":         "Society & Culture",
+	"スポーツ":           "Sports",
+	"テクノロジー":       "Technology",
+	"事件／犯罪":         "True Crime",
+	"テレビ番組／映画":    "TV & Film",
 }
 
-// parentToSubGenres は親カテゴリ → サブカテゴリ一覧の逆引きマップです。
+// parentToSubGenres は親カテゴリ（日本語）→ サブカテゴリ一覧（日本語）の逆引きマップです。
 // init() で genreParentMap から自動生成します。
 // 検索 API で親カテゴリ名を受け取ったとき、対応する全サブカテゴリに展開するために使います。
 var parentToSubGenres map[string][]string
 
+// enToJAParent は英語の親カテゴリ名 → 日本語の親カテゴリ名の逆引きマップです。
+// parentGenreENMap から init() で自動生成します。
+// ExpandGenre() が英語名を受け取ったとき、日本語の parentToSubGenres を引くために使います。
+var enToJAParent map[string]string
+
 // init は Go のパッケージ初期化関数で、プログラム起動時に自動的に呼ばれます。
-// genreParentMap を逆引きして parentToSubGenres を構築します。
+// genreParentMap を逆引きして parentToSubGenres を構築し、
+// parentGenreENMap を逆引きして enToJAParent を構築します。
 func init() {
 	parentToSubGenres = make(map[string][]string)
 	for sub, parent := range genreParentMap {
@@ -217,19 +192,33 @@ func init() {
 	for parent := range parentToSubGenres {
 		sort.Strings(parentToSubGenres[parent])
 	}
+
+	// parentGenreENMap（日本語→英語）を逆引きして enToJAParent（英語→日本語）を構築
+	enToJAParent = make(map[string]string)
+	for ja, en := range parentGenreENMap {
+		enToJAParent[en] = ja
+	}
 }
 
-// ExpandGenre は親カテゴリ名を受け取り、対応するサブカテゴリの一覧を返します。
-// 検索 API で「コメディ」が選択されたとき、DB では "Comedy", "Comedy Fiction",
-// "Comedy Interviews", "Improv", "Stand-Up" のいずれかが入っているので、
-// これらを全て返して IN 句で検索できるようにします。
+// ExpandGenre は親カテゴリ名（英語または日本語）を受け取り、
+// 対応するサブカテゴリの一覧（日本語名）を返します。
+//
+// フロントエンドはジャンル一覧 API の id（英語名、例: "Comedy"）を送ってきます。
+// DB のジャンル名は日本語なので、英語名を日本語に変換してからサブカテゴリを展開し、
+// DB の WHERE genre IN (...) で使える日本語名のリストを返します。
 //
 // 引数が親カテゴリでない場合（マッピングに存在しない場合）は、
 // その値をそのまま1要素のスライスとして返します。
 func ExpandGenre(genre string) []string {
+	// まず日本語名でそのまま引いてみる
 	if subs, ok := parentToSubGenres[genre]; ok {
-		// グローバル map のスライスを直接返すと呼び出し側の変更で共有データが壊れるためコピーを返す
 		return append([]string(nil), subs...)
+	}
+	// 英語名が渡された場合、日本語の親カテゴリ名に変換してから引く
+	if ja, ok := enToJAParent[genre]; ok {
+		if subs, ok := parentToSubGenres[ja]; ok {
+			return append([]string(nil), subs...)
+		}
 	}
 	// マッピングにない場合はそのジャンル名で直接検索
 	return []string{genre}
@@ -268,10 +257,10 @@ func NewGenreUsecase(podcastRepo repository.PodcastRepository) GenreUsecase {
 // ListGenres は DB から DISTINCT なジャンル一覧を取得し、親カテゴリに集約して返します。
 //
 // 処理の流れ:
-// 1. DB から重複なしのジャンル名一覧を取得（例: "Comedy", "Improv", "Stand-Up", "News", "Daily News"）
-// 2. genreParentMap を使ってサブカテゴリを親カテゴリに変換（例: "Improv" → "Comedy"）
+// 1. DB から重複なしのジャンル名一覧を取得（例: "コメディ", "即興コメディ", "ニュース", "今日のニュース"）
+// 2. genreParentMap を使ってサブカテゴリを親カテゴリに変換（例: "即興コメディ" → "コメディ"）
 // 3. 重複を排除してユニークな親カテゴリだけにする
-// 4. parentGenreJAMap から日本語名を取得して返す
+// 4. parentGenreENMap から英語名を取得して返す
 func (u *genreUsecase) ListGenres(ctx context.Context) (*GenreListResult, error) {
 	genres, err := u.podcastRepo.GetDistinctGenres(ctx)
 	if err != nil {
@@ -297,14 +286,16 @@ func (u *genreUsecase) ListGenres(ctx context.Context) (*GenreListResult, error)
 
 	items := make([]GenreItem, 0, len(parentGenres))
 	for _, p := range parentGenres {
-		nameJA := p // デフォルトは英語名のままフォールバック
-		if ja, ok := parentGenreJAMap[p]; ok {
-			nameJA = ja
+		// p は日本語の親カテゴリ名（例: "コメディ"）
+		// parentGenreENMap から英語名を取得し、ID と NameEN に使う
+		nameEN := p // フォールバック: 英語名が見つからなければ日本語名をそのまま使う
+		if en, ok := parentGenreENMap[p]; ok {
+			nameEN = en
 		}
 		items = append(items, GenreItem{
-			ID:     p,
-			NameEN: p,
-			NameJA: nameJA,
+			ID:     nameEN,
+			NameEN: nameEN,
+			NameJA: p, // 親カテゴリ名がそのまま日本語名
 		})
 	}
 
