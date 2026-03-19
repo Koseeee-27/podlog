@@ -24,15 +24,18 @@ export default function AdminClient() {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("podcast");
 
+  const status = auth.status;
+  const isAdmin = status === "authenticated" ? auth.profile.is_admin : false;
+
   // 非管理者はホームにリダイレクト
   useEffect(() => {
-    if (auth.status === "unauthenticated" || auth.status === "no_profile") {
+    if (status === "unauthenticated" || status === "no_profile") {
       router.push("/");
     }
-    if (auth.status === "authenticated" && !auth.profile.is_admin) {
+    if (status === "authenticated" && !isAdmin) {
       router.push("/");
     }
-  }, [auth, router]);
+  }, [status, isAdmin, router]);
 
   if (auth.status === "loading") {
     return <Loading />;
