@@ -56,6 +56,9 @@ func (m *mockPodcastRepo) ListWithoutGenre(ctx context.Context) ([]model.Podcast
 	}
 	return m.listWithoutGenreFn(ctx)
 }
+func (m *mockPodcastRepo) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // TestRun_NoPodcastsToUpdate はジャンル未設定の番組がない場合のテストです。
 func TestRun_NoPodcastsToUpdate(t *testing.T) {

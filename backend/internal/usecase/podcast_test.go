@@ -52,6 +52,9 @@ func (m *mockPodcastRepoForSearch) UpdateGenre(_ context.Context, _ uuid.UUID, _
 func (m *mockPodcastRepoForSearch) ListWithoutGenre(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepoForSearch) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── テスト: Search ──
 

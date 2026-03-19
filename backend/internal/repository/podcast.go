@@ -48,6 +48,10 @@ type PodcastRepository interface {
 	// ListWithoutGenre は genre が NULL かつ itunes_id が NOT NULL のポッドキャストを返します。
 	// バッチ処理で iTunes API から genre を一括取得する際に対象を特定するために使います。
 	ListWithoutGenre(ctx context.Context) ([]model.Podcast, error)
+
+	// ListWithoutEpisodes は feed_url が NOT NULL かつエピソードが0件のポッドキャストを返します。
+	// バッチ処理でエピソードを一括取得する際に対象を特定するために使います。
+	ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error)
 }
 
 type podcastRepository struct {
@@ -250,6 +254,23 @@ func (r *podcastRepository) ListWithoutGenre(ctx context.Context) ([]model.Podca
 	var podcasts []model.Podcast
 	if err := r.db.SelectContext(ctx, &podcasts, query); err != nil {
 		return nil, fmt.Errorf("failed to list podcasts without genre: %w", err)
+	}
+	return podcasts, nil
+}
+
+// ListWithoutEpisodes は feed_url が NOT NULL かつエピソードが0件のポッドキャストを返します。
+// サブクエリで episodes テーブルに存在する podcast_id を除外することで、
+// まだエピソードが1件も登録されていない番組だけを取得します。
+func (r *podcastRepository) ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error) {
+	query := `
+		SELECT * FROM podcasts
+		WHERE feed_url IS NOT NULL
+		AND id NOT IN (SELECT DISTINCT podcast_id FROM episodes)
+		ORDER BY created_at
+	`
+	var podcasts []model.Podcast
+	if err := r.db.SelectContext(ctx, &podcasts, query); err != nil {
+		return nil, fmt.Errorf("failed to list podcasts without episodes: %w", err)
 	}
 	return podcasts, nil
 }
