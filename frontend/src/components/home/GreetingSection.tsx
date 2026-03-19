@@ -1,16 +1,8 @@
-"use client";
+interface GreetingSectionProps {
+  displayName: string;
+}
 
-import { useAuth } from "@/hooks/useAuth";
-
-export default function GreetingSection() {
-  const auth = useAuth();
-
-  if (auth.status !== "authenticated") {
-    return null;
-  }
-
-  const displayName = auth.profile.display_name;
-
+export default function GreetingSection({ displayName }: GreetingSectionProps) {
   return (
     <section className="py-4">
       <h1 className="text-2xl font-bold text-stone-900">

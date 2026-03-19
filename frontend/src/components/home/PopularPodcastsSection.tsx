@@ -1,29 +1,34 @@
-"use client";
-
-import { usePopularPodcasts } from "@/hooks/usePodcastSearch";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
+import { serverGet } from "@/lib/api/server";
+import type { PodcastSearchItem, PodcastSearchResult } from "@/types/podcast";
 
 const DISPLAY_COUNT = 6;
 
-export default function PopularPodcastsSection() {
-  const { podcasts, loading, error } = usePopularPodcasts(true, DISPLAY_COUNT);
-
-  // データがない場合やエラー時はセクションごと非表示
-  if (error) {
-    console.error("PopularPodcastsSection: 人気番組の取得に失敗しました", error);
+export default async function PopularPodcastsSection() {
+  let podcasts: PodcastSearchItem[] = [];
+  try {
+    const result = await serverGet<PodcastSearchResult>(
+      `/podcasts/popular?limit=${DISPLAY_COUNT}`,
+      { revalidate: 300, tags: ["popular-podcasts"], noAuth: true }
+    );
+    podcasts = result.podcasts;
+  } catch (error) {
+    console.error(
+      "PopularPodcastsSection: 人気番組の取得に失敗しました",
+      error
+    );
     return null;
   }
-  if (!loading && podcasts.length === 0) {
+
+  if (podcasts.length === 0) {
     return null;
   }
 
   return (
     <section className="py-4">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-bold text-stone-900">
-          人気の番組
-        </h2>
+        <h2 className="text-lg font-bold text-stone-900">人気の番組</h2>
         <Link
           href="/discover"
           className="text-sm text-rose-500 hover:text-rose-600 font-medium"
@@ -32,30 +37,11 @@ export default function PopularPodcastsSection() {
         </Link>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: DISPLAY_COUNT }).map((_, i) => (
-            <div
-              key={i}
-              className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm animate-pulse"
-            >
-              <div className="flex gap-4">
-                <div className="w-20 h-20 rounded-lg bg-stone-100 flex-shrink-0" />
-                <div className="flex-1 space-y-2 py-1">
-                  <div className="h-4 bg-stone-100 rounded w-3/4" />
-                  <div className="h-3 bg-stone-100 rounded w-1/2" />
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {podcasts.map((podcast) => (
-            <PodcastCard key={podcast.id} podcast={podcast} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {podcasts.map((podcast) => (
+          <PodcastCard key={podcast.id} podcast={podcast} />
+        ))}
+      </div>
     </section>
   );
 }
