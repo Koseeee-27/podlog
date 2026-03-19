@@ -22,11 +22,15 @@ describe("stripHtmlTags", () => {
     expect(stripHtmlTags("")).toBe("");
   });
 
-  it("自己閉じタグを除去する", () => {
-    expect(stripHtmlTags("改行前<br/>改行後")).toBe("改行前改行後");
+  it("自己閉じタグをスペースに置換する", () => {
+    expect(stripHtmlTags("改行前<br/>改行後")).toBe("改行前 改行後");
   });
 
   it("ネストしたタグを除去する", () => {
     expect(stripHtmlTags("<div><p><strong>太字</strong></p></div>")).toBe("太字");
+  });
+
+  it("連続する段落タグで単語が結合しない", () => {
+    expect(stripHtmlTags("<p>前の段落</p><p>次の段落</p>")).toBe("前の段落 次の段落");
   });
 });
