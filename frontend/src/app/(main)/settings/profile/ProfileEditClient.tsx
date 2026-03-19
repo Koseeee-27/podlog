@@ -1,44 +1,22 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import Loading from "@/components/ui/Loading";
 import ProfileEditForm from "@/components/profile/ProfileEditPage";
 import type { User } from "@/types/user";
 
-export default function ProfileEditClient() {
+interface ProfileEditClientProps {
+  initialProfile: User;
+}
+
+export default function ProfileEditClient({ initialProfile }: ProfileEditClientProps) {
   const auth = useAuth();
   const router = useRouter();
 
-  // 未認証リダイレクトは middleware で処理済み
-  // プロフィール未設定のユーザーはセットアップへリダイレクト
-  useEffect(() => {
-    if (auth.status === "no_profile") {
-      router.push("/profile/setup");
-    }
-  }, [auth.status, router]);
-
-  if (auth.status !== "authenticated") {
-    return <Loading />;
-  }
-
-  return (
-    <ProfileEditFormWrapper
-      profile={auth.profile}
-      refreshProfile={auth.refreshProfile}
-    />
-  );
-}
-
-function ProfileEditFormWrapper({
-  profile,
-  refreshProfile,
-}: {
-  profile: User;
-  refreshProfile: () => Promise<void>;
-}) {
-  const router = useRouter();
+  // 認証・プロフィール存在チェックは Server Component (page.tsx) で完了済み
+  // クライアント側で最新のプロフィールが取れればそちらを使用
+  const profile = auth.status === "authenticated" ? auth.profile : initialProfile;
+  const refreshProfile = auth.status === "authenticated" ? auth.refreshProfile : async () => {};
 
   function handleSaveComplete() {
     router.push(`/users/${profile.username}`);

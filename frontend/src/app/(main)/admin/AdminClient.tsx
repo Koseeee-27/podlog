@@ -1,10 +1,7 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useState, useTransition } from "react";
 import { useToast } from "@/components/ui/Toast";
-import Loading from "@/components/ui/Loading";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -21,32 +18,9 @@ import { ApiRequestError } from "@/types/api";
 type Tab = "podcast" | "episode";
 
 export default function AdminClient() {
-  const auth = useAuth();
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("podcast");
 
-  const status = auth.status;
-  const isAdmin = status === "authenticated" ? auth.profile.is_admin : false;
-
-  // 未認証リダイレクトは middleware で処理済み
-  // 非管理者はホームにリダイレクト
-  useEffect(() => {
-    if (status === "no_profile") {
-      router.push("/");
-    }
-    if (status === "authenticated" && !isAdmin) {
-      router.push("/");
-    }
-  }, [status, isAdmin, router]);
-
-  if (auth.status === "loading") {
-    return <Loading />;
-  }
-
-  if (auth.status !== "authenticated" || !auth.profile.is_admin) {
-    return <Loading />;
-  }
-
+  // 認証・管理者チェックは Server Component (page.tsx) で完了済み
   return (
     <div className="max-w-2xl mx-auto">
       <div className="flex items-center gap-2 mb-6">

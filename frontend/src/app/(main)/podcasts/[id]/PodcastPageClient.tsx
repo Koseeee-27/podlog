@@ -1,31 +1,48 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
-import { usePodcastRating } from "@/hooks/useReviews";
 import { useFavoritePodcast } from "@/hooks/useFavoritePodcast";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
-import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import PodcastDetail from "@/components/podcast/PodcastDetail";
 import FavoriteButton from "@/components/podcast/FavoriteButton";
 import EpisodeList from "@/components/episode/EpisodeList";
+import type { Podcast } from "@/types/podcast";
+import type { EpisodeListItem } from "@/types/episode";
+import type { PodcastRatingResult } from "@/types/review";
 
 interface PodcastPageClientProps {
   id: string;
+  initialPodcast: Podcast;
+  initialEpisodes: EpisodeListItem[];
+  initialRating: PodcastRatingResult | null;
 }
 
-export default function PodcastPageClient({ id }: PodcastPageClientProps) {
+export default function PodcastPageClient({
+  id,
+  initialPodcast,
+  initialEpisodes,
+  initialRating,
+}: PodcastPageClientProps) {
   const auth = useAuth();
   const status = auth.status;
   const username = status === "authenticated" ? auth.profile.username : undefined;
   const { showToast } = useToast();
-  const { podcast, loading: podcastLoading, error: podcastError } = usePodcast(id);
-  const { episodes, loading: episodesLoading, error: episodesError, hasMore, loadMore, refresh } = useEpisodes(id);
+
+  // エピソード一覧: サーバーから取得した初期データを使い、ページネーションはクライアントで管理
+  const {
+    episodes,
+    loading: episodesLoading,
+    error: episodesError,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useEpisodes(id, initialEpisodes);
+
   const { fetchFromFeed, loading: fetchLoading } = useFetchFromFeed(id);
-  const { rating, error: ratingError } = usePodcastRating(id);
+
   const {
     isFavorite,
     loading: favoriteLoading,
@@ -53,12 +70,12 @@ export default function PodcastPageClient({ id }: PodcastPageClientProps) {
     }
   }, [toggleFavorite, showToast]);
 
-  // ログイン済みかつ feed_url がある場合のみ、初回エピソードロード完了後に
+  // ログイン済みかつ feed_url がある場合のみ、初回に
   // 自動で RSS フィードからエピソードを取得する。
   // 未ログイン時は認証が必要な POST エンドポイントを叩けないため実行しない。
   const isAuthenticated = status === "authenticated" || status === "no_profile";
   useEffect(() => {
-    if (!isAuthenticated || !podcast?.feed_url || hasFetchedRef.current || episodesLoading) return;
+    if (!isAuthenticated || !initialPodcast.feed_url || hasFetchedRef.current) return;
     hasFetchedRef.current = true;
 
     (async () => {
@@ -72,19 +89,7 @@ export default function PodcastPageClient({ id }: PodcastPageClientProps) {
         hasFetchedRef.current = false;
       }
     })();
-  }, [isAuthenticated, podcast, fetchFromFeed, refresh, episodesLoading]);
-
-  if (podcastLoading) {
-    return <Loading />;
-  }
-
-  if (podcastError) {
-    return <ErrorMessage message={podcastError} />;
-  }
-
-  if (!podcast) {
-    return <ErrorMessage message="ポッドキャストが見つかりません" />;
-  }
+  }, [isAuthenticated, initialPodcast.feed_url, fetchFromFeed, refresh]);
 
   // ログイン済みかつお気に入り取得完了かつ取得成功時のみボタンを表示
   const showFavoriteButton = status === "authenticated" && !favoriteLoading && !favoriteFetchFailed;
@@ -92,10 +97,10 @@ export default function PodcastPageClient({ id }: PodcastPageClientProps) {
   return (
     <div>
       <PodcastDetail
-        podcast={podcast}
-        averageRating={rating?.average_rating}
-        totalReviews={rating?.total_reviews}
-        hasRatingError={!!ratingError}
+        podcast={initialPodcast}
+        averageRating={initialRating?.average_rating}
+        totalReviews={initialRating?.total_reviews}
+        hasRatingError={!initialRating}
         favoriteButton={
           showFavoriteButton ? (
             <FavoriteButton

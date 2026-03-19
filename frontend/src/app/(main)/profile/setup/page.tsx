@@ -1,5 +1,27 @@
+import { redirect } from "next/navigation";
+import { createClient } from "@/lib/supabase/server";
+import { serverGet } from "@/lib/api/server";
 import ProfileSetupClient from "./ProfileSetupClient";
+import type { User } from "@/types/user";
 
-export default function ProfileSetupPage() {
+export default async function ProfileSetupPage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    redirect("/login");
+  }
+
+  // プロフィール設定済みならトップへリダイレクト
+  try {
+    await serverGet<User>("/users/me");
+    // 取得成功 = プロフィール設定済み
+    redirect("/");
+  } catch {
+    // 取得失敗 = プロフィール未設定、セットアップ画面を表示
+  }
+
   return <ProfileSetupClient />;
 }
