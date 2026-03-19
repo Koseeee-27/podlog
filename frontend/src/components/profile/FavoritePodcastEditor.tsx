@@ -109,27 +109,23 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
 
+  // cleanup 由来の close を無視するためのフラグ
+  const isCleanupRef = useRef(false);
+
   useEffect(() => {
+    isCleanupRef.current = false;
     const dialog = dialogRef.current;
     if (dialog && !dialog.open) {
       dialog.showModal();
     }
 
-    // cleanup: unmount 時に debounce タイマーをクリアし、dialog を閉じる
-    // close() はネイティブ close イベントを発火するため、
-    // onClose コールバック経由で親 state がリセットされないよう
-    // 先にイベントリスナーを除去してから閉じる
     return () => {
       if (debounceRef.current) {
         clearTimeout(debounceRef.current);
       }
       if (dialog?.open) {
-        // onClose 属性によるイベント伝播を防ぐため、
-        // close イベントを一時的に無効化して閉じる
-        const preventClose = (e: Event) => e.stopImmediatePropagation();
-        dialog.addEventListener("close", preventClose);
+        isCleanupRef.current = true;
         dialog.close();
-        dialog.removeEventListener("close", preventClose);
       }
     };
   }, []);
@@ -166,7 +162,12 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   return (
     <dialog
       ref={dialogRef}
-      onClose={onClose}
+      onClose={() => {
+        // cleanup 由来の close（React Strict Mode の二重実行）は無視する
+        if (!isCleanupRef.current) {
+          onClose();
+        }
+      }}
       className="fixed inset-0 w-full max-w-md mx-auto mt-20 p-0 rounded-xl border border-stone-200 shadow-lg backdrop:bg-black/30"
     >
       <div className="p-4">

@@ -38,9 +38,14 @@ export function formatStars(rating: number): string {
 /**
  * HTML タグを除去してプレーンテキストを返す。
  * RSS フィードの説明文などに含まれる <p>, <a> 等のタグを取り除く。
+ * 段落・改行タグはスペースに置換してからタグ除去し、連続する空白を正規化する。
  */
 export function stripHtmlTags(html: string): string {
-  return html.replace(/<[^>]*>/g, "");
+  return html
+    .replace(/<\/?(p|br|div|li|tr|h[1-6])[^>]*>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 export function isValidUrl(url: string): boolean {
