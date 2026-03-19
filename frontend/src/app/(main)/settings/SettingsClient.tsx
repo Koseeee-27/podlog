@@ -77,6 +77,15 @@ export default function SettingsClient() {
             ログアウト
           </Button>
         </Card>
+
+        <div className="flex gap-4 justify-center text-sm text-stone-400 pt-2">
+          <Link href="/terms" className="hover:text-stone-600 transition-colors">
+            利用規約
+          </Link>
+          <Link href="/privacy" className="hover:text-stone-600 transition-colors">
+            プライバシーポリシー
+          </Link>
+        </div>
       </div>
     </div>
   );
