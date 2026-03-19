@@ -10,7 +10,7 @@ export default async function PopularPodcastsSection() {
   try {
     const result = await serverGet<PodcastSearchResult>(
       `/podcasts/popular?limit=${DISPLAY_COUNT}`,
-      { revalidate: 300, tags: ["popular-podcasts"] }
+      { revalidate: 300, tags: ["popular-podcasts"], noAuth: true }
     );
     podcasts = result.podcasts;
   } catch (error) {

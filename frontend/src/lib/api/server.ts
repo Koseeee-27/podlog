@@ -62,6 +62,8 @@ interface ServerFetchOptions {
   revalidate?: number | false;
   /** Next.js の cache タグ（revalidateTag で無効化するため） */
   tags?: string[];
+  /** 認証ヘッダーを付けない（公開 API 用）。true にするとキャッシュが安定する */
+  noAuth?: boolean;
 }
 
 /**
@@ -69,9 +71,11 @@ interface ServerFetchOptions {
  */
 export async function serverGet<T>(
   path: string,
-  options?: ServerFetchOptions
+  options?: ServerFetchOptions,
 ): Promise<T> {
-  const headers = await getServerAuthHeaders();
+  const headers = options?.noAuth
+    ? { "Content-Type": "application/json" }
+    : await getServerAuthHeaders();
   const baseUrl = getApiBaseUrl();
 
   const response = await fetch(`${baseUrl}${path}`, {

@@ -20,7 +20,7 @@ export default async function TimelineSection({
   try {
     data = await serverGet<TimelineResult>(
       `/timeline?limit=${PAGE_SIZE}&offset=0`,
-      { revalidate: 60, tags: ["timeline"] }
+      { revalidate: 60, tags: ["timeline"], noAuth: true }
     );
   } catch (error) {
     console.error("TimelineSection: タイムラインの取得に失敗しました", error);
