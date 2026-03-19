@@ -189,7 +189,7 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 	// キーワード検索のみの場合はタイトル順のまま（検索ワードとの関連性を重視）。
 	orderBy := "p.title, p.id"
 	if len(genres) > 0 {
-		orderBy = "total_reviews DESC, average_rating DESC, p.title"
+		orderBy = "total_reviews DESC, average_rating DESC, p.title, p.id"
 	}
 
 	// プレースホルダの番号をジャンル指定の有無で切り替えます。
