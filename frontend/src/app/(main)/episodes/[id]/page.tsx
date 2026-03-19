@@ -1,7 +1,10 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
-import EpisodePageClient from "./EpisodePageClient";
+import EpisodeDetail from "@/components/episode/EpisodeDetail";
+import type { EpisodeWithStats } from "@/types/episode";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -15,11 +18,26 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     notFound();
   }
 
+  let episode: EpisodeWithStats;
+  try {
+    episode = await serverGet<EpisodeWithStats>(
+      `/episodes/${encodeURIComponent(id)}`,
+      { noAuth: true, revalidate: 60 },
+    );
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   const isLoggedIn = !!user;
 
-  return <EpisodePageClient episodeId={id} isLoggedIn={isLoggedIn} />;
+  return (
+    <EpisodeDetail key={episode.id} episode={episode} isLoggedIn={isLoggedIn} />
+  );
 }

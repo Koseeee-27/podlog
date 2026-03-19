@@ -6,13 +6,23 @@ import type { Episode, EpisodeWithStats, EpisodeListItem, CreateEpisodeRequest, 
 
 const PAGE_SIZE = 20;
 
-export function useEpisodes(podcastId: string) {
-  const [episodes, setEpisodes] = useState<EpisodeListItem[]>([]);
-  const [loading, setLoading] = useState(true);
+/**
+ * エピソード一覧を管理するフック。
+ * initialData が渡された場合は初回フェッチをスキップし、そのデータを初期値として使う。
+ */
+export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) {
+  const hasInitialData = initialData !== undefined;
+  const [episodes, setEpisodes] = useState<EpisodeListItem[]>(initialData ?? []);
+  const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [hasMore, setHasMore] = useState(
+    hasInitialData ? (initialData ?? []).length >= PAGE_SIZE : true,
+  );
 
   useEffect(() => {
+    // initialData が渡された場合は初回フェッチをスキップ
+    if (hasInitialData) return;
+
     let cancelled = false;
 
     async function fetch() {
@@ -34,7 +44,7 @@ export function useEpisodes(podcastId: string) {
 
     fetch();
     return () => { cancelled = true; };
-  }, [podcastId]);
+  }, [podcastId, hasInitialData]);
 
   const episodesLength = (episodes ?? []).length;
   const loadMore = useCallback(async () => {

@@ -1,24 +1,15 @@
 "use client";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileSetupForm from "@/components/profile/ProfileSetupForm";
 import Loading from "@/components/ui/Loading";
 
 export default function ProfileSetupClient() {
   const auth = useAuth();
-  const router = useRouter();
 
-  // 未認証リダイレクトは middleware で処理済み
-  // プロフィール設定済みのユーザーはトップへリダイレクト
-  useEffect(() => {
-    if (auth.status === "authenticated") {
-      router.push("/");
-    }
-  }, [auth.status, router]);
-
-  if (auth.status !== "no_profile") {
+  // 認証チェックとプロフィール存在チェックは Server Component (page.tsx) で完了済み
+  // auth がまだロード中の場合はローディングを表示
+  if (auth.status === "loading") {
     return <Loading />;
   }
 

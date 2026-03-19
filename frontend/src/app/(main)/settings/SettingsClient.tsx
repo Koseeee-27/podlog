@@ -1,23 +1,22 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import Loading from "@/components/ui/Loading";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { ChevronRightIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import type { User } from "@/types/user";
 
-export default function SettingsClient() {
+interface SettingsClientProps {
+  initialProfile: User | null;
+}
+
+export default function SettingsClient({ initialProfile }: SettingsClientProps) {
   const auth = useAuth();
-  const router = useRouter();
 
-  // 未認証リダイレクトは middleware で処理済み
-  if (auth.status === "loading") {
-    return <Loading />;
-  }
-
-  const profile = auth.status === "authenticated" ? auth.profile : null;
+  // クライアント側の認証状態がロード済みならそちらを優先、そうでなければサーバーから渡されたデータを使用
+  const profile =
+    auth.status === "authenticated" ? auth.profile : initialProfile;
 
   return (
     <div className="max-w-2xl mx-auto">
@@ -82,7 +81,7 @@ export default function SettingsClient() {
             variant="danger"
             onClick={async () => {
               await auth.signOut();
-              router.push("/login");
+              window.location.href = "/login";
             }}
           >
             ログアウト
