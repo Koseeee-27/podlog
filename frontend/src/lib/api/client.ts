@@ -3,16 +3,21 @@ import { createClient } from "@/lib/supabase/client";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/api/v1";
 
-async function getAuthHeaders(): Promise<HeadersInit> {
+async function getAuthToken(): Promise<string | null> {
   const supabase = createClient();
   const { data: { session } } = await supabase.auth.getSession();
+  return session?.access_token ?? null;
+}
+
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const token = await getAuthToken();
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
 
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
 
   return headers;
@@ -56,12 +61,11 @@ export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
 }
 
 export async function apiUpload<T>(path: string, formData: FormData): Promise<T> {
-  const supabase = createClient();
-  const { data: { session } } = await supabase.auth.getSession();
+  const token = await getAuthToken();
 
   const headers: HeadersInit = {};
-  if (session?.access_token) {
-    headers["Authorization"] = `Bearer ${session.access_token}`;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
   // Content-Type は設定しない（ブラウザが multipart/form-data の boundary を自動付与する）
 
