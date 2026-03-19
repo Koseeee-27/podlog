@@ -3,6 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
@@ -41,8 +42,20 @@ type PodcastSearchItem struct {
 	TotalReviews  int       `json:"total_reviews"`
 }
 
+// CreatePodcastInput は番組手動登録のリクエストを表します。
+// 管理用 API からポッドキャストを直接登録する際に使います。
+// feed_url がない番組（Spotify 独占等）も登録できるように、FeedURL はオプションです。
+type CreatePodcastInput struct {
+	Title       string  `json:"title"`
+	Author      *string `json:"author,omitempty"`
+	ArtworkURL  *string `json:"artwork_url,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Genre       *string `json:"genre,omitempty"`
+}
+
 // PodcastUsecase はポッドキャストに関するビジネスロジックです。
 type PodcastUsecase interface {
+	Create(ctx context.Context, input CreatePodcastInput) (*model.Podcast, error)
 	Search(ctx context.Context, query string, genre string, limit, offset int) (*PodcastSearchResult, error)
 	GetPopular(ctx context.Context, limit int) (*PodcastSearchResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
@@ -58,6 +71,47 @@ func NewPodcastUsecase(podcastRepo repository.PodcastRepository) PodcastUsecase 
 	return &podcastUsecase{
 		podcastRepo: podcastRepo,
 	}
+}
+
+// Create は新しいポッドキャストを作成して DB に保存します。
+// 管理者が RSS フィードのない番組（Spotify 独占等）を手動登録する際に使います。
+//
+// 処理の流れ:
+//  1. タイトルの必須チェック
+//  2. UUID を生成してモデルを構築（source_type は "manual" に設定）
+//  3. リポジトリ経由で DB に保存
+func (u *podcastUsecase) Create(ctx context.Context, input CreatePodcastInput) (*model.Podcast, error) {
+	// 1. バリデーション: タイトルは必須
+	input.Title = strings.TrimSpace(input.Title)
+	if input.Title == "" {
+		return nil, &ValidationError{Message: "title is required"}
+	}
+
+	// 2. ポッドキャストモデルを構築
+	// source_type を "manual" に設定して、手動登録であることを記録します。
+	// これにより iTunes API 経由で登録された番組と区別できます。
+	podcast := &model.Podcast{
+		ID:          uuid.New(),
+		Title:       input.Title,
+		Author:      input.Author,
+		ArtworkURL:  input.ArtworkURL,
+		Description: input.Description,
+		Genre:       input.Genre,
+		SourceType:  "manual",
+	}
+
+	// 3. DB に保存
+	if err := u.podcastRepo.Create(ctx, podcast); err != nil {
+		return nil, err
+	}
+
+	// 4. DB から読み直して created_at / updated_at を含む完全なデータを返す
+	created, err := u.podcastRepo.GetByID(ctx, podcast.ID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrieve created podcast: %w", err)
+	}
+
+	return created, nil
 }
 
 // Search はアプリ内 DB でポッドキャストをキーワード検索します。

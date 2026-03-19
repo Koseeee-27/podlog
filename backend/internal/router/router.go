@@ -20,6 +20,7 @@ type Handlers struct {
 	FavoritePodcast *handler.FavoritePodcastHandler
 	PodcastRequest  *handler.PodcastRequestHandler
 	Genre           *handler.GenreHandler
+	Admin           *handler.AdminHandler
 }
 
 // Setup は全ルートを Echo インスタンスに登録します。
@@ -92,4 +93,12 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string) {
 
 	// Podcast Requests (認証必要)
 	auth.POST("/podcasts/request", h.PodcastRequest.Create)
+
+	// ── 管理用ルート（認証必要） ──
+	// MVP では認証済みユーザーなら誰でもアクセス可能。
+	// 将来的に管理者権限チェックを追加する場合は、
+	// admin グループに管理者判定ミドルウェアを追加する。
+	admin := auth.Group("/admin")
+	admin.POST("/podcasts", h.Admin.CreatePodcast)
+	admin.POST("/podcasts/:id/episodes", h.Admin.CreateEpisode)
 }

@@ -15,11 +15,15 @@ import (
 // mockPodcastRepoForSearch は PodcastRepository のモック実装です。
 // 検索テスト用に searchFn を差し替えて DB の振る舞いをシミュレートします。
 type mockPodcastRepoForSearch struct {
+	createFn      func(ctx context.Context, podcast *model.Podcast) error
 	searchFn      func(ctx context.Context, query string, genres []string, limit, offset int) ([]repository.PodcastSearchRow, int, error)
 	getByIDFn     func(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
 }
 
-func (m *mockPodcastRepoForSearch) Create(_ context.Context, _ *model.Podcast) error {
+func (m *mockPodcastRepoForSearch) Create(ctx context.Context, podcast *model.Podcast) error {
+	if m.createFn != nil {
+		return m.createFn(ctx, podcast)
+	}
 	return fmt.Errorf("not implemented")
 }
 func (m *mockPodcastRepoForSearch) GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
@@ -54,6 +58,100 @@ func (m *mockPodcastRepoForSearch) ListWithoutGenre(_ context.Context) ([]model.
 }
 func (m *mockPodcastRepoForSearch) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+
+// ── テスト: Create ──
+
+func TestPodcastUsecase_Create(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("正常系: 番組が手動登録される", func(t *testing.T) {
+		author := "テスト著者"
+		description := "テスト説明文"
+		artworkURL := "https://example.com/artwork.jpg"
+		genre := "コメディ"
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			createFn: func(_ context.Context, podcast *model.Podcast) error {
+				if podcast.SourceType != "manual" {
+					t.Errorf("source_type = %q, want %q", podcast.SourceType, "manual")
+				}
+				if podcast.Title != "テスト番組" {
+					t.Errorf("title = %q, want %q", podcast.Title, "テスト番組")
+				}
+				return nil
+			},
+			getByIDFn: func(_ context.Context, id uuid.UUID) (*model.Podcast, error) {
+				return &model.Podcast{
+					ID:         id,
+					Title:      "テスト番組",
+					Author:     &author,
+					SourceType: "manual",
+				}, nil
+			},
+		})
+
+		input := CreatePodcastInput{
+			Title:       "テスト番組",
+			Author:      &author,
+			Description: &description,
+			ArtworkURL:  &artworkURL,
+			Genre:       &genre,
+		}
+
+		result, err := uc.Create(ctx, input)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Title != "テスト番組" {
+			t.Errorf("title = %q, want %q", result.Title, "テスト番組")
+		}
+		if result.SourceType != "manual" {
+			t.Errorf("source_type = %q, want %q", result.SourceType, "manual")
+		}
+	})
+
+	t.Run("タイトルが空 → ValidationError", func(t *testing.T) {
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{})
+
+		_, err := uc.Create(ctx, CreatePodcastInput{Title: ""})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		ve, ok := err.(*ValidationError)
+		if !ok {
+			t.Fatalf("expected ValidationError, got %T: %v", err, err)
+		}
+		if ve.Message != "title is required" {
+			t.Errorf("message = %q, want %q", ve.Message, "title is required")
+		}
+	})
+
+	t.Run("タイトルが空白のみ → ValidationError", func(t *testing.T) {
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{})
+
+		_, err := uc.Create(ctx, CreatePodcastInput{Title: "   "})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		_, ok := err.(*ValidationError)
+		if !ok {
+			t.Fatalf("expected ValidationError, got %T: %v", err, err)
+		}
+	})
+
+	t.Run("DB エラー → エラー伝播", func(t *testing.T) {
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			createFn: func(_ context.Context, _ *model.Podcast) error {
+				return fmt.Errorf("database connection error")
+			},
+		})
+
+		_, err := uc.Create(ctx, CreatePodcastInput{Title: "テスト番組"})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+	})
 }
 
 // ── テスト: Search ──
