@@ -3,13 +3,16 @@
 import { useState } from "react";
 import { usePodcastSearch, usePopularPodcasts, useGenrePodcasts } from "@/hooks/usePodcastSearch";
 import { useGenres } from "@/hooks/useGenres";
+import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/podcast/SearchBar";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenreChips from "@/components/discover/GenreChips";
+import PodcastRequestDialog from "@/components/discover/PodcastRequestDialog";
+import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
-import { MagnifyingGlassIcon, MicrophoneIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
 
 interface DiscoverClientProps {
   initialQuery: string;
@@ -18,7 +21,9 @@ interface DiscoverClientProps {
 export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
   const { query, setQuery, results, loading: searchLoading, error: searchError } = usePodcastSearch(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
+  const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const { genres, loading: genresLoading } = useGenres();
+  const auth = useAuth();
 
   const isSearching = query.trim().length > 0;
 
@@ -74,11 +79,37 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             {searchError && <ErrorMessage message={searchError} />}
 
             {!searchLoading && results.length === 0 && !searchError && (
-              <EmptyState
-                icon={<MagnifyingGlassIcon className="h-12 w-12" />}
-                message={`"${query}" に一致するポッドキャストが見つかりませんでした`}
-                description="別のキーワードで試してみてください"
-              />
+              <>
+                <EmptyState
+                  icon={<MagnifyingGlassIcon className="h-12 w-12" />}
+                  message={`"${query}" に一致するポッドキャストが見つかりませんでした`}
+                  description="別のキーワードで試してみてください"
+                />
+
+                {/* 番組追加リクエスト導線 */}
+                <div className="mt-6 border border-stone-200 rounded-xl p-5 text-center">
+                  <p className="text-sm font-medium text-stone-700">
+                    お探しの番組が見つかりませんか？
+                  </p>
+                  <p className="mt-1 text-xs text-stone-500">
+                    番組の追加をリクエストできます
+                  </p>
+                  <div className="mt-4">
+                    {auth.status === "authenticated" || auth.status === "no_profile" ? (
+                      <button
+                        type="button"
+                        onClick={() => setRequestDialogOpen(true)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-600 transition-colors"
+                      >
+                        <PlusCircleIcon className="h-5 w-5" />
+                        番組追加をリクエストする
+                      </button>
+                    ) : (
+                      <LoginPromptButton label="ログインしてリクエストする" />
+                    )}
+                  </div>
+                </div>
+              </>
             )}
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -144,6 +175,12 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
           </>
         )}
       </div>
+
+      {/* 番組追加リクエストダイアログ */}
+      <PodcastRequestDialog
+        open={requestDialogOpen}
+        onClose={() => setRequestDialogOpen(false)}
+      />
     </div>
   );
 }
