@@ -183,6 +183,15 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 	}
 
 	// 2. データ取得クエリ
+	// ジャンル指定がある場合はレビュー件数順でソートします。
+	// ジャンル一覧から番組を探す場面では、レビューが多い＝人気のある番組を上位に
+	// 表示する方がユーザーにとって有用です。
+	// キーワード検索のみの場合はタイトル順のまま（検索ワードとの関連性を重視）。
+	orderBy := "p.title, p.id"
+	if len(genres) > 0 {
+		orderBy = "total_reviews DESC, average_rating DESC, p.title, p.id"
+	}
+
 	// プレースホルダの番号をジャンル指定の有無で切り替えます。
 	limitIdx := len(args) + 1
 	offsetIdx := len(args) + 2
@@ -200,9 +209,9 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		WHERE p.title ILIKE $1%s
 		GROUP BY p.id, p.title, p.author, p.artwork_url
-		ORDER BY p.title, p.id
+		ORDER BY %s
 		LIMIT $%d OFFSET $%d
-	`, genreFilter, limitIdx, offsetIdx)
+	`, genreFilter, orderBy, limitIdx, offsetIdx)
 	dataArgs := append(args, limit, offset)
 	var rows []PodcastSearchRow
 	if err := r.db.SelectContext(ctx, &rows, dataQuery, dataArgs...); err != nil {
