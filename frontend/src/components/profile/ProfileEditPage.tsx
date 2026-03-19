@@ -6,6 +6,7 @@ import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import { useToast } from "@/components/ui/Toast";
 import AvatarUpload from "@/components/profile/AvatarUpload";
 import FavoritePodcastEditor from "@/components/profile/FavoritePodcastEditor";
 import type { User, FavoritePodcastItem } from "@/types/user";
@@ -23,6 +24,8 @@ export default function ProfileEditPage({
   onSaveComplete,
   onCancel,
 }: ProfileEditPageProps) {
+  const { showToast } = useToast();
+
   // プロフィールデータの初期値を props から取得（setState-in-effect を回避）
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || "");
@@ -86,6 +89,7 @@ export default function ProfileEditPage({
 
         // プロフィールを再取得してから遷移
         await refreshProfile();
+        showToast("プロフィールを更新しました");
         onSaveComplete();
       } catch (err) {
         setError(err instanceof Error ? err.message : "プロフィールの更新に失敗しました");
