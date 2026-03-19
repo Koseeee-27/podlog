@@ -95,7 +95,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
                     番組の追加をリクエストできます
                   </p>
                   <div className="mt-4">
-                    {auth.status === "authenticated" ? (
+                    {auth.status === "authenticated" || auth.status === "no_profile" ? (
                       <button
                         type="button"
                         onClick={() => setRequestDialogOpen(true)}
