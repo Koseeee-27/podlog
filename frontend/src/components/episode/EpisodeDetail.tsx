@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
 import type { EpisodeWithStats } from "@/types/episode";
 import { formatDuration, formatDate } from "@/lib/utils";
@@ -16,6 +16,11 @@ interface EpisodeDetailProps {
 
 export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
+
+  // エピソードが変わったら ReviewPrompt をリセット
+  useEffect(() => {
+    setShowReviewPrompt(false);
+  }, [episode.id]);
 
   const handleJustMarked = useCallback(() => {
     setShowReviewPrompt(true);

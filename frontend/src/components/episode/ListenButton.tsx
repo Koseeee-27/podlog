@@ -32,6 +32,11 @@ export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: Li
     }
   }, [justMarked, clearJustMarked]);
 
+  // episodeId が変わったら prevListenedRef をリセット（別エピソードへの遷移時に誤発火を防ぐ）
+  useEffect(() => {
+    prevListenedRef.current = listened;
+  }, [episodeId]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 聴取記録が取り消された（true → false）時にコールバックを呼ぶ
   useEffect(() => {
     if (prevListenedRef.current && !listened && !loading) {
