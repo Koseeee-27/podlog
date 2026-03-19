@@ -9,6 +9,142 @@
     "host": "localhost:8080",
     "basePath": "/api/v1",
     "paths": {
+        "/admin/podcasts": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "RSS フィードがない番組を手動で登録します。Spotify 独占配信など、通常の検索では追加できない番組に使用します。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "番組手動登録（管理用）",
+                "parameters": [
+                    {
+                        "description": "番組情報",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreatePodcastInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Podcast"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/admin/podcasts/{id}/episodes": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "指定した番組にエピソードを手動で追加します。RSS フィードがない番組のエピソード登録に使用します。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "admin"
+                ],
+                "summary": "エピソード手動登録（管理用）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ポッドキャストID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "エピソード情報",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreateEpisodeInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "既存エピソード返却（iTunes Track ID 重複）",
+                        "schema": {
+                            "$ref": "#/definitions/model.Episode"
+                        }
+                    },
+                    "201": {
+                        "description": "新規作成",
+                        "schema": {
+                            "$ref": "#/definitions/model.Episode"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/episodes/{id}": {
             "get": {
                 "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。",
@@ -1758,6 +1894,50 @@
                 }
             }
         },
+        "model.Podcast": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "feed_url": {
+                    "type": "string"
+                },
+                "genre": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "itunes_id": {
+                    "type": "integer"
+                },
+                "itunes_url": {
+                    "type": "string"
+                },
+                "source_type": {
+                    "type": "string"
+                },
+                "source_url": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
         "model.Review": {
             "type": "object",
             "properties": {
@@ -1889,6 +2069,26 @@
                     "type": "string"
                 },
                 "source_url": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.CreatePodcastInput": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "author": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "genre": {
                     "type": "string"
                 },
                 "title": {

@@ -116,6 +116,7 @@ func main() {
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
 		Genre:           handler.NewGenreHandler(genreUsecase),
+		Admin:           handler.NewAdminHandler(podcastUsecase, episodeUsecase),
 	}
 
 	// 9. ルーティングを設定
