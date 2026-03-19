@@ -28,9 +28,10 @@ export default function AdminClient() {
   const status = auth.status;
   const isAdmin = status === "authenticated" ? auth.profile.is_admin : false;
 
+  // 未認証リダイレクトは middleware で処理済み
   // 非管理者はホームにリダイレクト
   useEffect(() => {
-    if (status === "unauthenticated" || status === "no_profile") {
+    if (status === "no_profile") {
       router.push("/");
     }
     if (status === "authenticated" && !isAdmin) {

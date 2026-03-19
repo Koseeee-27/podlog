@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,13 +12,8 @@ export default function SettingsClient() {
   const auth = useAuth();
   const router = useRouter();
 
-  useEffect(() => {
-    if (auth.status === "unauthenticated") {
-      router.push("/login");
-    }
-  }, [auth.status, router]);
-
-  if (auth.status === "loading" || auth.status === "unauthenticated") {
+  // 未認証リダイレクトは middleware で処理済み
+  if (auth.status === "loading") {
     return <Loading />;
   }
 

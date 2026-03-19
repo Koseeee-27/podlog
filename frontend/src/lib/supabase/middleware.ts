@@ -46,7 +46,7 @@ export async function updateSession(request: NextRequest) {
   } = await supabase.auth.getUser();
 
   // 認証が必要なパスの定義（フルオープン型: 書き込み系のみ認証必須）
-  const protectedPaths = ["/profile/setup", "/settings"];
+  const protectedPaths = ["/profile/setup", "/settings", "/admin"];
   const isProtectedPath = protectedPaths.some(
     (path) =>
       request.nextUrl.pathname === path ||
