@@ -11,30 +11,29 @@ interface FavoriteButtonProps {
 
 /**
  * 「好きな番組に追加 / 削除」ボタン。
- * ハートアイコンとテキストで状態を表示する。
+ * ハートアイコンのみで状態を表示し、ツールチップで補足する。
  */
 export default function FavoriteButton({ isFavorite, isPending, onClick }: FavoriteButtonProps) {
+  const label = isFavorite ? "好きな番組から削除" : "好きな番組に追加";
+
   return (
     <button
       type="button"
       onClick={onClick}
       disabled={isPending}
-      className={`inline-flex items-center gap-1.5 rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${
+      aria-label={label}
+      title={label}
+      className={`inline-flex items-center justify-center rounded-lg p-2 transition-colors disabled:opacity-50 ${
         isFavorite
-          ? "bg-rose-50 text-rose-600 hover:bg-rose-100"
-          : "bg-white text-stone-900 border border-stone-200 hover:bg-stone-50"
+          ? "text-rose-500 hover:bg-rose-50"
+          : "text-stone-400 hover:bg-stone-50 hover:text-stone-600"
       }`}
     >
       {isFavorite ? (
-        <HeartSolid className="w-5 h-5 text-rose-500" />
+        <HeartSolid className="w-6 h-6" />
       ) : (
-        <HeartOutline className="w-5 h-5" />
+        <HeartOutline className="w-6 h-6" />
       )}
-      {isPending
-        ? "処理中..."
-        : isFavorite
-          ? "好きな番組から削除"
-          : "好きな番組に追加"}
     </button>
   );
 }
