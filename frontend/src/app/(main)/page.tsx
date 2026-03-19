@@ -4,6 +4,8 @@ import FeaturesSection from "@/components/home/FeaturesSection";
 import PopularPodcastsSection from "@/components/home/PopularPodcastsSection";
 import CtaSection from "@/components/home/CtaSection";
 import TimelineSection from "@/components/home/TimelineSection";
+import GreetingSection from "@/components/home/GreetingSection";
+import RecentListeningSection from "@/components/home/RecentListeningSection";
 
 export default async function TopPage() {
   const supabase = await createClient();
@@ -18,9 +20,13 @@ export default async function TopPage() {
 
       {!isLoggedIn && <FeaturesSection />}
 
-      {!isLoggedIn && <PopularPodcastsSection />}
+      {isLoggedIn && <GreetingSection />}
 
-      <TimelineSection headingLevel={isLoggedIn ? "h1" : "h2"} />
+      {isLoggedIn && <RecentListeningSection />}
+
+      <PopularPodcastsSection />
+
+      <TimelineSection headingLevel={isLoggedIn ? "h2" : "h2"} />
 
       {!isLoggedIn && <CtaSection />}
     </div>
