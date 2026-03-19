@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useParams } from "next/navigation";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
 import { usePodcastRating } from "@/hooks/useReviews";
@@ -14,9 +13,11 @@ import PodcastDetail from "@/components/podcast/PodcastDetail";
 import FavoriteButton from "@/components/podcast/FavoriteButton";
 import EpisodeList from "@/components/episode/EpisodeList";
 
-export default function PodcastPageClient() {
-  const params = useParams();
-  const id = params.id as string;
+interface PodcastPageClientProps {
+  id: string;
+}
+
+export default function PodcastPageClient({ id }: PodcastPageClientProps) {
   const auth = useAuth();
   const status = auth.status;
   const username = status === "authenticated" ? auth.profile.username : undefined;

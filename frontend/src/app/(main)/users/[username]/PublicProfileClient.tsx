@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile } from "@/hooks/useProfile";
 import { useUserListeningRecords, useUserReviews, useUserFavoritePodcasts } from "@/hooks/useUserPage";
@@ -16,9 +15,11 @@ import UserReviewList from "@/components/profile/UserReviewList";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import AdminBadge from "@/components/ui/AdminBadge";
 
-export default function PublicProfileClient() {
-  const params = useParams();
-  const username = params.username as string;
+interface PublicProfileClientProps {
+  username: string;
+}
+
+export default function PublicProfileClient({ username }: PublicProfileClientProps) {
   const auth = useAuth();
   const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
   const { profile, loading, error } = usePublicProfile(username);
