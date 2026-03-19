@@ -140,20 +140,20 @@ func TestPodcastUsecase_Search(t *testing.T) {
 				if q != "テスト" {
 					t.Errorf("query = %q, want %q", q, "テスト")
 				}
-				// "Comedy" は ExpandGenre で展開されて複数のサブカテゴリになるはず
+				// "Comedy" は ExpandGenre で日本語サブカテゴリに展開されるはず
 				if len(genres) < 2 {
 					t.Errorf("genres count = %d, want >= 2 (Comedy should expand to sub-genres)", len(genres))
 				}
-				// 展開後に "Comedy" 自身が含まれているか確認
+				// 展開後に "コメディ" が含まれているか確認（DB は日本語名）
 				found := false
 				for _, g := range genres {
-					if g == "Comedy" {
+					if g == "コメディ" {
 						found = true
 						break
 					}
 				}
 				if !found {
-					t.Errorf("genres does not contain 'Comedy': %v", genres)
+					t.Errorf("genres does not contain 'コメディ': %v", genres)
 				}
 				if limit != 20 {
 					t.Errorf("limit = %d, want 20", limit)

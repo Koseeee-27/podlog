@@ -54,10 +54,11 @@ func (m *mockPodcastRepoForGenre) ListWithoutGenre(_ context.Context) ([]model.P
 func TestGenreUsecase_ListGenres(t *testing.T) {
 	ctx := context.Background()
 
-	t.Run("正常系: 親カテゴリは日本語名に変換される", func(t *testing.T) {
+	t.Run("正常系: 日本語の親カテゴリが英語 ID 付きで返される", func(t *testing.T) {
+		// DB には日本語名で保存されている
 		uc := NewGenreUsecase(&mockPodcastRepoForGenre{
 			getDistinctGenresFn: func(_ context.Context) ([]string, error) {
-				return []string{"Comedy", "News", "Sports"}, nil
+				return []string{"コメディ", "ニュース", "スポーツ"}, nil
 			},
 		})
 
@@ -69,7 +70,7 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 			t.Fatalf("genres count = %d, want 3", len(result.Genres))
 		}
 
-		// ソート済みなので Comedy, News, Sports の順
+		// 日本語名のソート順: コメディ, スポーツ, ニュース
 		g := result.Genres[0]
 		if g.ID != "Comedy" {
 			t.Errorf("id = %q, want %q", g.ID, "Comedy")
@@ -81,21 +82,26 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 			t.Errorf("name_ja = %q, want %q", g.NameJA, "コメディ")
 		}
 
-		if result.Genres[1].NameJA != "ニュース" {
-			t.Errorf("name_ja = %q, want %q", result.Genres[1].NameJA, "ニュース")
+		if result.Genres[1].ID != "Sports" {
+			t.Errorf("id = %q, want %q", result.Genres[1].ID, "Sports")
+		}
+		if result.Genres[1].NameJA != "スポーツ" {
+			t.Errorf("name_ja = %q, want %q", result.Genres[1].NameJA, "スポーツ")
 		}
 
-		if result.Genres[2].NameJA != "スポーツ" {
-			t.Errorf("name_ja = %q, want %q", result.Genres[2].NameJA, "スポーツ")
+		if result.Genres[2].ID != "News" {
+			t.Errorf("id = %q, want %q", result.Genres[2].ID, "News")
+		}
+		if result.Genres[2].NameJA != "ニュース" {
+			t.Errorf("name_ja = %q, want %q", result.Genres[2].NameJA, "ニュース")
 		}
 	})
 
 	t.Run("正常系: サブカテゴリが親カテゴリに集約される", func(t *testing.T) {
-		// DB に "Comedy", "Improv", "Stand-Up", "Comedy Interviews" があるとき、
-		// 全て "Comedy" に集約されて1つだけ返るはず
+		// DB に日本語のサブカテゴリが複数あるとき、全て親カテゴリに集約される
 		uc := NewGenreUsecase(&mockPodcastRepoForGenre{
 			getDistinctGenresFn: func(_ context.Context) ([]string, error) {
-				return []string{"Comedy", "Comedy Interviews", "Improv", "Stand-Up"}, nil
+				return []string{"コメディ", "コメディ・インタビュー", "即興コメディ", "スタンドアップ・コメディ"}, nil
 			},
 		})
 
@@ -117,13 +123,13 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 	})
 
 	t.Run("正常系: 異なる親カテゴリのサブカテゴリが混在しても正しく集約される", func(t *testing.T) {
-		// Comedy系 + News系 + Sports系 が混在する場合
+		// コメディ系 + ニュース系 + スポーツ系 が混在する場合
 		uc := NewGenreUsecase(&mockPodcastRepoForGenre{
 			getDistinctGenresFn: func(_ context.Context) ([]string, error) {
 				return []string{
-					"Comedy Interviews", "Improv",       // → Comedy
-					"Daily News", "News Commentary",      // → News
-					"Baseball", "Basketball", "Football",  // → Sports
+					"コメディ・インタビュー", "即興コメディ", // → コメディ
+					"今日のニュース", "ニュース解説", // → ニュース
+					"アメリカンフットボール", "ゴルフ", "サッカー", // → スポーツ
 				}, nil
 			},
 		})
@@ -136,22 +142,22 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 			t.Fatalf("genres count = %d, want 3", len(result.Genres))
 		}
 
-		// アルファベット順: Comedy, News, Sports
+		// 日本語ソート順: コメディ, スポーツ, ニュース
 		if result.Genres[0].ID != "Comedy" {
 			t.Errorf("genres[0].id = %q, want %q", result.Genres[0].ID, "Comedy")
 		}
-		if result.Genres[1].ID != "News" {
-			t.Errorf("genres[1].id = %q, want %q", result.Genres[1].ID, "News")
+		if result.Genres[1].ID != "Sports" {
+			t.Errorf("genres[1].id = %q, want %q", result.Genres[1].ID, "Sports")
 		}
-		if result.Genres[2].ID != "Sports" {
-			t.Errorf("genres[2].id = %q, want %q", result.Genres[2].ID, "Sports")
+		if result.Genres[2].ID != "News" {
+			t.Errorf("genres[2].id = %q, want %q", result.Genres[2].ID, "News")
 		}
 	})
 
-	t.Run("正常系: 未知のジャンルは英語名のままフォールバック", func(t *testing.T) {
+	t.Run("正常系: 未知のジャンルはそのままフォールバック", func(t *testing.T) {
 		uc := NewGenreUsecase(&mockPodcastRepoForGenre{
 			getDistinctGenresFn: func(_ context.Context) ([]string, error) {
-				return []string{"UnknownGenre"}, nil
+				return []string{"未知のジャンル"}, nil
 			},
 		})
 
@@ -164,11 +170,12 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 		}
 
 		g := result.Genres[0]
-		if g.ID != "UnknownGenre" {
-			t.Errorf("id = %q, want %q", g.ID, "UnknownGenre")
+		// マッピングにない場合、ID/NameEN/NameJA は全て元の値のまま
+		if g.ID != "未知のジャンル" {
+			t.Errorf("id = %q, want %q", g.ID, "未知のジャンル")
 		}
-		if g.NameJA != "UnknownGenre" {
-			t.Errorf("name_ja = %q, want %q (fallback to English)", g.NameJA, "UnknownGenre")
+		if g.NameJA != "未知のジャンル" {
+			t.Errorf("name_ja = %q, want %q", g.NameJA, "未知のジャンル")
 		}
 	})
 
@@ -205,23 +212,31 @@ func TestGenreUsecase_ListGenres(t *testing.T) {
 // ── テスト: ExpandGenre ──
 
 func TestExpandGenre(t *testing.T) {
-	t.Run("親カテゴリを渡すとサブカテゴリ一覧が返る", func(t *testing.T) {
+	t.Run("英語の親カテゴリ名を渡すと日本語のサブカテゴリ一覧が返る", func(t *testing.T) {
+		// フロントエンドは "Comedy" を送ってくるので、日本語サブカテゴリに展開される
 		subs := ExpandGenre("Comedy")
-		// Comedy には少なくとも Comedy, Comedy Fiction, Comedy Interviews, Improv, Stand-Up が含まれるはず
-		if len(subs) < 5 {
-			t.Errorf("ExpandGenre(\"Comedy\") returned %d genres, want >= 5", len(subs))
+		// Comedy には コメディ, コメディ・インタビュー, スタンドアップ・コメディ, 即興コメディ が含まれるはず
+		if len(subs) < 4 {
+			t.Errorf("ExpandGenre(\"Comedy\") returned %d genres, want >= 4", len(subs))
 		}
 
-		// Comedy 自身が含まれているか確認
+		// "コメディ" 自身が含まれているか確認
 		found := false
 		for _, s := range subs {
-			if s == "Comedy" {
+			if s == "コメディ" {
 				found = true
 				break
 			}
 		}
 		if !found {
-			t.Errorf("ExpandGenre(\"Comedy\") does not contain 'Comedy' itself: %v", subs)
+			t.Errorf("ExpandGenre(\"Comedy\") does not contain 'コメディ' itself: %v", subs)
+		}
+	})
+
+	t.Run("日本語の親カテゴリ名でも展開できる", func(t *testing.T) {
+		subs := ExpandGenre("コメディ")
+		if len(subs) < 4 {
+			t.Errorf("ExpandGenre(\"コメディ\") returned %d genres, want >= 4", len(subs))
 		}
 	})
 
@@ -239,20 +254,20 @@ func TestExpandGenre(t *testing.T) {
 // ── テスト: ToParentGenre ──
 
 func TestToParentGenre(t *testing.T) {
-	t.Run("サブカテゴリを親カテゴリに変換", func(t *testing.T) {
+	t.Run("日本語サブカテゴリを親カテゴリに変換", func(t *testing.T) {
 		tests := []struct {
 			input string
 			want  string
 		}{
-			{"Improv", "Comedy"},
-			{"Stand-Up", "Comedy"},
-			{"Comedy Interviews", "Comedy"},
-			{"Daily News", "News"},
-			{"News Commentary", "News"},
-			{"Baseball", "Sports"},
-			{"Basketball", "Sports"},
-			{"Comedy", "Comedy"},  // 親カテゴリ自身はそのまま
-			{"News", "News"},      // 親カテゴリ自身はそのまま
+			{"即興コメディ", "コメディ"},
+			{"スタンドアップ・コメディ", "コメディ"},
+			{"コメディ・インタビュー", "コメディ"},
+			{"今日のニュース", "ニュース"},
+			{"ニュース解説", "ニュース"},
+			{"アメリカンフットボール", "スポーツ"},
+			{"ゴルフ", "スポーツ"},
+			{"コメディ", "コメディ"},  // 親カテゴリ自身はそのまま
+			{"ニュース", "ニュース"},   // 親カテゴリ自身はそのまま
 		}
 
 		for _, tt := range tests {
