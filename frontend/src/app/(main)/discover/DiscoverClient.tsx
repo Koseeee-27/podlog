@@ -24,7 +24,14 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
 
   // ジャンルが選択されていて、かつ検索中でない場合のみジャンル番組を取得
   const activeGenre = !isSearching ? selectedGenre : null;
-  const { podcasts: genrePodcasts, loading: genreLoading, error: genreError } = useGenrePodcasts(activeGenre);
+  const {
+    podcasts: genrePodcasts,
+    loading: genreLoading,
+    error: genreError,
+    hasMore: genreHasMore,
+    loadMore: genreLoadMore,
+    isLoadingMore: genreIsLoadingMore,
+  } = useGenrePodcasts(activeGenre);
 
   // 人気番組は、検索中でもジャンル選択中でもない場合のみ取得
   const showPopular = !isSearching && selectedGenre === null;
@@ -103,6 +110,19 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
                 <PodcastCard key={podcast.id} podcast={podcast} />
               ))}
             </div>
+
+            {genreHasMore && (
+              <div className="mt-6 text-center">
+                <button
+                  type="button"
+                  onClick={genreLoadMore}
+                  disabled={genreIsLoadingMore}
+                  className="px-6 py-2 text-sm font-medium text-stone-700 bg-white border border-stone-300 rounded-full hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {genreIsLoadingMore ? "読み込み中..." : "もっと見る"}
+                </button>
+              </div>
+            )}
           </>
         ) : (
           /* --- 初期表示: 人気番組 --- */
