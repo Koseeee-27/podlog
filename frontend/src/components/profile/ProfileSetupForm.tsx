@@ -3,6 +3,7 @@
 import { useState, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createProfile } from "@/lib/api/users";
+import { createProfileRequestSchema } from "@/lib/schemas/user";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -23,19 +24,21 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
     e.preventDefault();
     setError("");
 
-    if (!/^[a-zA-Z0-9_]{3,30}$/.test(username)) {
-      setError("ユーザー名は3〜30文字の英数字とアンダースコアのみ使用できます");
+    const result = createProfileRequestSchema.safeParse({
+      username,
+      display_name: displayName,
+      bio: bio || undefined,
+    });
+
+    if (!result.success) {
+      setError(result.error.issues[0].message);
       return;
     }
 
     setLoading(true);
 
     try {
-      await createProfile({
-        username,
-        display_name: displayName,
-        bio: bio || undefined,
-      });
+      await createProfile(result.data);
       await onComplete();
       router.push("/");
     } catch (err) {

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
+import { usernameSchema } from "@/lib/schemas/common";
 import { useAuth } from "@/hooks/useAuth";
 import { usePublicProfile } from "@/hooks/useProfile";
 import { useUserListeningRecords, useUserReviews, useUserFavoritePodcasts } from "@/hooks/useUserPage";
@@ -18,7 +19,13 @@ import AdminBadge from "@/components/ui/AdminBadge";
 
 export default function PublicProfileClient() {
   const params = useParams();
-  const username = params.username as string;
+  const rawUsername = params.username as string;
+
+  // username 形式でなければ 404
+  if (!usernameSchema.safeParse(rawUsername).success) {
+    notFound();
+  }
+  const username = rawUsername;
   const auth = useAuth();
   const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
   const { profile, loading, error } = usePublicProfile(username);

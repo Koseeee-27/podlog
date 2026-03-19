@@ -14,6 +14,7 @@ import {
   type CreatePodcastInput,
   type CreateEpisodeInput,
 } from "@/lib/api/admin";
+import { adminCreatePodcastSchema, adminCreateEpisodeSchema } from "@/lib/schemas/admin";
 import { ShieldCheckIcon } from "@heroicons/react/24/outline";
 import { ApiRequestError } from "@/types/api";
 
@@ -109,19 +110,27 @@ function PodcastForm() {
     e.preventDefault();
     setError("");
 
-    if (!form.title.trim()) {
-      setError("タイトルは必須です");
+    const validation = adminCreatePodcastSchema.safeParse({
+      title: form.title.trim(),
+      author: form.author?.trim() || undefined,
+      description: form.description?.trim() || undefined,
+      artwork_url: form.artwork_url?.trim() || undefined,
+      genre: form.genre?.trim() || undefined,
+    });
+
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
       return;
     }
 
     startTransition(async () => {
       try {
         // 空文字列のフィールドは送信しない
-        const payload: CreatePodcastInput = { title: form.title.trim() };
-        if (form.author?.trim()) payload.author = form.author.trim();
-        if (form.description?.trim()) payload.description = form.description.trim();
-        if (form.artwork_url?.trim()) payload.artwork_url = form.artwork_url.trim();
-        if (form.genre?.trim()) payload.genre = form.genre.trim();
+        const payload: CreatePodcastInput = { title: validation.data.title };
+        if (validation.data.author) payload.author = validation.data.author;
+        if (validation.data.description) payload.description = validation.data.description;
+        if (validation.data.artwork_url) payload.artwork_url = validation.data.artwork_url;
+        if (validation.data.genre) payload.genre = validation.data.genre;
 
         const result = await adminCreatePodcast(payload);
         showToast(`番組「${result.title}」を登録しました`);
@@ -228,26 +237,28 @@ function EpisodeForm() {
     e.preventDefault();
     setError("");
 
-    if (!podcastId.trim()) {
-      setError("番組 ID は必須です");
-      return;
-    }
+    const validation = adminCreateEpisodeSchema.safeParse({
+      podcast_id: podcastId.trim(),
+      title: form.title.trim(),
+      description: form.description?.trim() || undefined,
+      published_at: form.published_at?.trim() || undefined,
+    });
 
-    if (!form.title.trim()) {
-      setError("タイトルは必須です");
+    if (!validation.success) {
+      setError(validation.error.issues[0].message);
       return;
     }
 
     startTransition(async () => {
       try {
-        const payload: CreateEpisodeInput = { title: form.title.trim() };
-        if (form.description?.trim()) payload.description = form.description.trim();
-        if (form.published_at?.trim()) {
+        const payload: CreateEpisodeInput = { title: validation.data.title };
+        if (validation.data.description) payload.description = validation.data.description;
+        if (validation.data.published_at) {
           // date input の値（YYYY-MM-DD）を RFC3339 形式に変換
-          payload.published_at = new Date(form.published_at).toISOString();
+          payload.published_at = new Date(validation.data.published_at).toISOString();
         }
 
-        const result = await adminCreateEpisode(podcastId.trim(), payload);
+        const result = await adminCreateEpisode(validation.data.podcast_id, payload);
         showToast(`エピソード「${result.title}」を登録しました`);
         setForm({ title: "", description: "", published_at: "" });
       } catch (err) {

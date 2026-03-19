@@ -5,7 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { createPodcastRequest } from "@/lib/api/podcast-requests";
 import { useToast } from "@/components/ui/Toast";
-import { isValidUrl } from "@/lib/utils";
+import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
 
 interface PodcastRequestDialogProps {
   open: boolean;
@@ -64,20 +64,30 @@ export default function PodcastRequestDialog({
   }, [onClose, resetForm]);
 
   const validate = (): boolean => {
-    let valid = true;
+    const result = podcastRequestFormSchema.safeParse({
+      title: title.trim(),
+      url: url.trim(),
+    });
 
-    if (!title.trim()) {
-      setTitleError("番組名を入力してください");
-      valid = false;
-    } else if (title.trim().length > 500) {
-      setTitleError("番組名は500文字以内で入力してください");
+    if (result.success) {
+      setTitleError("");
+      setUrlError("");
+      return true;
+    }
+
+    // フィールドごとにエラーを振り分ける
+    let valid = true;
+    const fieldErrors = result.error.flatten().fieldErrors;
+
+    if (fieldErrors.title?.length) {
+      setTitleError(fieldErrors.title[0]);
       valid = false;
     } else {
       setTitleError("");
     }
 
-    if (url.trim() && !isValidUrl(url.trim())) {
-      setUrlError("正しいURLを入力してください");
+    if (fieldErrors.url?.length) {
+      setUrlError(fieldErrors.url[0]);
       valid = false;
     } else {
       setUrlError("");

@@ -1,3 +1,4 @@
+import type { ZodType } from "zod";
 import { ApiRequestError } from "@/types/api";
 import { createClient } from "@/lib/supabase/client";
 
@@ -38,6 +39,48 @@ export async function apiGet<T>(path: string): Promise<T> {
     headers,
   });
   return handleResponse<T>(response);
+}
+
+/**
+ * Zod スキーマ付きの GET リクエスト。
+ * レスポンス JSON を Zod で parse し、実行時に型安全性を保証する。
+ * parse に失敗した場合はコンソールに警告を出しつつ、元のデータをそのまま返す
+ * （段階的移行のため、いきなりエラーにはしない）。
+ */
+export async function apiGetWithSchema<T>(
+  path: string,
+  schema: ZodType<T>
+): Promise<T> {
+  const data = await apiGet<unknown>(path);
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    console.warn(
+      `[apiGetWithSchema] Zod parse warning for ${path}:`,
+      result.error.issues
+    );
+    return data as T;
+  }
+  return result.data;
+}
+
+/**
+ * Zod スキーマ付きの POST リクエスト。
+ */
+export async function apiPostWithSchema<T>(
+  path: string,
+  schema: ZodType<T>,
+  body?: unknown
+): Promise<T> {
+  const data = await apiPost<unknown>(path, body);
+  const result = schema.safeParse(data);
+  if (!result.success) {
+    console.warn(
+      `[apiPostWithSchema] Zod parse warning for ${path}:`,
+      result.error.issues
+    );
+    return data as T;
+  }
+  return result.data;
 }
 
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {

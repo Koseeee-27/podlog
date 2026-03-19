@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { updateMyProfile, updateMyFavoritePodcasts, getUserFavoritePodcasts } from "@/lib/api/users";
+import { displayNameSchema } from "@/lib/schemas/common";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Input from "@/components/ui/Input";
@@ -63,8 +64,9 @@ export default function ProfileEditPage({
   function handleSave() {
     setError("");
 
-    if (!displayName.trim()) {
-      setError("表示名は必須です");
+    const result = displayNameSchema.safeParse(displayName.trim());
+    if (!result.success) {
+      setError(result.error.issues[0].message);
       return;
     }
 

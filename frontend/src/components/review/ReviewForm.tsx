@@ -2,6 +2,7 @@
 
 import type { FormEvent } from "react";
 import { useState } from "react";
+import { createReviewRequestSchema } from "@/lib/schemas/review";
 
 interface ReviewFormProps {
   onSubmit: (rating: number, comment: string) => Promise<void>;
@@ -21,11 +22,23 @@ export default function ReviewForm({
   const [rating, setRating] = useState(initialRating);
   const [comment, setComment] = useState(initialComment);
   const [hoveredRating, setHoveredRating] = useState(0);
+  const [validationError, setValidationError] = useState("");
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (rating === 0) return;
-    await onSubmit(rating, comment);
+    setValidationError("");
+
+    const result = createReviewRequestSchema.safeParse({
+      rating,
+      comment: comment || undefined,
+    });
+
+    if (!result.success) {
+      setValidationError(result.error.issues[0].message);
+      return;
+    }
+
+    await onSubmit(result.data.rating, result.data.comment ?? "");
   };
 
   return (
@@ -71,6 +84,10 @@ export default function ReviewForm({
         />
         <p className="mt-1 text-xs text-stone-400">{comment.length}/1000</p>
       </div>
+
+      {validationError && (
+        <p className="text-sm text-red-600">{validationError}</p>
+      )}
 
       <button
         type="submit"

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, notFound } from "next/navigation";
+import { uuidSchema } from "@/lib/schemas/common";
 import { usePodcast } from "@/hooks/usePodcast";
 import { useEpisodes, useFetchFromFeed } from "@/hooks/useEpisodes";
 import { usePodcastRating } from "@/hooks/useReviews";
@@ -16,7 +17,13 @@ import EpisodeList from "@/components/episode/EpisodeList";
 
 export default function PodcastPageClient() {
   const params = useParams();
-  const id = params.id as string;
+  const rawId = params.id as string;
+
+  // UUID 形式でなければ 404
+  if (!uuidSchema.safeParse(rawId).success) {
+    notFound();
+  }
+  const id = rawId;
   const auth = useAuth();
   const status = auth.status;
   const username = status === "authenticated" ? auth.profile.username : undefined;
