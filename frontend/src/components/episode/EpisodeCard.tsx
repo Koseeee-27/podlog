@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { StarIcon } from "@heroicons/react/24/solid";
 import type { EpisodeListItem } from "@/types/episode";
-import { formatDuration, formatDate } from "@/lib/utils";
+import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 
 interface EpisodeCardProps {
   episode: EpisodeListItem;
@@ -26,7 +26,7 @@ export default function EpisodeCard({ episode }: EpisodeCardProps) {
         )}
       </div>
       {episode.description && (
-        <p className="mt-2 text-sm text-stone-600 line-clamp-2">{episode.description}</p>
+        <p className="mt-2 text-sm text-stone-600 line-clamp-2">{stripHtmlTags(episode.description)}</p>
       )}
     </Link>
   );

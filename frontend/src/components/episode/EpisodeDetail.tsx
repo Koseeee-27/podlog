@@ -3,7 +3,7 @@
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import type { EpisodeWithStats } from "@/types/episode";
-import { formatDuration, formatDate } from "@/lib/utils";
+import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ListenButton from "./ListenButton";
 import ReviewPrompt from "./ReviewPrompt";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
@@ -67,7 +67,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
         <div className="mt-6">
           <h2 className="text-lg font-semibold text-stone-900 mb-2">説明</h2>
           <p className="text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
-            {episode.description}
+            {stripHtmlTags(episode.description)}
           </p>
         </div>
       )}
