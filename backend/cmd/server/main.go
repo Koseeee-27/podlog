@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/joho/godotenv"
 	"github.com/jmoiron/sqlx"
 	dbmigrate "github.com/Koseeee-27/podlog/backend/db"
 	"github.com/Koseeee-27/podlog/backend/internal/config"
@@ -38,6 +39,13 @@ import (
 )
 
 func main() {
+	// 0. .env ファイルから環境変数を読み込み（存在しなくても OK）
+	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
+	// ファイルが存在しない場合（Docker 環境等）はエラーを無視する。
+	if err := godotenv.Load(); err != nil {
+		log.Println(".env ファイルが見つかりません（環境変数から設定を読み込みます）")
+	}
+
 	// 1. 設定を環境変数から読み込み
 	cfg, err := config.Load()
 	if err != nil {
