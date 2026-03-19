@@ -1,5 +1,6 @@
 import Image from "next/image";
 import type { Podcast } from "@/types/podcast";
+import { stripHtmlTags } from "@/lib/utils";
 
 interface PodcastDetailProps {
   podcast: Podcast;
@@ -56,7 +57,7 @@ export default function PodcastDetail({ podcast, averageRating, totalReviews, ha
         )}
         {podcast.description && (
           <p className="mt-4 text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
-            {podcast.description}
+            {stripHtmlTags(podcast.description)}
           </p>
         )}
         <div className="mt-4 flex flex-wrap gap-3">

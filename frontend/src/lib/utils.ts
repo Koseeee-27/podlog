@@ -35,6 +35,19 @@ export function formatStars(rating: number): string {
  * javascript: や data: などの危険なプロトコルを防止する。
  * 前後の空白はトリムして判定する。空文字列（トリム後）は有効として扱う（任意フィールド用）。
  */
+/**
+ * HTML タグを除去してプレーンテキストを返す。
+ * RSS フィードの説明文などに含まれる <p>, <a> 等のタグを取り除く。
+ * 段落・改行タグはスペースに置換してからタグ除去し、連続する空白を正規化する。
+ */
+export function stripHtmlTags(html: string): string {
+  return html
+    .replace(/<\/?(p|br|div|li|tr|h[1-6])[^>]*>/gi, " ")
+    .replace(/<[^>]*>/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 export function isValidUrl(url: string): boolean {
   const trimmed = url.trim();
   if (trimmed === "") return true;
