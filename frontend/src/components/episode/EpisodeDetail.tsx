@@ -36,7 +36,11 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       <div className="mt-4">
         {isLoggedIn ? (
-          <ListenButton episodeId={episode.id} onJustMarked={handleJustMarked} />
+          <ListenButton
+            episodeId={episode.id}
+            onJustMarked={handleJustMarked}
+            onUnmarked={() => setShowReviewPrompt(false)}
+          />
         ) : (
           <LoginPromptButton label="ログインして記録する" />
         )}
