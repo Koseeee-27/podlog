@@ -97,7 +97,8 @@ func (m *mockReviewRepo) GetTimeline(ctx context.Context, limit, offset int) ([]
 
 func TestValidateAndTrimReviewInput(t *testing.T) {
 	t.Run("rating 0 はエラー", func(t *testing.T) {
-		err := validateAndTrimReviewInput(0, nil)
+		var comment *string
+		err := validateAndTrimReviewInput(0, &comment)
 		if err == nil {
 			t.Fatal("expected validation error, got nil")
 		}
@@ -108,7 +109,8 @@ func TestValidateAndTrimReviewInput(t *testing.T) {
 	})
 
 	t.Run("rating 6 はエラー", func(t *testing.T) {
-		err := validateAndTrimReviewInput(6, nil)
+		var comment *string
+		err := validateAndTrimReviewInput(6, &comment)
 		if err == nil {
 			t.Fatal("expected validation error, got nil")
 		}
@@ -116,7 +118,8 @@ func TestValidateAndTrimReviewInput(t *testing.T) {
 
 	t.Run("rating 1〜5 は正常", func(t *testing.T) {
 		for _, r := range []int{1, 2, 3, 4, 5} {
-			if err := validateAndTrimReviewInput(r, nil); err != nil {
+			var comment *string
+			if err := validateAndTrimReviewInput(r, &comment); err != nil {
 				t.Fatalf("rating %d: unexpected error: %v", r, err)
 			}
 		}
@@ -124,27 +127,53 @@ func TestValidateAndTrimReviewInput(t *testing.T) {
 
 	t.Run("comment ちょうど1000文字は正常", func(t *testing.T) {
 		comment := strPtr(strings.Repeat("a", 1000))
-		if err := validateAndTrimReviewInput(3, comment); err != nil {
+		if err := validateAndTrimReviewInput(3, &comment); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
 
 	t.Run("comment 1001文字超はエラー", func(t *testing.T) {
-		// 1001 バイトの文字列を作る
 		long := make([]byte, 1001)
 		for i := range long {
 			long[i] = 'a'
 		}
 		s := string(long)
-		err := validateAndTrimReviewInput(3, &s)
+		comment := &s
+		err := validateAndTrimReviewInput(3, &comment)
 		if err == nil {
 			t.Fatal("expected validation error for long comment")
 		}
 	})
 
 	t.Run("comment nil は正常", func(t *testing.T) {
-		if err := validateAndTrimReviewInput(3, nil); err != nil {
+		var comment *string
+		if err := validateAndTrimReviewInput(3, &comment); err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+	})
+
+	t.Run("comment の前後空白が trim される", func(t *testing.T) {
+		s := "  hello world  "
+		comment := &s
+		if err := validateAndTrimReviewInput(3, &comment); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if comment == nil {
+			t.Fatal("expected non-nil comment")
+		}
+		if *comment != "hello world" {
+			t.Errorf("expected 'hello world', got '%s'", *comment)
+		}
+	})
+
+	t.Run("空白のみの comment は nil に正規化される", func(t *testing.T) {
+		s := "   "
+		comment := &s
+		if err := validateAndTrimReviewInput(3, &comment); err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if comment != nil {
+			t.Errorf("expected nil comment for whitespace-only input, got '%s'", *comment)
 		}
 	})
 }
