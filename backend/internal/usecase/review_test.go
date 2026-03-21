@@ -95,9 +95,9 @@ func (m *mockReviewRepo) GetTimeline(ctx context.Context, limit, offset int) ([]
 
 // ── テスト: バリデーション ──
 
-func TestValidateReviewInput(t *testing.T) {
+func TestValidateAndTrimReviewInput(t *testing.T) {
 	t.Run("rating 0 はエラー", func(t *testing.T) {
-		err := validateReviewInput(0, nil)
+		err := validateAndTrimReviewInput(0, nil)
 		if err == nil {
 			t.Fatal("expected validation error, got nil")
 		}
@@ -108,7 +108,7 @@ func TestValidateReviewInput(t *testing.T) {
 	})
 
 	t.Run("rating 6 はエラー", func(t *testing.T) {
-		err := validateReviewInput(6, nil)
+		err := validateAndTrimReviewInput(6, nil)
 		if err == nil {
 			t.Fatal("expected validation error, got nil")
 		}
@@ -116,7 +116,7 @@ func TestValidateReviewInput(t *testing.T) {
 
 	t.Run("rating 1〜5 は正常", func(t *testing.T) {
 		for _, r := range []int{1, 2, 3, 4, 5} {
-			if err := validateReviewInput(r, nil); err != nil {
+			if err := validateAndTrimReviewInput(r, nil); err != nil {
 				t.Fatalf("rating %d: unexpected error: %v", r, err)
 			}
 		}
@@ -124,7 +124,7 @@ func TestValidateReviewInput(t *testing.T) {
 
 	t.Run("comment ちょうど1000文字は正常", func(t *testing.T) {
 		comment := strPtr(strings.Repeat("a", 1000))
-		if err := validateReviewInput(3, comment); err != nil {
+		if err := validateAndTrimReviewInput(3, comment); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
@@ -136,14 +136,14 @@ func TestValidateReviewInput(t *testing.T) {
 			long[i] = 'a'
 		}
 		s := string(long)
-		err := validateReviewInput(3, &s)
+		err := validateAndTrimReviewInput(3, &s)
 		if err == nil {
 			t.Fatal("expected validation error for long comment")
 		}
 	})
 
 	t.Run("comment nil は正常", func(t *testing.T) {
-		if err := validateReviewInput(3, nil); err != nil {
+		if err := validateAndTrimReviewInput(3, nil); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 	})
