@@ -310,7 +310,11 @@ func handleReviewError(c echo.Context, err error) error {
 	return response.Error(c, http.StatusInternalServerError, "internal server error")
 }
 
-// parsePagination はクエリパラメータから limit と offset を取得します。
+// parsePagination はクエリパラメータから limit と offset を取得し、
+// 安全な範囲に補正します。
+// limit: 1〜100（不正値はデフォルト 20）、offset: 0 以上（デフォルト 0）
+// 注意: podcast.Search 等、usecase 固有の上限がある場合は usecase 側でも
+// 別途バリデーションが行われます。
 func parsePagination(c echo.Context) (int, int) {
 	limit := 20
 	offset := 0
@@ -324,6 +328,16 @@ func parsePagination(c echo.Context) (int, int) {
 		if parsed, err := strconv.Atoi(o); err == nil {
 			offset = parsed
 		}
+	}
+
+	// limit が不正な値の場合はデフォルト値にリセット（usecase 層と同じ挙動）
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+
+	// offset が負の場合は 0 にリセット
+	if offset < 0 {
+		offset = 0
 	}
 
 	return limit, offset
