@@ -65,7 +65,8 @@ func (s *supabaseStorage) Upload(ctx context.Context, bucket, path string, reade
 
 	// 公開 URL を組み立てて返す
 	// Supabase Storage の公開バケットでは /storage/v1/object/public/{bucket}/{path} で取得可能
-	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s", s.supabaseURL, bucket, path)
+	// タイムスタンプをクエリパラメータに付与してブラウザキャッシュを回避する
+	publicURL := fmt.Sprintf("%s/storage/v1/object/public/%s/%s?t=%d", s.supabaseURL, bucket, path, time.Now().Unix())
 
 	return publicURL, nil
 }
