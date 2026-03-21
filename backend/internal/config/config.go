@@ -39,7 +39,7 @@ type Config struct {
 	CORSAllowOrigins string `env:"CORS_ALLOW_ORIGINS" envDefault:"http://localhost:3000"`
 
 	// 環境 (development / production)
-	Environment string `env:"APP_ENV" envDefault:"development"`
+	Environment string `env:"APP_ENV" envDefault:"production"`
 
 	// 管理者ユーザー ID（カンマ区切り）
 	// 例: "550e8400-e29b-41d4-a716-446655440000,6ba7b810-9dad-11d1-80b4-00c04fd430c8"
