@@ -163,7 +163,7 @@ func NewReviewUsecase(
 //  4. レビューを作成
 func (u *reviewUsecase) Create(ctx context.Context, userID, episodeID uuid.UUID, input CreateReviewInput) (*model.Review, error) {
 	// 1. バリデーション
-	if err := validateReviewInput(input.Rating, input.Comment); err != nil {
+	if err := validateAndTrimReviewInput(input.Rating, &input.Comment); err != nil {
 		return nil, err
 	}
 
@@ -236,7 +236,7 @@ func (u *reviewUsecase) GetMyReview(ctx context.Context, userID, episodeID uuid.
 
 // Update はレビューを更新します。
 func (u *reviewUsecase) Update(ctx context.Context, userID, episodeID uuid.UUID, input UpdateReviewInput) (*model.Review, error) {
-	if err := validateReviewInput(input.Rating, input.Comment); err != nil {
+	if err := validateAndTrimReviewInput(input.Rating, &input.Comment); err != nil {
 		return nil, err
 	}
 
@@ -486,15 +486,25 @@ func (u *reviewUsecase) GetTimeline(ctx context.Context, limit, offset int) (*Ti
 	}, nil
 }
 
-// validateReviewInput はレビュー入力のバリデーションを行います。
-func validateReviewInput(rating int, comment *string) error {
+// validateAndTrimReviewInput はレビュー入力のバリデーションと trim を行います。
+// comment が非 nil の場合、前後の空白を除去した値で上書きします。
+// 空白のみのコメントは nil に正規化し、DB に空文字列が保存されるのを防ぎます。
+func validateAndTrimReviewInput(rating int, comment **string) error {
 	if rating < 1 || rating > 5 {
 		return &ValidationError{Message: "rating must be between 1 and 5"}
 	}
-	if comment != nil {
-		trimmed := strings.TrimSpace(*comment)
+	if comment == nil {
+		return nil
+	}
+	if *comment != nil {
+		trimmed := strings.TrimSpace(**comment)
 		if len(trimmed) > 1000 {
 			return &ValidationError{Message: "comment must be 1000 characters or less"}
+		}
+		if trimmed == "" {
+			*comment = nil
+		} else {
+			**comment = trimmed
 		}
 	}
 	return nil
