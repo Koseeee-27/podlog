@@ -113,5 +113,9 @@ func Load() (*Config, error) {
 	if err := env.Parse(cfg); err != nil {
 		return nil, fmt.Errorf("failed to parse config: %w", err)
 	}
+
+	// Environment を正規化（大文字小文字・前後の空白を統一）
+	cfg.Environment = strings.ToLower(strings.TrimSpace(cfg.Environment))
+
 	return cfg, nil
 }
