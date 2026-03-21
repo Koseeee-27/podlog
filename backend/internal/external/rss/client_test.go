@@ -318,8 +318,8 @@ func TestCheckRedirect_TooManyRedirects(t *testing.T) {
 	req := &http.Request{
 		URL: &url.URL{Scheme: "https", Host: "example.com", Path: "/feed"},
 	}
-	// via に 10 件のリクエストを入れる（= 10 回リダイレクト済み → 上限超過）
-	via := make([]*http.Request, 10)
+	// via に maxRedirects 件のリクエストを入れる（= 上限超過）
+	via := make([]*http.Request, maxRedirects)
 	for i := range via {
 		via[i] = &http.Request{
 			URL: &url.URL{Scheme: "https", Host: "example.com"},
@@ -330,7 +330,7 @@ func TestCheckRedirect_TooManyRedirects(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for too many redirects, got nil")
 	}
-	if !errors.Is(err, ErrTooManyRedirects) {
-		t.Errorf("expected ErrTooManyRedirects, got %v", err)
+	if !errors.Is(err, errTooManyRedirects) {
+		t.Errorf("expected errTooManyRedirects, got %v", err)
 	}
 }
