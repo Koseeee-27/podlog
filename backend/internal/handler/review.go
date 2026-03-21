@@ -310,7 +310,9 @@ func handleReviewError(c echo.Context, err error) error {
 	return response.Error(c, http.StatusInternalServerError, "internal server error")
 }
 
-// parsePagination はクエリパラメータから limit と offset を取得します。
+// parsePagination はクエリパラメータから limit と offset を取得し、
+// 安全な範囲にクランプします。
+// limit: 1〜100（デフォルト 20）、offset: 0 以上（デフォルト 0）
 func parsePagination(c echo.Context) (int, int) {
 	limit := 20
 	offset := 0
@@ -324,6 +326,18 @@ func parsePagination(c echo.Context) (int, int) {
 		if parsed, err := strconv.Atoi(o); err == nil {
 			offset = parsed
 		}
+	}
+
+	// limit を 1〜100 の範囲にクランプ
+	if limit < 1 {
+		limit = 1
+	} else if limit > 100 {
+		limit = 100
+	}
+
+	// offset が負の場合は 0 にリセット
+	if offset < 0 {
+		offset = 0
 	}
 
 	return limit, offset
