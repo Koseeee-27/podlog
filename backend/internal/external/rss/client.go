@@ -105,6 +105,18 @@ func NewClient() *Client {
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
+			// リダイレクト先が HTTPS であることを検証する。
+			// HTTPS → HTTP へのリダイレクトによる SSRF 迂回を防止する。
+			// IP アドレスの検証は DialContext 内で接続時に自動的に行われる。
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if req.URL.Scheme != "https" {
+					return &SSRFError{Reason: "redirect to non-HTTPS URL is not allowed"}
+				}
+				if len(via) >= 10 {
+					return fmt.Errorf("too many redirects")
+				}
+				return nil
+			},
 		},
 	}
 }
@@ -114,7 +126,8 @@ func NewClient() *Client {
 // セキュリティ考慮事項（SSRF対策）:
 //  1. HTTPS のみ許可（HTTP は拒否）
 //  2. プライベート IP アドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
-//  3. レスポンスサイズを 5MB に制限（巨大フィード対策）
+//  3. リダイレクト先も HTTPS のみ許可（HTTPS→HTTP の迂回を防止）
+//  4. レスポンスサイズを 5MB に制限（巨大フィード対策）
 func (c *Client) Fetch(ctx context.Context, feedURL string) ([]FeedItem, error) {
 	// 1. URL をパースして安全性を検証
 	parsed, err := url.Parse(feedURL)
