@@ -22,6 +22,13 @@ import (
 // errors.Is で判定できるようにするため、型ではなく値として定義しています。
 var ErrSSRFBlocked = errors.New("SSRF blocked")
 
+// errTooManyRedirects はリダイレクト回数の上限を超えたことを表す sentinel error です。
+// パッケージ外から分岐する必要がないため unexported にしている。
+var errTooManyRedirects = errors.New("too many redirects")
+
+// maxRedirects はリダイレクトの最大回数です。
+const maxRedirects = 10
+
 // SSRFError は SSRF 対策でブロックされた際の詳細情報を持つエラーです。
 // handler 層では errors.As で判定し、400 Bad Request を返します。
 type SSRFError struct {
@@ -105,6 +112,18 @@ func NewClient() *Client {
 		httpClient: &http.Client{
 			Timeout:   10 * time.Second,
 			Transport: transport,
+			// リダイレクト先が HTTPS であることを検証する。
+			// HTTPS → HTTP へのリダイレクトによる SSRF 迂回を防止する。
+			// IP アドレスの検証は DialContext 内で接続時に自動的に行われる。
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if req.URL.Scheme != "https" {
+					return &SSRFError{Reason: "redirect to non-HTTPS URL is not allowed"}
+				}
+				if len(via) >= maxRedirects {
+					return errTooManyRedirects
+				}
+				return nil
+			},
 		},
 	}
 }
@@ -114,7 +133,8 @@ func NewClient() *Client {
 // セキュリティ考慮事項（SSRF対策）:
 //  1. HTTPS のみ許可（HTTP は拒否）
 //  2. プライベート IP アドレスへのリクエストを DialContext 内で禁止（DNS rebinding 対策）
-//  3. レスポンスサイズを 5MB に制限（巨大フィード対策）
+//  3. リダイレクト先も HTTPS のみ許可（HTTPS→HTTP の迂回を防止）
+//  4. レスポンスサイズを 5MB に制限（巨大フィード対策）
 func (c *Client) Fetch(ctx context.Context, feedURL string) ([]FeedItem, error) {
 	// 1. URL をパースして安全性を検証
 	parsed, err := url.Parse(feedURL)

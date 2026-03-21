@@ -1,6 +1,9 @@
 package rss
 
 import (
+	"errors"
+	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -260,5 +263,74 @@ func TestParseFeed_MissingOptionalFields(t *testing.T) {
 	}
 	if ep.AudioURL != "" {
 		t.Error("expected empty audio URL for missing enclosure")
+	}
+}
+
+// ── CheckRedirect テスト ──
+
+// TestCheckRedirect_BlocksHTTP は、リダイレクト先が HTTP（非 HTTPS）の場合に
+// ErrSSRFBlocked としてブロックされることを検証する。
+func TestCheckRedirect_BlocksHTTP(t *testing.T) {
+	client := NewClient()
+
+	// CheckRedirect を直接呼び出すために、HTTP の URL を持つリクエストを作る
+	req := &http.Request{
+		URL: &url.URL{Scheme: "http", Host: "example.com", Path: "/feed"},
+	}
+	// via は1件（リダイレクト回数上限とは別のテスト）
+	via := []*http.Request{
+		{URL: &url.URL{Scheme: "https", Host: "example.com"}},
+	}
+
+	err := client.httpClient.CheckRedirect(req, via)
+	if err == nil {
+		t.Fatal("expected error for HTTP redirect, got nil")
+	}
+	if !errors.Is(err, ErrSSRFBlocked) {
+		t.Errorf("expected ErrSSRFBlocked, got %v", err)
+	}
+}
+
+// TestCheckRedirect_AllowsHTTPS は、リダイレクト先が HTTPS の場合に
+// エラーにならず許可されることを検証する。
+func TestCheckRedirect_AllowsHTTPS(t *testing.T) {
+	client := NewClient()
+
+	req := &http.Request{
+		URL: &url.URL{Scheme: "https", Host: "example.com", Path: "/feed"},
+	}
+	via := []*http.Request{
+		{URL: &url.URL{Scheme: "https", Host: "example.com"}},
+	}
+
+	err := client.httpClient.CheckRedirect(req, via)
+	if err != nil {
+		t.Fatalf("expected no error for HTTPS redirect, got %v", err)
+	}
+}
+
+// TestCheckRedirect_TooManyRedirects は、リダイレクト回数が 10 回以上の場合に
+// エラーになることを検証する。
+func TestCheckRedirect_TooManyRedirects(t *testing.T) {
+	client := NewClient()
+
+	// リダイレクト先は HTTPS（スキーム検証は通る）
+	req := &http.Request{
+		URL: &url.URL{Scheme: "https", Host: "example.com", Path: "/feed"},
+	}
+	// via に maxRedirects 件のリクエストを入れる（= 上限超過）
+	via := make([]*http.Request, maxRedirects)
+	for i := range via {
+		via[i] = &http.Request{
+			URL: &url.URL{Scheme: "https", Host: "example.com"},
+		}
+	}
+
+	err := client.httpClient.CheckRedirect(req, via)
+	if err == nil {
+		t.Fatal("expected error for too many redirects, got nil")
+	}
+	if !errors.Is(err, errTooManyRedirects) {
+		t.Errorf("expected errTooManyRedirects, got %v", err)
 	}
 }
