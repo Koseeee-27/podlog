@@ -5,11 +5,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
+
+// escapeILIKE は ILIKE パターン内の特殊文字（\, %, _）をエスケープします。
+// PostgreSQL の ILIKE では % が任意の文字列、_ が任意の1文字にマッチするため、
+// ユーザー入力をそのまま渡すと意図しないパターンマッチが発生します。
+func escapeILIKE(s string) string {
+	s = strings.ReplaceAll(s, `\`, `\\`)
+	s = strings.ReplaceAll(s, `%`, `\%`)
+	s = strings.ReplaceAll(s, `_`, `\_`)
+	return s
+}
 
 // PodcastSearchRow は番組検索結果の1行を表す構造体です。
 // 番組情報に加えて、レビューから集計した平均評価・レビュー件数を含みます。
@@ -167,9 +178,9 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 
 	// query が空でなければ ILIKE 条件を追加（キーワード検索）
 	if query != "" {
-		likePattern := "%" + query + "%"
+		likePattern := "%" + escapeILIKE(query) + "%"
 		args = append(args, likePattern)
-		conditions = append(conditions, fmt.Sprintf("p.title ILIKE $%d", len(args)))
+		conditions = append(conditions, fmt.Sprintf("p.title ILIKE $%d ESCAPE '\\'", len(args)))
 	}
 
 	// genres が空でなければ IN 句を追加（ジャンル絞り込み）
