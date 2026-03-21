@@ -42,6 +42,8 @@ services:
       # .env ファイルから読み込まれる。未設定だと JWT 検証（JWK 取得）に失敗する。
       # 設定手順: cp .env.example .env して SUPABASE_URL を記入する
       SUPABASE_URL: "${SUPABASE_URL}"
+      # Supabase サービスロールキー（Storage アップロードに必要）
+      SUPABASE_SERVICE_KEY: "${SUPABASE_SERVICE_KEY}"
       # 管理者ユーザー ID（カンマ区切り）
       # .env ファイルから読み込まれる
       ADMIN_USER_IDS: "${ADMIN_USER_IDS}"
