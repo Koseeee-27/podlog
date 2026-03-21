@@ -86,8 +86,12 @@ func main() {
 	e.Use(middleware.Logger())
 	e.Use(mw.CORS(cfg.CORSAllowOrigins))
 
-	// 5. Swagger UIを登録
-	e.GET("/swagger/*", echoSwagger.WrapHandler)
+	// 5. Swagger UIを登録（開発環境のみ）
+	// 本番環境では API の内部構造が外部に露出するのを防ぐため、
+	// Swagger UI のルートを登録しない。
+	if cfg.Environment == "development" {
+		e.GET("/swagger/*", echoSwagger.WrapHandler)
+	}
 
 	// 6. 外部APIクライアントを初期化
 	ogpScraper := ogp.NewScraper()
