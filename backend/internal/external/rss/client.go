@@ -22,6 +22,9 @@ import (
 // errors.Is で判定できるようにするため、型ではなく値として定義しています。
 var ErrSSRFBlocked = errors.New("SSRF blocked")
 
+// ErrTooManyRedirects はリダイレクト回数の上限を超えたことを表す sentinel error です。
+var ErrTooManyRedirects = errors.New("too many redirects")
+
 // SSRFError は SSRF 対策でブロックされた際の詳細情報を持つエラーです。
 // handler 層では errors.As で判定し、400 Bad Request を返します。
 type SSRFError struct {
@@ -113,7 +116,7 @@ func NewClient() *Client {
 					return &SSRFError{Reason: "redirect to non-HTTPS URL is not allowed"}
 				}
 				if len(via) >= 10 {
-					return fmt.Errorf("too many redirects")
+					return ErrTooManyRedirects
 				}
 				return nil
 			},

@@ -2,7 +2,6 @@ package rss
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -331,8 +330,7 @@ func TestCheckRedirect_TooManyRedirects(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for too many redirects, got nil")
 	}
-	expected := "too many redirects"
-	if fmt.Sprintf("%v", err) != expected {
-		t.Errorf("expected error message %q, got %q", expected, err.Error())
+	if !errors.Is(err, ErrTooManyRedirects) {
+		t.Errorf("expected ErrTooManyRedirects, got %v", err)
 	}
 }
