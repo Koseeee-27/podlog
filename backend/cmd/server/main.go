@@ -16,6 +16,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/jmoiron/sqlx"
@@ -67,6 +68,8 @@ func main() {
 
 	db.SetMaxOpenConns(25)
 	db.SetMaxIdleConns(5)
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	log.Println("Connected to database successfully")
 
