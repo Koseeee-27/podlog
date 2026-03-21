@@ -493,6 +493,9 @@ func validateAndTrimReviewInput(rating int, comment **string) error {
 	if rating < 1 || rating > 5 {
 		return &ValidationError{Message: "rating must be between 1 and 5"}
 	}
+	if comment == nil {
+		return nil
+	}
 	if *comment != nil {
 		trimmed := strings.TrimSpace(**comment)
 		if len(trimmed) > 1000 {
