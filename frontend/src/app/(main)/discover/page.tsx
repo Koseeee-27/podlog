@@ -7,5 +7,5 @@ interface DiscoverPageProps {
 export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
   const { q } = await searchParams;
   const query = Array.isArray(q) ? q[0] ?? "" : q ?? "";
-  return <DiscoverClient initialQuery={query} />;
+  return <DiscoverClient key={query} initialQuery={query} />;
 }

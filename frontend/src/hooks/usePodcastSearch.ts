@@ -9,11 +9,6 @@ const DEBOUNCE_MS = 400;
 
 export function usePodcastSearch(initialQuery = "") {
   const [query, setQuery] = useState(initialQuery);
-
-  // initialQuery（URL の ?q=）が変わったら query を同期
-  useEffect(() => {
-    setQuery(initialQuery);
-  }, [initialQuery]);
   const [results, setResults] = useState<PodcastSearchItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
