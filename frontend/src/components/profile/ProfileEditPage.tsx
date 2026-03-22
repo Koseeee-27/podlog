@@ -95,7 +95,7 @@ export default function ProfileEditPage({
         showToast("プロフィールを更新しました");
         onSaveComplete();
       } catch (err) {
-        setError(getUserFriendlyErrorMessage(err));
+        setError(getUserFriendlyErrorMessage(err, "プロフィールの更新に失敗しました"));
       }
     });
   }

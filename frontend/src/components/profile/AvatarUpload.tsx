@@ -77,7 +77,7 @@ export default function AvatarUpload({
         // エラー時: ObjectURL を解放してプレビューをクリア
         URL.revokeObjectURL(objectUrl);
         setPreviewUrl(null);
-        onError(getUserFriendlyErrorMessage(err));
+        onError(getUserFriendlyErrorMessage(err, "アバターのアップロードに失敗しました"));
       }
     });
 

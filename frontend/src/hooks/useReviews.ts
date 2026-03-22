@@ -101,7 +101,7 @@ export function useReviewActions(episodeId: string) {
       const review = await createReview(episodeId, data);
       return review;
     } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
+      setError(getUserFriendlyErrorMessage(err, "レビューの投稿に失敗しました"));
       return null;
     } finally {
       setLoading(false);
@@ -115,7 +115,7 @@ export function useReviewActions(episodeId: string) {
       const review = await updateReview(episodeId, data);
       return review;
     } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
+      setError(getUserFriendlyErrorMessage(err, "レビューの更新に失敗しました"));
       return null;
     } finally {
       setLoading(false);
@@ -129,7 +129,7 @@ export function useReviewActions(episodeId: string) {
       await deleteReview(episodeId);
       return true;
     } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
+      setError(getUserFriendlyErrorMessage(err, "レビューの削除に失敗しました"));
       return false;
     } finally {
       setLoading(false);
@@ -174,7 +174,7 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
           setMyReview(null);
           setError(null);
         } else {
-          setError(getUserFriendlyErrorMessage(err));
+          setError(getUserFriendlyErrorMessage(err, "レビューの取得に失敗しました"));
           setMyReview(null);
         }
       } finally {
@@ -336,7 +336,7 @@ export function usePodcastRating(podcastId: string) {
         setRating(data);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(getUserFriendlyErrorMessage(err));
+        setError(getUserFriendlyErrorMessage(err, "評価の取得に失敗しました"));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }

@@ -123,7 +123,7 @@ export function useCreateEpisode(podcastId: string) {
         const episode = await createEpisode(podcastId, data);
         return episode;
       } catch (err) {
-        const message = getUserFriendlyErrorMessage(err);
+        const message = getUserFriendlyErrorMessage(err, "エピソードの作成に失敗しました");
         setError(message);
         return null;
       } finally {
@@ -150,7 +150,7 @@ export function useFetchFromFeed(podcastId: string) {
       setResult(data);
       return data;
     } catch (err) {
-      const message = getUserFriendlyErrorMessage(err);
+      const message = getUserFriendlyErrorMessage(err, "RSSフィードの取得に失敗しました");
       setError(message);
       return null;
     } finally {

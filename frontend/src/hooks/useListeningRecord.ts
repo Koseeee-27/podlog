@@ -58,7 +58,7 @@ export function useListeningStatus(episodeId: string) {
       }
       return true;
     } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
+      setError(getUserFriendlyErrorMessage(err, "操作に失敗しました"));
       return false;
     } finally {
       setToggling(false);

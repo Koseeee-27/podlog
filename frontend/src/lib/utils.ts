@@ -1,3 +1,5 @@
+import { ApiRequestError } from "@/types/api";
+
 export function formatDuration(ms: number | null): string {
   if (!ms) return "";
   const totalSeconds = Math.floor(ms / 1000);
@@ -54,12 +56,12 @@ export function stripHtmlTags(html: string): string {
 /**
  * API エラーをユーザー向けの日本語メッセージに変換する。
  * 技術的なエラーメッセージ（"Failed to fetch" 等）がそのまま表示されるのを防ぐ。
+ * @param err - キャッチしたエラー
+ * @param fallback - ステータスコードが該当しない場合のデフォルトメッセージ（操作に応じて変更可能）
  */
-export function getUserFriendlyErrorMessage(err: unknown): string {
-  // ApiRequestError の場合はステータスコードで分岐
-  if (err != null && typeof err === "object" && "status" in err) {
-    const status = (err as { status: number }).status;
-    switch (status) {
+export function getUserFriendlyErrorMessage(err: unknown, fallback = "読み込みに失敗しました"): string {
+  if (err instanceof ApiRequestError) {
+    switch (err.status) {
       case 401:
       case 403:
         return "ログインが必要です";
@@ -68,14 +70,14 @@ export function getUserFriendlyErrorMessage(err: unknown): string {
       case 500:
         return "サーバーエラーが発生しました。しばらくしてから再試行してください";
       default:
-        return "読み込みに失敗しました";
+        return fallback;
     }
   }
   // ネットワークエラー（fetch 失敗）
   if (err instanceof TypeError && err.message === "Failed to fetch") {
     return "通信エラーが発生しました。ネットワーク接続を確認してください";
   }
-  return "読み込みに失敗しました";
+  return fallback;
 }
 
 export function isValidUrl(url: string): boolean {
