@@ -6,13 +6,13 @@ import { useGenres } from "@/hooks/useGenres";
 import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/podcast/SearchBar";
 import PodcastCard from "@/components/podcast/PodcastCard";
-import GenreChips from "@/components/discover/GenreChips";
+import GenreGrid from "@/components/discover/GenreGrid";
 import PodcastRequestDialog from "@/components/discover/PodcastRequestDialog";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
-import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon } from "@heroicons/react/24/outline";
+import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 
 interface DiscoverClientProps {
   initialQuery: string;
@@ -22,7 +22,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
   const { query, setQuery, results, loading: searchLoading, error: searchError } = usePodcastSearch(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const { genres, loading: genresLoading } = useGenres();
+  const { genres, loading: genresLoading, error: genresError } = useGenres();
   const auth = useAuth();
 
   const isSearching = query.trim().length > 0;
@@ -40,17 +40,18 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
 
   // 人気番組は、検索中でもジャンル選択中でもない場合のみ取得
   const showPopular = !isSearching && selectedGenre === null;
-  const { podcasts: popular, loading: popularLoading, error: popularError } = usePopularPodcasts(showPopular);
+  const { podcasts: popular, loading: popularLoading, error: popularError } = usePopularPodcasts(showPopular, 6);
 
-  // 検索開始時はジャンル選択をリセットしない（チップを非アクティブに見せるだけ）
-  // 検索クリア時にジャンル選択が復帰する
-
-  const handleGenreSelect = (genreId: string | null) => {
+  const handleGenreSelect = (genreId: string) => {
     setSelectedGenre(genreId);
     // ジャンル選択時に検索をクリア
     if (query.trim()) {
       setQuery("");
     }
+  };
+
+  const handleBackToGenres = () => {
+    setSelectedGenre(null);
   };
 
   // 選択中のジャンルの日本語名を取得
@@ -61,16 +62,6 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
       <h1 className="sr-only">探す</h1>
 
       <SearchBar value={query} onChange={setQuery} loading={searchLoading} />
-
-      {/* ジャンルチップ: 検索中は非アクティブ表示 */}
-      <div className="mt-4">
-        <GenreChips
-          genres={genres}
-          selectedGenre={isSearching ? null : selectedGenre}
-          onSelect={handleGenreSelect}
-          loading={genresLoading}
-        />
-      </div>
 
       <div className="mt-6">
         {isSearching ? (
@@ -121,6 +112,15 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
         ) : selectedGenre !== null ? (
           /* --- ジャンル選択中 --- */
           <>
+            <button
+              type="button"
+              onClick={handleBackToGenres}
+              className="inline-flex items-center gap-1 text-sm text-stone-500 hover:text-stone-700 transition-colors mb-4"
+            >
+              <ArrowLeftIcon className="h-4 w-4" />
+              ジャンル一覧に戻る
+            </button>
+
             <h2 className="text-lg font-bold text-stone-900 mb-4">
               {selectedGenreName ?? selectedGenre}の番組
             </h2>
@@ -156,22 +156,36 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             )}
           </>
         ) : (
-          /* --- 初期表示: 人気番組 --- */
+          /* --- 初期表示: ジャンルグリッド + 人気番組 --- */
           <>
-            <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
+            {/* ジャンルグリッド */}
+            <section>
+              <h2 className="text-lg font-bold text-stone-900 mb-4">ジャンルから探す</h2>
+              {genresError && <ErrorMessage message={genresError} />}
+              <GenreGrid
+                genres={genres}
+                onSelect={handleGenreSelect}
+                loading={genresLoading}
+              />
+            </section>
 
-            {popularLoading && <Loading />}
-            {popularError && <ErrorMessage message={popularError} />}
+            {/* 人気の番組（コンパクト表示） */}
+            <section className="mt-8">
+              <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
 
-            {!popularLoading && popular.length === 0 && !popularError && (
-              <p className="text-sm text-stone-500">まだレビューのある番組がありません</p>
-            )}
+              {popularLoading && <Loading />}
+              {popularError && <ErrorMessage message={popularError} />}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {popular.map((podcast) => (
-                <PodcastCard key={podcast.id} podcast={podcast} />
-              ))}
-            </div>
+              {!popularLoading && popular.length === 0 && !popularError && (
+                <p className="text-sm text-stone-500">まだレビューのある番組がありません</p>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {popular.map((podcast) => (
+                  <PodcastCard key={podcast.id} podcast={podcast} />
+                ))}
+              </div>
+            </section>
           </>
         )}
       </div>
