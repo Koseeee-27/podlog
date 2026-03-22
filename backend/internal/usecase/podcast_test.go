@@ -182,6 +182,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 						ArtworkURL:    &artworkURL,
 						AverageRating: 4.25,
 						TotalReviews:  12,
+						FavoriteCount: 5,
 					},
 				}, 1, nil
 			},
@@ -210,6 +211,9 @@ func TestPodcastUsecase_Search(t *testing.T) {
 		}
 		if p.TotalReviews != 12 {
 			t.Errorf("total_reviews = %d, want 12", p.TotalReviews)
+		}
+		if p.FavoriteCount != 5 {
+			t.Errorf("favorite_count = %d, want 5", p.FavoriteCount)
 		}
 	})
 

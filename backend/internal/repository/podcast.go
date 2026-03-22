@@ -31,6 +31,7 @@ type PodcastSearchRow struct {
 	ArtworkURL    *string   `db:"artwork_url"`
 	AverageRating float64   `db:"average_rating"`
 	TotalReviews  int       `db:"total_reviews"`
+	FavoriteCount int       `db:"favorite_count"`
 }
 
 // PodcastRepository はポッドキャストデータへのアクセスを提供します。
@@ -233,11 +234,13 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 			p.author,
 			p.artwork_url,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			COUNT(DISTINCT fp.user_id)::int AS favorite_count
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
 		LEFT JOIN reviews r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		LEFT JOIN favorite_podcasts fp ON p.id = fp.podcast_id
 		%s
 		GROUP BY p.id, p.title, p.author, p.artwork_url
 		ORDER BY %s
@@ -328,11 +331,13 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 			p.author,
 			p.artwork_url,
 			AVG(r.rating)::float8 AS average_rating,
-			COUNT(r.id)::int AS total_reviews
+			COUNT(r.id)::int AS total_reviews,
+			COUNT(DISTINCT fp.user_id)::int AS favorite_count
 		FROM podcasts p
 		INNER JOIN episodes e ON p.id = e.podcast_id
 		INNER JOIN reviews r ON e.id = r.episode_id
 		INNER JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		LEFT JOIN favorite_podcasts fp ON p.id = fp.podcast_id
 		GROUP BY p.id, p.title, p.author, p.artwork_url
 		ORDER BY total_reviews DESC, average_rating DESC, p.id
 		LIMIT $1

@@ -3,7 +3,7 @@ import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import PodcastPageClient from "./PodcastPageClient";
-import type { Podcast } from "@/types/podcast";
+import type { PodcastDetailResult } from "@/types/podcast";
 import type { EpisodeListResult } from "@/types/episode";
 import type { PodcastRatingResult } from "@/types/review";
 
@@ -18,9 +18,9 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     notFound();
   }
 
-  let podcast: Podcast;
+  let podcast: PodcastDetailResult;
   try {
-    podcast = await serverGet<Podcast>(`/podcasts/${encodeURIComponent(id)}`, {
+    podcast = await serverGet<PodcastDetailResult>(`/podcasts/${encodeURIComponent(id)}`, {
       noAuth: true,
       revalidate: 60,
     });
@@ -54,6 +54,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     <PodcastPageClient
       id={id}
       initialPodcast={podcast}
+      initialFavoriteCount={podcast.favorite_count}
       initialEpisodes={initialEpisodes}
       initialRating={initialRating}
     />

@@ -22,6 +22,7 @@ type PodcastDetailResult struct {
 	FeedURL       *string   `json:"feed_url,omitempty"`
 	AverageRating float64   `json:"average_rating"`
 	TotalReviews  int       `json:"total_reviews"`
+	FavoriteCount int       `json:"favorite_count"`
 	CreatedAt     string    `json:"created_at"`
 }
 
@@ -40,6 +41,7 @@ type PodcastSearchItem struct {
 	ArtworkURL    *string   `json:"artwork_url,omitempty"`
 	AverageRating float64   `json:"average_rating"`
 	TotalReviews  int       `json:"total_reviews"`
+	FavoriteCount int       `json:"favorite_count"`
 }
 
 // CreatePodcastInput は番組手動登録のリクエストを表します。
@@ -150,6 +152,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 			ArtworkURL:    row.ArtworkURL,
 			AverageRating: roundToOneDecimal(row.AverageRating),
 			TotalReviews:  row.TotalReviews,
+			FavoriteCount: row.FavoriteCount,
 		})
 	}
 
@@ -181,6 +184,7 @@ func (u *podcastUsecase) GetPopular(ctx context.Context, limit int) (*PodcastSea
 			ArtworkURL:    row.ArtworkURL,
 			AverageRating: roundToOneDecimal(row.AverageRating),
 			TotalReviews:  row.TotalReviews,
+			FavoriteCount: row.FavoriteCount,
 		})
 	}
 

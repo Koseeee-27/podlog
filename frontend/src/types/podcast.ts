@@ -21,6 +21,13 @@ export interface PodcastSearchItem {
   artwork_url: string | null;
   average_rating: number;
   total_reviews: number;
+  favorite_count: number;
+}
+
+export interface PodcastDetailResult extends Podcast {
+  average_rating: number;
+  total_reviews: number;
+  favorite_count: number;
 }
 
 export interface PodcastSearchResult {

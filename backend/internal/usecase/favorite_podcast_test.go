@@ -16,9 +16,10 @@ import (
 // mockFavoritePodcastRepo は FavoritePodcastRepository のモック実装です。
 // テストケースごとに各メソッドの振る舞いを差し替えます。
 type mockFavoritePodcastRepo struct {
-	getByUsernameFn func(ctx context.Context, username string) ([]repository.FavoritePodcastRow, error)
-	replaceAllFn    func(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) error
-	getByUserIDFn   func(ctx context.Context, userID uuid.UUID) ([]repository.FavoritePodcastRow, error)
+	getByUsernameFn    func(ctx context.Context, username string) ([]repository.FavoritePodcastRow, error)
+	replaceAllFn       func(ctx context.Context, userID uuid.UUID, podcastIDs []uuid.UUID) error
+	getByUserIDFn      func(ctx context.Context, userID uuid.UUID) ([]repository.FavoritePodcastRow, error)
+	countByPodcastIDFn func(ctx context.Context, podcastID uuid.UUID) (int, error)
 }
 
 func (m *mockFavoritePodcastRepo) GetByUsername(ctx context.Context, username string) ([]repository.FavoritePodcastRow, error) {
@@ -40,6 +41,13 @@ func (m *mockFavoritePodcastRepo) GetByUserID(ctx context.Context, userID uuid.U
 		return nil, fmt.Errorf("mockFavoritePodcastRepo.GetByUserID: not implemented")
 	}
 	return m.getByUserIDFn(ctx, userID)
+}
+
+func (m *mockFavoritePodcastRepo) CountByPodcastID(ctx context.Context, podcastID uuid.UUID) (int, error) {
+	if m.countByPodcastIDFn == nil {
+		return 0, fmt.Errorf("mockFavoritePodcastRepo.CountByPodcastID: not implemented")
+	}
+	return m.countByPodcastIDFn(ctx, podcastID)
 }
 
 // mockPodcastRepo は PodcastRepository のモック実装です（好きな番組テスト用）。
