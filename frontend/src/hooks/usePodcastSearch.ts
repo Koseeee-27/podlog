@@ -78,7 +78,7 @@ export function usePopularPodcasts(enabled = true, limit = 10) {
         const data = await getPopularPodcasts(limit);
         if (!cancelled) setPodcasts(data);
       } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -125,7 +125,7 @@ export function useGenrePodcasts(genre: string | null) {
           setTotal(result.total);
         }
       } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
