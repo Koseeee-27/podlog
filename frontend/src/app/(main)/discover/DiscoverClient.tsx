@@ -22,7 +22,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
   const { query, setQuery, results, loading: searchLoading, error: searchError } = usePodcastSearch(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const { genres, loading: genresLoading } = useGenres();
+  const { genres, loading: genresLoading, error: genresError } = useGenres();
   const auth = useAuth();
 
   const isSearching = query.trim().length > 0;
@@ -161,6 +161,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
             {/* ジャンルグリッド */}
             <section>
               <h2 className="text-lg font-bold text-stone-900 mb-4">ジャンルから探す</h2>
+              {genresError && <ErrorMessage message={genresError} />}
               <GenreGrid
                 genres={genres}
                 onSelect={handleGenreSelect}
