@@ -235,14 +235,19 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 			p.artwork_url,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
 			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
-			COUNT(DISTINCT fp.user_id)::int AS favorite_count
+			COALESCE(fav.cnt, 0)::int AS favorite_count
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
 		LEFT JOIN reviews r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
-		LEFT JOIN favorite_podcasts fp ON p.id = fp.podcast_id
+		LEFT JOIN (
+			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
+			FROM favorite_podcasts fp
+			INNER JOIN users fu ON fp.user_id = fu.id AND fu.deleted_at IS NULL
+			GROUP BY fp.podcast_id
+		) fav ON p.id = fav.podcast_id
 		%s
-		GROUP BY p.id, p.title, p.author, p.artwork_url
+		GROUP BY p.id, p.title, p.author, p.artwork_url, fav.cnt
 		ORDER BY %s
 		LIMIT $%d OFFSET $%d
 	`, whereClause, orderBy, limitIdx, offsetIdx)
@@ -332,13 +337,18 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 			p.artwork_url,
 			AVG(r.rating)::float8 AS average_rating,
 			COUNT(r.id)::int AS total_reviews,
-			COUNT(DISTINCT fp.user_id)::int AS favorite_count
+			COALESCE(fav.cnt, 0)::int AS favorite_count
 		FROM podcasts p
 		INNER JOIN episodes e ON p.id = e.podcast_id
 		INNER JOIN reviews r ON e.id = r.episode_id
 		INNER JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
-		LEFT JOIN favorite_podcasts fp ON p.id = fp.podcast_id
-		GROUP BY p.id, p.title, p.author, p.artwork_url
+		LEFT JOIN (
+			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
+			FROM favorite_podcasts fp
+			INNER JOIN users fu ON fp.user_id = fu.id AND fu.deleted_at IS NULL
+			GROUP BY fp.podcast_id
+		) fav ON p.id = fav.podcast_id
+		GROUP BY p.id, p.title, p.author, p.artwork_url, fav.cnt
 		ORDER BY total_reviews DESC, average_rating DESC, p.id
 		LIMIT $1
 	`

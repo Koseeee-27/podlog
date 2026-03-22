@@ -113,11 +113,16 @@ func (r *favoritePodcastRepository) ReplaceAll(ctx context.Context, userID uuid.
 	return nil
 }
 
-// CountByPodcastID は指定したポッドキャストをお気に入りに登録しているユーザー数を返します。
-// COUNT(*) で favorite_podcasts テーブル内の該当レコード数をカウントします。
+// CountByPodcastID は指定したポッドキャストをお気に入りに登録している有効ユーザー数を返します。
+// 削除済みユーザーを除外するため users テーブルを JOIN しています。
 func (r *favoritePodcastRepository) CountByPodcastID(ctx context.Context, podcastID uuid.UUID) (int, error) {
 	var count int
-	query := `SELECT COUNT(*) FROM favorite_podcasts WHERE podcast_id = $1`
+	query := `
+		SELECT COUNT(*)
+		FROM favorite_podcasts fp
+		INNER JOIN users u ON fp.user_id = u.id AND u.deleted_at IS NULL
+		WHERE fp.podcast_id = $1
+	`
 	if err := r.db.GetContext(ctx, &count, query, podcastID); err != nil {
 		return 0, fmt.Errorf("failed to count favorite podcasts: %w", err)
 	}
