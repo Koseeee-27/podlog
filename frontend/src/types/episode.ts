@@ -19,6 +19,28 @@ export interface EpisodeWithStats extends Episode {
   average_rating: number;
 }
 
+/** エピソード詳細 API（GET /episodes/:id）のレスポンス型 */
+export interface EpisodeDetailResult {
+  id: string;
+  title: string;
+  description: string | null;
+  audio_url: string | null;
+  artwork_url: string | null;
+  source_url?: string | null;
+  duration_ms: number | null;
+  published_at: string | null;
+  created_at: string;
+  podcast: EpisodePodcastInfo;
+  average_rating: number;
+  total_reviews: number;
+}
+
+export interface EpisodePodcastInfo {
+  id: string;
+  title: string;
+  artwork_url: string | null;
+}
+
 export interface EpisodeListItem {
   id: string;
   title: string;

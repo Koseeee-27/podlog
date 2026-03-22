@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { getEpisodesByPodcast, getEpisode, createEpisode, fetchEpisodesFromFeed } from "@/lib/api/episodes";
-import type { Episode, EpisodeWithStats, EpisodeListItem, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import type { Episode, EpisodeDetailResult, EpisodeListItem, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -84,7 +84,7 @@ export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) 
 }
 
 export function useEpisode(id: string) {
-  const [episode, setEpisode] = useState<EpisodeWithStats | null>(null);
+  const [episode, setEpisode] = useState<EpisodeDetailResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

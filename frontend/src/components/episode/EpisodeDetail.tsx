@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import type { EpisodeWithStats } from "@/types/episode";
+import type { EpisodeDetailResult } from "@/types/episode";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ListenButton from "./ListenButton";
 import ReviewPrompt from "./ReviewPrompt";
@@ -10,7 +10,7 @@ import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
 interface EpisodeDetailProps {
-  episode: EpisodeWithStats;
+  episode: EpisodeDetailResult;
   isLoggedIn: boolean;
 }
 
@@ -48,7 +48,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       <div className="mt-2">
         <Link
-          href={`/podcasts/${episode.podcast_id}`}
+          href={`/podcasts/${episode.podcast.id}`}
           className="text-sm text-rose-600 hover:text-rose-700"
         >
           ポッドキャストに戻る
