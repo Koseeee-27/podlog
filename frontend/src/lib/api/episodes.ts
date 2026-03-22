@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "./client";
-import type { Episode, EpisodeWithStats, EpisodeListResult, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import type { Episode, EpisodeDetailResult, EpisodeListResult, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
 
 export function getEpisodesByPodcast(
   podcastId: string,
@@ -14,8 +14,8 @@ export function getEpisodesByPodcast(
   );
 }
 
-export function getEpisode(id: string): Promise<EpisodeWithStats> {
-  return apiGet<EpisodeWithStats>(`/episodes/${encodeURIComponent(id)}`);
+export function getEpisode(id: string): Promise<EpisodeDetailResult> {
+  return apiGet<EpisodeDetailResult>(`/episodes/${encodeURIComponent(id)}`);
 }
 
 export function createEpisode(

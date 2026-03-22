@@ -4,7 +4,7 @@ import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import EpisodeDetail from "@/components/episode/EpisodeDetail";
-import type { EpisodeWithStats } from "@/types/episode";
+import type { EpisodeDetailResult } from "@/types/episode";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -18,9 +18,9 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     notFound();
   }
 
-  let episode: EpisodeWithStats;
+  let episode: EpisodeDetailResult;
   try {
-    episode = await serverGet<EpisodeWithStats>(
+    episode = await serverGet<EpisodeDetailResult>(
       `/episodes/${encodeURIComponent(id)}`,
       { noAuth: true, revalidate: 60 },
     );

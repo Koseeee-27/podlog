@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import Link from "next/link";
-import type { EpisodeWithStats } from "@/types/episode";
+import type { EpisodeDetailResult } from "@/types/episode";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ListenButton from "./ListenButton";
 import ReviewPrompt from "./ReviewPrompt";
@@ -10,7 +10,7 @@ import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
 interface EpisodeDetailProps {
-  episode: EpisodeWithStats;
+  episode: EpisodeDetailResult;
   isLoggedIn: boolean;
 }
 
@@ -48,7 +48,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
 
       <div className="mt-2">
         <Link
-          href={`/podcasts/${episode.podcast_id}`}
+          href={`/podcasts/${episode.podcast.id}`}
           className="text-sm text-rose-600 hover:text-rose-700"
         >
           ポッドキャストに戻る
@@ -64,21 +64,6 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
         </div>
       )}
 
-      {episode.source_url && (
-        <div className="mt-4">
-          <a
-            href={episode.source_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-rose-600 hover:text-rose-700"
-          >
-            元のページで見る
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-            </svg>
-          </a>
-        </div>
-      )}
 
       {showReviewPrompt && (
         <div className="mt-4">
