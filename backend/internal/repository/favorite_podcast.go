@@ -22,6 +22,10 @@ type FavoritePodcastRepository interface {
 	// GetByUserID はユーザー ID を指定して好きな番組一覧を取得します。
 	// 一括更新後のレスポンス返却に使用します。
 	GetByUserID(ctx context.Context, userID uuid.UUID) ([]FavoritePodcastRow, error)
+
+	// CountByPodcastID は指定したポッドキャストをお気に入りに登録しているユーザー数を返します。
+	// 番組詳細画面でお気に入り件数を表示するために使用します。
+	CountByPodcastID(ctx context.Context, podcastID uuid.UUID) (int, error)
 }
 
 // FavoritePodcastRow は好きな番組一覧の JOIN 結果です。
@@ -107,6 +111,22 @@ func (r *favoritePodcastRepository) ReplaceAll(ctx context.Context, userID uuid.
 	}
 
 	return nil
+}
+
+// CountByPodcastID は指定したポッドキャストをお気に入りに登録している有効ユーザー数を返します。
+// 削除済みユーザーを除外するため users テーブルを JOIN しています。
+func (r *favoritePodcastRepository) CountByPodcastID(ctx context.Context, podcastID uuid.UUID) (int, error) {
+	var count int
+	query := `
+		SELECT COUNT(*)
+		FROM favorite_podcasts fp
+		INNER JOIN users u ON fp.user_id = u.id AND u.deleted_at IS NULL
+		WHERE fp.podcast_id = $1
+	`
+	if err := r.db.GetContext(ctx, &count, query, podcastID); err != nil {
+		return 0, fmt.Errorf("failed to count favorite podcasts: %w", err)
+	}
+	return count, nil
 }
 
 // GetByUserID はユーザー ID を指定して好きな番組一覧を取得します。

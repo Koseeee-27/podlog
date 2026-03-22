@@ -2394,6 +2394,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "favorite_count": {
+                    "type": "integer"
+                },
                 "feed_url": {
                     "type": "string"
                 },
@@ -2453,6 +2456,9 @@ const docTemplate = `{
                 },
                 "average_rating": {
                     "type": "number"
+                },
+                "favorite_count": {
+                    "type": "integer"
                 },
                 "id": {
                     "type": "string"

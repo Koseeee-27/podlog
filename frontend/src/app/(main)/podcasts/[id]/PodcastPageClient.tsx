@@ -16,6 +16,7 @@ import type { PodcastRatingResult } from "@/types/review";
 interface PodcastPageClientProps {
   id: string;
   initialPodcast: Podcast;
+  initialFavoriteCount?: number;
   initialEpisodes?: EpisodeListItem[];
   initialRating: PodcastRatingResult | null;
 }
@@ -23,6 +24,7 @@ interface PodcastPageClientProps {
 export default function PodcastPageClient({
   id,
   initialPodcast,
+  initialFavoriteCount,
   initialEpisodes,
   initialRating,
 }: PodcastPageClientProps) {
@@ -95,6 +97,7 @@ export default function PodcastPageClient({
         podcast={initialPodcast}
         averageRating={initialRating?.average_rating}
         totalReviews={initialRating?.total_reviews}
+        favoriteCount={initialFavoriteCount}
         hasRatingError={!initialRating}
         favoriteButton={
           showFavoriteButton ? (

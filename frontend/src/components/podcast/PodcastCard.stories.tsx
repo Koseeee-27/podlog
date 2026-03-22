@@ -19,6 +19,7 @@ export const Default: Story = {
       artwork_url: "https://is1-ssl.mzstatic.com/image/thumb/Podcasts/v4/dummy/300x300.jpg",
       average_rating: 4.5,
       total_reviews: 12,
+      favorite_count: 5,
     },
   },
 };
@@ -32,6 +33,7 @@ export const NoReviews: Story = {
       artwork_url: null,
       average_rating: 0,
       total_reviews: 0,
+      favorite_count: 0,
     },
   },
 };
@@ -45,6 +47,7 @@ export const NoArtwork: Story = {
       artwork_url: null,
       average_rating: 3.8,
       total_reviews: 5,
+      favorite_count: 3,
     },
   },
 };

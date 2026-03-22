@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
+	"github.com/Koseeee-27/podlog/backend/internal/repository"
 	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -15,18 +16,21 @@ import (
 // PodcastHandler はポッドキャスト関連のHTTPハンドラーです。
 // reviewUsecase はポッドキャスト詳細に平均評価・レビュー件数を付加するために使用します。
 type PodcastHandler struct {
-	podcastUsecase usecase.PodcastUsecase
-	reviewUsecase  usecase.ReviewUsecase
-	ogpScraper     *ogp.Scraper
+	podcastUsecase    usecase.PodcastUsecase
+	reviewUsecase     usecase.ReviewUsecase
+	favoritePodcastRepo repository.FavoritePodcastRepository
+	ogpScraper        *ogp.Scraper
 }
 
 // NewPodcastHandler は PodcastHandler を生成します。
 // reviewUsecase はポッドキャスト詳細レスポンスに平均評価を含めるために必要です。
-func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usecase.ReviewUsecase, ogpScraper *ogp.Scraper) *PodcastHandler {
+// favoritePodcastRepo は番組詳細レスポンスにお気に入り件数を含めるために必要です。
+func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usecase.ReviewUsecase, favoritePodcastRepo repository.FavoritePodcastRepository, ogpScraper *ogp.Scraper) *PodcastHandler {
 	return &PodcastHandler{
-		podcastUsecase: podcastUsecase,
-		reviewUsecase:  reviewUsecase,
-		ogpScraper:     ogpScraper,
+		podcastUsecase:    podcastUsecase,
+		reviewUsecase:     reviewUsecase,
+		favoritePodcastRepo: favoritePodcastRepo,
+		ogpScraper:        ogpScraper,
 	}
 }
 
@@ -116,6 +120,12 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast rating")
 	}
 
+	// お気に入り件数を取得
+	favoriteCount, err := h.favoritePodcastRepo.CountByPodcastID(c.Request().Context(), id)
+	if err != nil {
+		return response.Error(c, http.StatusInternalServerError, "failed to get favorite count")
+	}
+
 	// API 設計書のレスポンス形式に合わせて組み立て
 	result := usecase.PodcastDetailResult{
 		ID:            podcast.ID,
@@ -127,6 +137,7 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 		FeedURL:       podcast.FeedURL,
 		AverageRating: rating.AverageRating,
 		TotalReviews:  rating.TotalReviews,
+		FavoriteCount: favoriteCount,
 		CreatedAt:     podcast.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 
