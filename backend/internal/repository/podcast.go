@@ -215,13 +215,12 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 	}
 
 	// 2. データ取得クエリ
-	// ジャンル指定がある場合はレビュー件数順でソートします。
-	// ジャンル一覧から番組を探す場面では、レビューが多い＝人気のある番組を上位に
-	// 表示する方がユーザーにとって有用です。
+	// ジャンル指定がある場合はお気に入り数 → レビュー件数 → 平均評価の順でソートします。
+	// お気に入りはワンタップで登録でき、レビューよりデータが溜まりやすいため優先します。
 	// キーワード検索のみの場合はタイトル順のまま（検索ワードとの関連性を重視）。
 	orderBy := "p.title, p.id"
 	if len(genres) > 0 {
-		orderBy = "total_reviews DESC, average_rating DESC, p.title, p.id"
+		orderBy = "favorite_count DESC, total_reviews DESC, average_rating DESC, p.title, p.id"
 	}
 
 	// LIMIT / OFFSET のプレースホルダ番号は、これまでの args の数 +1, +2 になります。
