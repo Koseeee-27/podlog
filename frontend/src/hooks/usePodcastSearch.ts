@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback, useTransition } from "react";
 import { searchPodcasts, getPopularPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const DEBOUNCE_MS = 400;
 
@@ -32,7 +33,7 @@ export function usePodcastSearch(initialQuery = "") {
       const data = await searchPodcasts(term);
       setResults(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "検索に失敗しました");
+      setError(getUserFriendlyErrorMessage(err));
       setResults([]);
     } finally {
       setLoading(false);
@@ -77,7 +78,7 @@ export function usePopularPodcasts(enabled = true, limit = 10) {
         const data = await getPopularPodcasts(limit);
         if (!cancelled) setPodcasts(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -124,7 +125,7 @@ export function useGenrePodcasts(genre: string | null) {
           setTotal(result.total);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -148,7 +149,7 @@ export function useGenrePodcasts(genre: string | null) {
         setPodcasts((prev) => [...prev, ...result.podcasts]);
         setTotal(result.total);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "追加読み込みに失敗しました");
+        setError(getUserFriendlyErrorMessage(err));
       }
     });
   }, [genre, hasMore, podcasts.length]);

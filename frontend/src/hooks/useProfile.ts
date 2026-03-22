@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getPublicProfile } from "@/lib/api/users";
 import type { UserPublicProfile } from "@/types/user";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 export function usePublicProfile(username: string) {
   const [profile, setProfile] = useState<UserPublicProfile | null>(null);
@@ -19,7 +20,7 @@ export function usePublicProfile(username: string) {
         const data = await getPublicProfile(username);
         if (!cancelled) setProfile(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }

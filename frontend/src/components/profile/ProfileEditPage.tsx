@@ -11,6 +11,7 @@ import { useToast } from "@/components/ui/Toast";
 import AvatarUpload from "@/components/profile/AvatarUpload";
 import FavoritePodcastEditor from "@/components/profile/FavoritePodcastEditor";
 import type { User, FavoritePodcastItem } from "@/types/user";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 interface ProfileEditPageProps {
   profile: User;
@@ -94,7 +95,7 @@ export default function ProfileEditPage({
         showToast("プロフィールを更新しました");
         onSaveComplete();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "プロフィールの更新に失敗しました");
+        setError(getUserFriendlyErrorMessage(err));
       }
     });
   }

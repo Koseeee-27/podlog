@@ -4,6 +4,7 @@ import { useState, useCallback, useTransition } from "react";
 import TimelineCard from "@/components/timeline/TimelineCard";
 import { getTimeline } from "@/lib/api/reviews";
 import type { TimelineItem } from "@/types/review";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -39,7 +40,7 @@ export default function TimelineLoadMore({
         setAdditionalReviews((prev) => [...prev, ...list]);
       } catch (err) {
         setError(
-          err instanceof Error ? err.message : "追加読み込みに失敗しました"
+          getUserFriendlyErrorMessage(err)
         );
       }
     });

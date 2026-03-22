@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getGenres } from "@/lib/api/genres";
 import type { Genre } from "@/types/genre";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 export function useGenres() {
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -20,7 +21,7 @@ export function useGenres() {
         if (!cancelled) setGenres(data);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "ジャンルの取得に失敗しました");
+          setError(getUserFriendlyErrorMessage(err));
         }
       } finally {
         if (!cancelled) setLoading(false);

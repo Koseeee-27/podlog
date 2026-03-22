@@ -51,6 +51,33 @@ export function stripHtmlTags(html: string): string {
     .trim();
 }
 
+/**
+ * API エラーをユーザー向けの日本語メッセージに変換する。
+ * 技術的なエラーメッセージ（"Failed to fetch" 等）がそのまま表示されるのを防ぐ。
+ */
+export function getUserFriendlyErrorMessage(err: unknown): string {
+  // ApiRequestError の場合はステータスコードで分岐
+  if (err != null && typeof err === "object" && "status" in err) {
+    const status = (err as { status: number }).status;
+    switch (status) {
+      case 401:
+      case 403:
+        return "ログインが必要です";
+      case 404:
+        return "データが見つかりませんでした";
+      case 500:
+        return "サーバーエラーが発生しました。しばらくしてから再試行してください";
+      default:
+        return "読み込みに失敗しました";
+    }
+  }
+  // ネットワークエラー（fetch 失敗）
+  if (err instanceof TypeError && err.message === "Failed to fetch") {
+    return "通信エラーが発生しました。ネットワーク接続を確認してください";
+  }
+  return "読み込みに失敗しました";
+}
+
 export function isValidUrl(url: string): boolean {
   const trimmed = url.trim();
   if (trimmed === "") return true;

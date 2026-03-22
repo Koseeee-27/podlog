@@ -8,6 +8,7 @@ import {
   getMyListeningRecords,
 } from "@/lib/api/listening-records";
 import type { ListeningRecordItem } from "@/types/listening-record";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -32,7 +33,7 @@ export function useListeningStatus(episodeId: string) {
         const status = await getListeningStatus(episodeId);
         if (!cancelled) setListened(status.listened);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,7 +58,7 @@ export function useListeningStatus(episodeId: string) {
       }
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "操作に失敗しました");
+      setError(getUserFriendlyErrorMessage(err));
       return false;
     } finally {
       setToggling(false);
@@ -96,7 +97,7 @@ export function useListeningRecords() {
         setHasMore(list.length < data.total);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -119,7 +120,7 @@ export function useListeningRecords() {
       setTotal(data.total);
       setHasMore(recordsLength + list.length < data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }

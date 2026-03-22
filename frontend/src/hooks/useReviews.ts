@@ -12,6 +12,7 @@ import {
   getTimeline,
 } from "@/lib/api/reviews";
 import { ApiRequestError } from "@/types/api";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type {
   Review,
   MyReviewResult,
@@ -49,7 +50,7 @@ export function useEpisodeReviews(episodeId: string) {
       setHasMore(list.length < data.total);
     } catch (err) {
       if (signal?.aborted) return;
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       if (!signal?.aborted) setLoading(false);
     }
@@ -77,7 +78,7 @@ export function useEpisodeReviews(episodeId: string) {
       setTotal(data.total);
       setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -100,7 +101,7 @@ export function useReviewActions(episodeId: string) {
       const review = await createReview(episodeId, data);
       return review;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "レビューの投稿に失敗しました");
+      setError(getUserFriendlyErrorMessage(err));
       return null;
     } finally {
       setLoading(false);
@@ -114,7 +115,7 @@ export function useReviewActions(episodeId: string) {
       const review = await updateReview(episodeId, data);
       return review;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "レビューの更新に失敗しました");
+      setError(getUserFriendlyErrorMessage(err));
       return null;
     } finally {
       setLoading(false);
@@ -128,7 +129,7 @@ export function useReviewActions(episodeId: string) {
       await deleteReview(episodeId);
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "レビューの削除に失敗しました");
+      setError(getUserFriendlyErrorMessage(err));
       return false;
     } finally {
       setLoading(false);
@@ -173,7 +174,7 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
           setMyReview(null);
           setError(null);
         } else {
-          setError(err instanceof Error ? err.message : "レビューの取得に失敗しました");
+          setError(getUserFriendlyErrorMessage(err));
           setMyReview(null);
         }
       } finally {
@@ -225,7 +226,7 @@ export function useMyReviews() {
         setHasMore(list.length < data.total);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -248,7 +249,7 @@ export function useMyReviews() {
       setTotal(data.total);
       setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -282,7 +283,7 @@ export function useTimeline() {
         setHasMore(list.length < data.total);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -305,7 +306,7 @@ export function useTimeline() {
       setTotal(data.total);
       setHasMore(reviewsLength + list.length < data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -335,7 +336,7 @@ export function usePodcastRating(podcastId: string) {
         setRating(data);
       } catch (err) {
         if (controller.signal.aborted) return;
-        setError(err instanceof Error ? err.message : "評価の取得に失敗しました");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
