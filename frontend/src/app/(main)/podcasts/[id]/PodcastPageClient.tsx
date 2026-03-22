@@ -47,26 +47,21 @@ export default function PodcastPageClient({
     isFavorite,
     loading: favoriteLoading,
     isPending: favoritePending,
-    error: favoriteError,
     toggle: toggleFavorite,
     fetchFailed: favoriteFetchFailed,
   } = useFavoritePodcast(id, username);
   const hasFetchedRef = useRef(false);
 
-  // favoriteError が発生したらエラートーストを表示
-  useEffect(() => {
-    if (favoriteError) {
-      showToast(favoriteError, "error");
-    }
-  }, [favoriteError, showToast]);
-
-  // toggle の結果に応じてトーストを表示（isFavorite の監視ではなく操作の結果で判定）
+  // toggle の結果に応じてトーストを表示
   const handleToggleFavorite = useCallback(async () => {
     const result = await toggleFavorite();
     if (result === "added") {
       showToast("好きな番組に追加しました");
     } else if (result === "removed") {
       showToast("好きな番組から削除しました");
+    } else {
+      // result === null はエラー
+      showToast("操作に失敗しました", "error");
     }
   }, [toggleFavorite, showToast]);
 
