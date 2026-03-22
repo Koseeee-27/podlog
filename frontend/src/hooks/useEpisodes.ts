@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getEpisodesByPodcast, getEpisode, createEpisode, fetchEpisodesFromFeed } from "@/lib/api/episodes";
 import type { Episode, EpisodeWithStats, EpisodeListItem, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -36,7 +37,7 @@ export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) 
           setHasMore(list.length >= PAGE_SIZE);
         }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -58,7 +59,7 @@ export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) 
       setEpisodes((prev) => [...prev, ...list]);
       setHasMore(list.length >= PAGE_SIZE);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -73,7 +74,7 @@ export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) 
       setEpisodes(list);
       setHasMore(list.length >= PAGE_SIZE);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -97,7 +98,7 @@ export function useEpisode(id: string) {
         const data = await getEpisode(id);
         if (!cancelled) setEpisode(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -122,7 +123,7 @@ export function useCreateEpisode(podcastId: string) {
         const episode = await createEpisode(podcastId, data);
         return episode;
       } catch (err) {
-        const message = err instanceof Error ? err.message : "エピソードの作成に失敗しました";
+        const message = getUserFriendlyErrorMessage(err, "エピソードの作成に失敗しました");
         setError(message);
         return null;
       } finally {
@@ -149,7 +150,7 @@ export function useFetchFromFeed(podcastId: string) {
       setResult(data);
       return data;
     } catch (err) {
-      const message = err instanceof Error ? err.message : "RSSフィードの取得に失敗しました";
+      const message = getUserFriendlyErrorMessage(err, "RSSフィードの取得に失敗しました");
       setError(message);
       return null;
     } finally {

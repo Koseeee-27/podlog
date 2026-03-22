@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getPodcast } from "@/lib/api/podcasts";
 import type { Podcast } from "@/types/podcast";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 export function usePodcast(id: string) {
   const [podcast, setPodcast] = useState<Podcast | null>(null);
@@ -19,7 +20,7 @@ export function usePodcast(id: string) {
         const data = await getPodcast(id);
         if (!cancelled) setPodcast(data);
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : "読み込み失敗");
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }

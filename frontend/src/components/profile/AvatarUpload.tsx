@@ -4,6 +4,7 @@ import { type ChangeEvent, useRef, useState, useTransition, useEffect, useCallba
 import Image from "next/image";
 import { uploadAvatar } from "@/lib/api/users";
 import { CameraIcon } from "@heroicons/react/24/outline";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const MAX_FILE_SIZE = 2 * 1024 * 1024; // 2MB
 const ALLOWED_TYPES = ["image/jpeg", "image/png"];
@@ -76,7 +77,7 @@ export default function AvatarUpload({
         // エラー時: ObjectURL を解放してプレビューをクリア
         URL.revokeObjectURL(objectUrl);
         setPreviewUrl(null);
-        onError(err instanceof Error ? err.message : "アバターのアップロードに失敗しました");
+        onError(getUserFriendlyErrorMessage(err, "アバターのアップロードに失敗しました"));
       }
     });
 

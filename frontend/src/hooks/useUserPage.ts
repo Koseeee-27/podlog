@@ -7,6 +7,7 @@ import { getUserFavoritePodcasts } from "@/lib/api/users";
 import type { ListeningRecordItem } from "@/types/listening-record";
 import type { UserReviewItem } from "@/types/review";
 import type { FavoritePodcastItem } from "@/types/user";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 10;
 
@@ -35,7 +36,7 @@ export function useUserListeningRecords(username: string, enabled: boolean) {
         setTotal(data.total);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setInitialLoading(false);
       }
@@ -60,7 +61,7 @@ export function useUserListeningRecords(username: string, enabled: boolean) {
       setRecords(prev => [...prev, ...list]);
       setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoadingMore(false);
       inFlight.current = false;
@@ -95,7 +96,7 @@ export function useUserReviews(username: string, enabled: boolean) {
         setTotal(data.total);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setInitialLoading(false);
       }
@@ -120,7 +121,7 @@ export function useUserReviews(username: string, enabled: boolean) {
       setReviews(prev => [...prev, ...list]);
       setTotal(data.total);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "読み込み失敗");
+      setError(getUserFriendlyErrorMessage(err));
     } finally {
       setLoadingMore(false);
       inFlight.current = false;
@@ -148,7 +149,7 @@ export function useUserFavoritePodcasts(username: string, enabled: boolean) {
         setPodcasts(data.podcasts ?? []);
       } catch (err) {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "読み込み失敗");
+        setError(getUserFriendlyErrorMessage(err));
       } finally {
         if (!cancelled) setLoading(false);
       }
