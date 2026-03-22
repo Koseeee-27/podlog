@@ -33,7 +33,7 @@ export function usePodcastSearch(initialQuery = "") {
       const data = await searchPodcasts(term);
       setResults(data);
     } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
+      setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
       setResults([]);
     } finally {
       setLoading(false);
@@ -78,7 +78,7 @@ export function usePopularPodcasts(enabled = true, limit = 10) {
         const data = await getPopularPodcasts(limit);
         if (!cancelled) setPodcasts(data);
       } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -125,7 +125,7 @@ export function useGenrePodcasts(genre: string | null) {
           setTotal(result.total);
         }
       } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
+        if (!cancelled) setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -149,7 +149,7 @@ export function useGenrePodcasts(genre: string | null) {
         setPodcasts((prev) => [...prev, ...result.podcasts]);
         setTotal(result.total);
       } catch (err) {
-        setError(getUserFriendlyErrorMessage(err));
+        setError(getUserFriendlyErrorMessage(err, "追加読み込みに失敗しました"));
       }
     });
   }, [genre, hasMore, podcasts.length]);

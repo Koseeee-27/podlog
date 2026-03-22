@@ -21,7 +21,7 @@ export function useGenres() {
         if (!cancelled) setGenres(data);
       } catch (err) {
         if (!cancelled) {
-          setError(getUserFriendlyErrorMessage(err));
+          setError(getUserFriendlyErrorMessage(err, "ジャンルの取得に失敗しました"));
         }
       } finally {
         if (!cancelled) setLoading(false);

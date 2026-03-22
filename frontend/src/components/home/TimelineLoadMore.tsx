@@ -40,7 +40,7 @@ export default function TimelineLoadMore({
         setAdditionalReviews((prev) => [...prev, ...list]);
       } catch (err) {
         setError(
-          getUserFriendlyErrorMessage(err)
+          getUserFriendlyErrorMessage(err, "追加読み込みに失敗しました")
         );
       }
     });
