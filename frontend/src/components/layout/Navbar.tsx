@@ -77,9 +77,9 @@ export default function Navbar() {
             <div className="flex items-center gap-2 shrink-0">
               {profile ? (
                 <>
-                  {/* ＋ 記録する（暫定: /discover へ） */}
+                  {/* ＋ 記録する */}
                   <Link
-                    href="/discover"
+                    href="/record"
                     className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-rose-600 border border-rose-200 rounded-lg hover:bg-rose-50 transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">

@@ -73,3 +73,19 @@ export interface FetchFromFeedResult {
   failed_count: number;
   episodes: Episode[];
 }
+
+/** GET /api/v1/users/me/recent-episodes のレスポンス内のエピソード */
+export interface RecentEpisodeItem {
+  id: string;
+  title: string;
+  description: string | null;
+  duration_ms: number | null;
+  published_at: string | null;
+  podcast: EpisodePodcastInfo;
+}
+
+/** GET /api/v1/users/me/recent-episodes のレスポンス */
+export interface RecentEpisodesResult {
+  episodes: RecentEpisodeItem[];
+  total: number;
+}

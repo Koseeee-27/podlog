@@ -72,11 +72,10 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
     {
       id: "record",
       label: "記録する",
-      // TODO: /record ページ実装後に遷移先を変更する
-      href: null,
+      href: "/record",
       icon: <PlusIcon />,
       isPrimary: true,
-      isActive: () => false,
+      isActive: (p) => p === "/record",
     },
     {
       id: "user",
