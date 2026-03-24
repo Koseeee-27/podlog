@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
+	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
@@ -211,6 +212,38 @@ func (h *EpisodeHandler) FetchFromFeed(c echo.Context) error {
 			return response.Error(c, http.StatusBadRequest, err.Error())
 		}
 		return response.Error(c, http.StatusInternalServerError, "failed to fetch episodes from feed")
+	}
+
+	return response.Success(c, http.StatusOK, result)
+}
+
+// GetRecentEpisodes は認証ユーザーがまだ聴いていないエピソードを取得するハンドラーです。
+// ユーザーが聴取記録をつけた番組のうち、未聴取のエピソードを公開日の新しい順で返します。
+// 記録ページの「最近のエピソード」セクションで使用します。
+// @Summary 最近のエピソード取得
+// @Description 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します
+// @Tags episodes
+// @Produce json
+// @Param limit query int false "最大取得件数" default(20)
+// @Param offset query int false "スキップ件数" default(0)
+// @Success 200 {object} usecase.RecentEpisodeListResult
+// @Failure 401 {object} map[string]string
+// @Security BearerAuth
+// @Router /users/me/recent-episodes [get]
+func (h *EpisodeHandler) GetRecentEpisodes(c echo.Context) error {
+	// 認証ミドルウェアが設定した userID を取得
+	userID, err := mw.GetUserID(c)
+	if err != nil {
+		return response.Error(c, http.StatusUnauthorized, "unauthorized")
+	}
+
+	// クエリパラメータから limit と offset を取得（不正値はデフォルトに補正）
+	limit, offset := parsePagination(c)
+
+	// ユースケースを呼び出してエピソード一覧を取得
+	result, err := h.episodeUsecase.GetRecentForUser(c.Request().Context(), userID, limit, offset)
+	if err != nil {
+		return response.Error(c, http.StatusInternalServerError, "failed to get recent episodes")
 	}
 
 	return response.Success(c, http.StatusOK, result)

@@ -79,6 +79,9 @@ func (m *mockEpisodeUC) FetchFromFeed(ctx context.Context, podcastID uuid.UUID, 
 	}
 	return m.fetchFromFeedFn(ctx, podcastID, feedURL)
 }
+func (m *mockEpisodeUC) GetRecentForUser(_ context.Context, _ uuid.UUID, _, _ int) (*usecase.RecentEpisodeListResult, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── テストケース ──
 

@@ -23,6 +23,7 @@ type mockEpisodeRepo struct {
 	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error)
 	getByItunesTrackIDFunc      func(ctx context.Context, trackID int64) (*model.Episode, error)
 	getByGUIDFunc               func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
+	getRecentByUserIDFunc       func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -65,6 +66,13 @@ func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID
 		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetByPodcastIDWithStats: not implemented")
 	}
 	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset)
+}
+
+func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+	if m.getRecentByUserIDFunc == nil {
+		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetRecentByUserID: not implemented")
+	}
+	return m.getRecentByUserIDFunc(ctx, userID, limit, offset)
 }
 
 // mockRSSFetcher は rss.Fetcher のモックです。
