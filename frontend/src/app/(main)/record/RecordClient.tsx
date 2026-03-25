@@ -94,6 +94,7 @@ export default function RecordClient() {
     loading: recentLoading,
     error: recentError,
     isEmpty: recentEmpty,
+    recordedPodcastCount,
   } = useRecentEpisodes(isAuthenticated);
 
   const {
@@ -108,16 +109,16 @@ export default function RecordClient() {
 
   const isSearching = query.trim().length > 0;
 
-  // 記録履歴なし（初回利用）: 新着エピソードが空で、かつエラーでもない
-  // API が 404 を返す場合も isEmpty として扱われる想定
-  const isFirstTimeUser = !recentLoading && recentEmpty && !recentError;
+  // 初回利用の判定: 記録をつけた番組が0件の場合
+  // recorded_podcast_count で判定するため、「記録はあるが新着なし」と区別できる
+  const isFirstTimeUser = !recentLoading && recordedPodcastCount === 0 && !recentError;
 
   // ローディング中
   if (auth.status === "loading") {
     return <Loading />;
   }
 
-  // 未認証の場合は Server Component 側でリダイレクト済みだが、
+  // 未認証・プロフィール未設定の場合は Server Component 側でリダイレクト済みだが、
   // クライアント側でもフォールバックとして表示
   if (auth.status === "unauthenticated" || auth.status === "no_profile") {
     return <Loading message="リダイレクト中..." />;

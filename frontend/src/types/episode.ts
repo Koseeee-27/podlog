@@ -44,9 +44,9 @@ export interface EpisodePodcastInfo {
 export interface EpisodeListItem {
   id: string;
   title: string;
-  description: string | null;
-  duration_ms: number | null;
-  published_at: string | null;
+  description?: string | null;
+  duration_ms?: number | null;
+  published_at?: string | null;
   average_rating: number;
   total_reviews: number;
 }
@@ -78,9 +78,9 @@ export interface FetchFromFeedResult {
 export interface RecentEpisodeItem {
   id: string;
   title: string;
-  description: string | null;
-  duration_ms: number | null;
-  published_at: string | null;
+  description?: string | null;
+  duration_ms?: number | null;
+  published_at?: string | null;
   podcast: EpisodePodcastInfo;
 }
 
@@ -88,4 +88,5 @@ export interface RecentEpisodeItem {
 export interface RecentEpisodesResult {
   episodes: RecentEpisodeItem[];
   total: number;
+  recorded_podcast_count: number;
 }

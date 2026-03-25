@@ -14,6 +14,7 @@ export function useRecentEpisodes(enabled: boolean) {
   const [loading, setLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
   const [isEmpty, setIsEmpty] = useState(false);
+  const [recordedPodcastCount, setRecordedPodcastCount] = useState(0);
 
   useEffect(() => {
     if (!enabled) {
@@ -31,6 +32,7 @@ export function useRecentEpisodes(enabled: boolean) {
         if (!cancelled) {
           setEpisodes(result.episodes ?? []);
           setIsEmpty((result.episodes ?? []).length === 0);
+          setRecordedPodcastCount(result.recorded_podcast_count ?? 0);
         }
       } catch (err) {
         if (!cancelled) {
@@ -45,5 +47,5 @@ export function useRecentEpisodes(enabled: boolean) {
     return () => { cancelled = true; };
   }, [enabled]);
 
-  return { episodes, loading, error, isEmpty };
+  return { episodes, loading, error, isEmpty, recordedPodcastCount };
 }
