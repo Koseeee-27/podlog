@@ -76,6 +76,9 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
 	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed)
 
+	// Episodes (認証必要 - ユーザー固有)
+	auth.GET("/users/me/recent-episodes", h.Episode.GetRecentEpisodes)
+
 	// Listening Records (認証必要)
 	auth.POST("/episodes/:id/listen", h.ListeningRecord.Create)
 	auth.DELETE("/episodes/:id/listen", h.ListeningRecord.Delete)

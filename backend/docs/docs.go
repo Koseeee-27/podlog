@@ -1503,6 +1503,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/me/recent-episodes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "episodes"
+                ],
+                "summary": "最近のエピソード取得",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.RecentEpisodeListResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/me/reviews": {
             "get": {
                 "security": [
@@ -2478,6 +2528,43 @@ const docTemplate = `{
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/usecase.PodcastSearchItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.RecentEpisodeItem": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "duration_ms": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.EpisodePodcastInfo"
+                },
+                "published_at": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.RecentEpisodeListResult": {
+            "type": "object",
+            "properties": {
+                "episodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.RecentEpisodeItem"
                     }
                 },
                 "total": {

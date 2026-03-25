@@ -440,6 +440,30 @@ definitions:
       total:
         type: integer
     type: object
+  usecase.RecentEpisodeItem:
+    properties:
+      description:
+        type: string
+      duration_ms:
+        type: integer
+      id:
+        type: string
+      podcast:
+        $ref: '#/definitions/usecase.EpisodePodcastInfo'
+      published_at:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.RecentEpisodeListResult:
+    properties:
+      episodes:
+        items:
+          $ref: '#/definitions/usecase.RecentEpisodeItem'
+        type: array
+      total:
+        type: integer
+    type: object
   usecase.ReviewEpisodeInfo:
     properties:
       artwork_url:
@@ -1656,6 +1680,38 @@ paths:
       summary: 聴取履歴一覧
       tags:
       - listening-records
+  /users/me/recent-episodes:
+    get:
+      description: 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します
+      parameters:
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.RecentEpisodeListResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 最近のエピソード取得
+      tags:
+      - episodes
   /users/me/reviews:
     get:
       description: 認証ユーザーのレビュー一覧をエピソード・ポッドキャスト情報付きで取得します

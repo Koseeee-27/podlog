@@ -23,6 +23,7 @@ type mockEpisodeRepo struct {
 	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error)
 	getByItunesTrackIDFunc      func(ctx context.Context, trackID int64) (*model.Episode, error)
 	getByGUIDFunc               func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
+	getRecentByUserIDFunc       func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -65,6 +66,13 @@ func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID
 		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetByPodcastIDWithStats: not implemented")
 	}
 	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset)
+}
+
+func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+	if m.getRecentByUserIDFunc == nil {
+		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetRecentByUserID: not implemented")
+	}
+	return m.getRecentByUserIDFunc(ctx, userID, limit, offset)
 }
 
 // mockRSSFetcher は rss.Fetcher のモックです。
@@ -876,6 +884,148 @@ func TestGetByPodcastIDWithStats_RepoError(t *testing.T) {
 
 	uc := NewEpisodeUsecase(repo, nil)
 	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+// ── GetRecentForUser テスト ──
+
+func TestGetRecentForUser_Success(t *testing.T) {
+	userID := uuid.New()
+	ep1ID := uuid.New()
+	ep2ID := uuid.New()
+	podcastID := uuid.New()
+	now := time.Date(2026, 3, 25, 12, 0, 0, 0, time.UTC)
+	desc := "エピソードの説明"
+	dur := int64(3600000)
+	artwork := "https://example.com/artwork.jpg"
+
+	repo := &mockEpisodeRepo{
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+			return []repository.RecentEpisodeRow{
+				{
+					ID:             ep1ID,
+					Title:          "エピソード1",
+					Description:    &desc,
+					DurationMs:     &dur,
+					PublishedAt:    &now,
+					PodcastID:      podcastID,
+					PodcastTitle:   "テスト番組",
+					PodcastArtwork: &artwork,
+				},
+				{
+					ID:           ep2ID,
+					Title:        "エピソード2",
+					PodcastID:    podcastID,
+					PodcastTitle: "テスト番組",
+				},
+			}, 2, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	result, err := uc.GetRecentForUser(context.Background(), userID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected total 2, got %d", result.Total)
+	}
+	if len(result.Episodes) != 2 {
+		t.Fatalf("expected 2 episodes, got %d", len(result.Episodes))
+	}
+	// podcast 情報のマッピング確認
+	if result.Episodes[0].Podcast.ID != podcastID {
+		t.Errorf("expected podcast ID %s, got %s", podcastID, result.Episodes[0].Podcast.ID)
+	}
+	if result.Episodes[0].Podcast.Title != "テスト番組" {
+		t.Errorf("expected podcast title 'テスト番組', got %q", result.Episodes[0].Podcast.Title)
+	}
+	if result.Episodes[0].Podcast.ArtworkURL == nil || *result.Episodes[0].Podcast.ArtworkURL != artwork {
+		t.Errorf("expected podcast artwork_url %q, got %v", artwork, result.Episodes[0].Podcast.ArtworkURL)
+	}
+	// published_at のフォーマット確認
+	if result.Episodes[0].PublishedAt == nil {
+		t.Fatal("expected published_at to be set for ep1")
+	}
+	expected := "2026-03-25T12:00:00Z"
+	if *result.Episodes[0].PublishedAt != expected {
+		t.Errorf("expected published_at %q, got %q", expected, *result.Episodes[0].PublishedAt)
+	}
+	// published_at が nil のエピソードでは省略されること
+	if result.Episodes[1].PublishedAt != nil {
+		t.Errorf("expected nil published_at for ep2, got %v", result.Episodes[1].PublishedAt)
+	}
+}
+
+func TestGetRecentForUser_LimitClamp(t *testing.T) {
+	tests := []struct {
+		name          string
+		inputLimit    int
+		inputOffset   int
+		expectedLimit int
+		expectedOffset int
+	}{
+		{"limit=0 → 20", 0, 0, 20, 0},
+		{"limit=-1 → 20", -1, 0, 20, 0},
+		{"limit=101 → 20", 101, 0, 20, 0},
+		{"offset=-5 → 0", 20, -5, 20, 0},
+		{"valid values unchanged", 50, 10, 50, 10},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			repo := &mockEpisodeRepo{
+				getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+					if limit != tt.expectedLimit {
+						t.Errorf("expected limit %d, got %d", tt.expectedLimit, limit)
+					}
+					if offset != tt.expectedOffset {
+						t.Errorf("expected offset %d, got %d", tt.expectedOffset, offset)
+					}
+					return []repository.RecentEpisodeRow{}, 0, nil
+				},
+			}
+
+			uc := NewEpisodeUsecase(repo, nil)
+			_, err := uc.GetRecentForUser(context.Background(), uuid.New(), tt.inputLimit, tt.inputOffset)
+			if err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+		})
+	}
+}
+
+func TestGetRecentForUser_Empty(t *testing.T) {
+	repo := &mockEpisodeRepo{
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+			return []repository.RecentEpisodeRow{}, 0, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	result, err := uc.GetRecentForUser(context.Background(), uuid.New(), 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 0 {
+		t.Errorf("expected total 0, got %d", result.Total)
+	}
+	if len(result.Episodes) != 0 {
+		t.Errorf("expected 0 episodes, got %d", len(result.Episodes))
+	}
+}
+
+func TestGetRecentForUser_RepoError(t *testing.T) {
+	repo := &mockEpisodeRepo{
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+			return nil, 0, fmt.Errorf("database error")
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, nil)
+	_, err := uc.GetRecentForUser(context.Background(), uuid.New(), 20, 0)
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}

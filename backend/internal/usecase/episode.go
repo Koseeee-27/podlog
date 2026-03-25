@@ -89,6 +89,24 @@ type FetchFromFeedResult struct {
 	Episodes     []model.Episode  `json:"episodes"`
 }
 
+// RecentEpisodeListResult は記録ページ用の「最近のエピソード」一覧のレスポンスです。
+// ユーザーが聴取記録をつけた番組のうち、まだ聴いていないエピソードを返します。
+type RecentEpisodeListResult struct {
+	Episodes []RecentEpisodeItem `json:"episodes"`
+	Total    int                 `json:"total"`
+}
+
+// RecentEpisodeItem は「最近のエピソード」の各レコードです。
+// エピソード情報に加えて、番組情報（podcast）を含みます。
+type RecentEpisodeItem struct {
+	ID          uuid.UUID         `json:"id"`
+	Title       string            `json:"title"`
+	Description *string           `json:"description,omitempty"`
+	DurationMs  *int64            `json:"duration_ms,omitempty"`
+	PublishedAt *string           `json:"published_at,omitempty"`
+	Podcast     EpisodePodcastInfo `json:"podcast"`
+}
+
 // EpisodeUsecase はエピソードに関するビジネスロジックです。
 type EpisodeUsecase interface {
 	Create(ctx context.Context, podcastID uuid.UUID, input CreateEpisodeInput) (*CreateEpisodeResult, error)
@@ -96,6 +114,7 @@ type EpisodeUsecase interface {
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
 	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
+	GetRecentForUser(ctx context.Context, userID uuid.UUID, limit, offset int) (*RecentEpisodeListResult, error)
 }
 
 type episodeUsecase struct {
@@ -380,4 +399,54 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 	}
 
 	return result, nil
+}
+
+// GetRecentForUser はユーザーが記録をつけた番組の、まだ聴いていないエピソードを取得します。
+// 記録ページの「最近のエピソード」表示に使用します。
+//
+// 処理の流れ:
+//  1. limit/offset のバリデーション（不正値はデフォルト値に補正）
+//  2. リポジトリから未聴取エピソードを公開日順で取得
+//  3. レスポンス用の構造体に変換して返却
+func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID, limit, offset int) (*RecentEpisodeListResult, error) {
+	// 1. ページネーションのバリデーション
+	if limit <= 0 || limit > 100 {
+		limit = 20
+	}
+	if offset < 0 {
+		offset = 0
+	}
+
+	// 2. リポジトリから取得
+	rows, total, err := u.episodeRepo.GetRecentByUserID(ctx, userID, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get recent episodes: %w", err)
+	}
+
+	// 3. レスポンス構造体に変換
+	items := make([]RecentEpisodeItem, 0, len(rows))
+	for _, row := range rows {
+		item := RecentEpisodeItem{
+			ID:          row.ID,
+			Title:       row.Title,
+			Description: row.Description,
+			DurationMs:  row.DurationMs,
+			Podcast: EpisodePodcastInfo{
+				ID:         row.PodcastID,
+				Title:      row.PodcastTitle,
+				ArtworkURL: row.PodcastArtwork,
+			},
+		}
+		// published_at が nil の場合はフィールドを省略する（omitempty）
+		if row.PublishedAt != nil {
+			formatted := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
+			item.PublishedAt = &formatted
+		}
+		items = append(items, item)
+	}
+
+	return &RecentEpisodeListResult{
+		Episodes: items,
+		Total:    total,
+	}, nil
 }

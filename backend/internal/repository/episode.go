@@ -23,6 +23,19 @@ type EpisodeWithStatsRow struct {
 	TotalReviews  int        `db:"total_reviews"`
 }
 
+// RecentEpisodeRow はユーザーがまだ聴いていないエピソード（番組情報付き）の行です。
+// 記録ページの「最近のエピソード」表示用で、JOIN クエリの結果を受け取ります。
+type RecentEpisodeRow struct {
+	ID              uuid.UUID  `db:"id"`
+	Title           string     `db:"title"`
+	Description     *string    `db:"description"`
+	DurationMs      *int64     `db:"duration_ms"`
+	PublishedAt     *time.Time `db:"published_at"`
+	PodcastID       uuid.UUID  `db:"podcast_id"`
+	PodcastTitle    string     `db:"podcast_title"`
+	PodcastArtwork  *string    `db:"podcast_artwork_url"`
+}
+
 // EpisodeRepository はエピソードデータへのアクセスを提供します。
 type EpisodeRepository interface {
 	Create(ctx context.Context, episode *model.Episode) error
@@ -31,6 +44,7 @@ type EpisodeRepository interface {
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
 	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
+	GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error)
 }
 
 type episodeRepository struct {
@@ -148,6 +162,63 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 	var rows []EpisodeWithStatsRow
 	if err := r.db.SelectContext(ctx, &rows, dataQuery, podcastID, limit, offset); err != nil {
 		return nil, 0, fmt.Errorf("failed to get episodes with stats: %w", err)
+	}
+
+	return rows, total, nil
+}
+
+// GetRecentByUserID はユーザーが記録をつけた番組のうち、まだ聴いていないエピソードを取得します。
+//
+// 処理ロジック:
+//  1. listening_records から、ユーザーが記録をつけた podcast_id をユニークに取得（サブクエリ）
+//  2. それらの番組のエピソードのうち、ユーザーがまだ聴取記録をつけていないものを抽出
+//  3. 公開日の新しい順でソートし、limit/offset でページネーション
+//
+// NOT EXISTS を使って「まだ聴いていない」エピソードを効率的にフィルタリングしています。
+// IN + サブクエリで「記録をつけた番組」を特定し、NOT EXISTS で「未聴取」を判定します。
+func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error) {
+	// 「ユーザーが記録をつけた番組の、まだ聴いていないエピソード」の条件を共通化
+	// WHERE 句をカウントクエリとデータクエリの両方で使うため、変数にまとめています
+	whereClause := `
+		WHERE e.podcast_id IN (
+			SELECT DISTINCT ep.podcast_id
+			FROM listening_records lr2
+			JOIN episodes ep ON lr2.episode_id = ep.id
+			WHERE lr2.user_id = $1
+		)
+		AND NOT EXISTS (
+			SELECT 1 FROM listening_records lr3
+			WHERE lr3.user_id = $1 AND lr3.episode_id = e.id
+		)
+	`
+
+	// 1. 総件数を取得
+	var total int
+	countQuery := `SELECT COUNT(*) FROM episodes e` + whereClause
+	if err := r.db.GetContext(ctx, &total, countQuery, userID); err != nil {
+		return nil, 0, fmt.Errorf("failed to count recent episodes: %w", err)
+	}
+
+	// 2. データ取得（番組情報を JOIN して取得）
+	dataQuery := `
+		SELECT
+			e.id,
+			e.title,
+			e.description,
+			e.duration_ms,
+			e.published_at,
+			e.podcast_id,
+			p.title AS podcast_title,
+			p.artwork_url AS podcast_artwork_url
+		FROM episodes e
+		JOIN podcasts p ON e.podcast_id = p.id
+	` + whereClause + `
+		ORDER BY e.published_at DESC NULLS LAST, e.id DESC
+		LIMIT $2 OFFSET $3
+	`
+	var rows []RecentEpisodeRow
+	if err := r.db.SelectContext(ctx, &rows, dataQuery, userID, limit, offset); err != nil {
+		return nil, 0, fmt.Errorf("failed to get recent episodes: %w", err)
 	}
 
 	return rows, total, nil
