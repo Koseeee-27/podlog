@@ -91,9 +91,12 @@ type FetchFromFeedResult struct {
 
 // RecentEpisodeListResult は記録ページ用の「最近のエピソード」一覧のレスポンスです。
 // ユーザーが聴取記録をつけた番組のうち、まだ聴いていないエピソードを返します。
+// RecordedPodcastCount はユーザーが記録をつけた番組数で、
+// 初回利用（0）と「記録はあるが新着なし」を区別するために使います。
 type RecentEpisodeListResult struct {
-	Episodes []RecentEpisodeItem `json:"episodes"`
-	Total    int                 `json:"total"`
+	Episodes             []RecentEpisodeItem `json:"episodes"`
+	Total                int                 `json:"total"`
+	RecordedPodcastCount int                 `json:"recorded_podcast_count"`
 }
 
 // RecentEpisodeItem は「最近のエピソード」の各レコードです。
@@ -418,7 +421,7 @@ func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID,
 	}
 
 	// 2. リポジトリから取得
-	rows, total, err := u.episodeRepo.GetRecentByUserID(ctx, userID, limit, offset)
+	rows, total, recordedPodcastCount, err := u.episodeRepo.GetRecentByUserID(ctx, userID, limit, offset)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recent episodes: %w", err)
 	}
@@ -446,7 +449,8 @@ func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID,
 	}
 
 	return &RecentEpisodeListResult{
-		Episodes: items,
-		Total:    total,
+		Episodes:             items,
+		Total:                total,
+		RecordedPodcastCount: recordedPodcastCount,
 	}, nil
 }

@@ -44,7 +44,7 @@ type EpisodeRepository interface {
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
 	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
-	GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error)
+	GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, int, error)
 }
 
 type episodeRepository struct {
@@ -176,30 +176,40 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 //
 // NOT EXISTS を使って「まだ聴いていない」エピソードを効率的にフィルタリングしています。
 // IN + サブクエリで「記録をつけた番組」を特定し、NOT EXISTS で「未聴取」を判定します。
-func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error) {
+func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, int, error) {
+	// ユーザーが記録をつけた番組の podcast_id を特定するサブクエリ（共通で使用）
+	recordedPodcastSubquery := `
+		SELECT DISTINCT ep.podcast_id
+		FROM listening_records lr2
+		JOIN episodes ep ON lr2.episode_id = ep.id
+		WHERE lr2.user_id = $1
+	`
+
 	// 「ユーザーが記録をつけた番組の、まだ聴いていないエピソード」の条件を共通化
 	// WHERE 句をカウントクエリとデータクエリの両方で使うため、変数にまとめています
 	whereClause := `
-		WHERE e.podcast_id IN (
-			SELECT DISTINCT ep.podcast_id
-			FROM listening_records lr2
-			JOIN episodes ep ON lr2.episode_id = ep.id
-			WHERE lr2.user_id = $1
-		)
+		WHERE e.podcast_id IN (` + recordedPodcastSubquery + `)
 		AND NOT EXISTS (
 			SELECT 1 FROM listening_records lr3
 			WHERE lr3.user_id = $1 AND lr3.episode_id = e.id
 		)
 	`
 
-	// 1. 総件数を取得
+	// 1. 記録をつけた番組数を取得（初回利用の判定に使用）
+	var recordedPodcastCount int
+	podcastCountQuery := `SELECT COUNT(*) FROM (` + recordedPodcastSubquery + `) sub`
+	if err := r.db.GetContext(ctx, &recordedPodcastCount, podcastCountQuery, userID); err != nil {
+		return nil, 0, 0, fmt.Errorf("failed to count recorded podcasts: %w", err)
+	}
+
+	// 2. 未聴取エピソードの総件数を取得
 	var total int
 	countQuery := `SELECT COUNT(*) FROM episodes e` + whereClause
 	if err := r.db.GetContext(ctx, &total, countQuery, userID); err != nil {
-		return nil, 0, fmt.Errorf("failed to count recent episodes: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to count recent episodes: %w", err)
 	}
 
-	// 2. データ取得（番組情報を JOIN して取得）
+	// 3. データ取得（番組情報を JOIN して取得）
 	dataQuery := `
 		SELECT
 			e.id,
@@ -218,8 +228,8 @@ func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.U
 	`
 	var rows []RecentEpisodeRow
 	if err := r.db.SelectContext(ctx, &rows, dataQuery, userID, limit, offset); err != nil {
-		return nil, 0, fmt.Errorf("failed to get recent episodes: %w", err)
+		return nil, 0, 0, fmt.Errorf("failed to get recent episodes: %w", err)
 	}
 
-	return rows, total, nil
+	return rows, total, recordedPodcastCount, nil
 }

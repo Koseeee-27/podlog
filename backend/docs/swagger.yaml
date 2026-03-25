@@ -461,6 +461,8 @@ definitions:
         items:
           $ref: '#/definitions/usecase.RecentEpisodeItem'
         type: array
+      recorded_podcast_count:
+        type: integer
       total:
         type: integer
     type: object

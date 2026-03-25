@@ -2567,6 +2567,9 @@ const docTemplate = `{
                         "$ref": "#/definitions/usecase.RecentEpisodeItem"
                     }
                 },
+                "recorded_podcast_count": {
+                    "type": "integer"
+                },
                 "total": {
                     "type": "integer"
                 }

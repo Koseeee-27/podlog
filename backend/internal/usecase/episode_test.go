@@ -23,7 +23,7 @@ type mockEpisodeRepo struct {
 	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error)
 	getByItunesTrackIDFunc      func(ctx context.Context, trackID int64) (*model.Episode, error)
 	getByGUIDFunc               func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
-	getRecentByUserIDFunc       func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error)
+	getRecentByUserIDFunc       func(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -68,9 +68,9 @@ func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID
 	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset)
 }
 
-func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error) {
 	if m.getRecentByUserIDFunc == nil {
-		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetRecentByUserID: not implemented")
+		return nil, 0, 0, fmt.Errorf("mockEpisodeRepo.GetRecentByUserID: not implemented")
 	}
 	return m.getRecentByUserIDFunc(ctx, userID, limit, offset)
 }
@@ -902,7 +902,7 @@ func TestGetRecentForUser_Success(t *testing.T) {
 	artwork := "https://example.com/artwork.jpg"
 
 	repo := &mockEpisodeRepo{
-		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error) {
 			return []repository.RecentEpisodeRow{
 				{
 					ID:             ep1ID,
@@ -920,7 +920,7 @@ func TestGetRecentForUser_Success(t *testing.T) {
 					PodcastID:    podcastID,
 					PodcastTitle: "テスト番組",
 				},
-			}, 2, nil
+			}, 2, 1, nil
 		},
 	}
 
@@ -931,6 +931,9 @@ func TestGetRecentForUser_Success(t *testing.T) {
 	}
 	if result.Total != 2 {
 		t.Errorf("expected total 2, got %d", result.Total)
+	}
+	if result.RecordedPodcastCount != 1 {
+		t.Errorf("expected recorded_podcast_count 1, got %d", result.RecordedPodcastCount)
 	}
 	if len(result.Episodes) != 2 {
 		t.Fatalf("expected 2 episodes, got %d", len(result.Episodes))
@@ -977,14 +980,14 @@ func TestGetRecentForUser_LimitClamp(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			repo := &mockEpisodeRepo{
-				getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
+				getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error) {
 					if limit != tt.expectedLimit {
 						t.Errorf("expected limit %d, got %d", tt.expectedLimit, limit)
 					}
 					if offset != tt.expectedOffset {
 						t.Errorf("expected offset %d, got %d", tt.expectedOffset, offset)
 					}
-					return []repository.RecentEpisodeRow{}, 0, nil
+					return []repository.RecentEpisodeRow{}, 0, 0, nil
 				},
 			}
 
@@ -999,8 +1002,8 @@ func TestGetRecentForUser_LimitClamp(t *testing.T) {
 
 func TestGetRecentForUser_Empty(t *testing.T) {
 	repo := &mockEpisodeRepo{
-		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
-			return []repository.RecentEpisodeRow{}, 0, nil
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error) {
+			return []repository.RecentEpisodeRow{}, 0, 0, nil
 		},
 	}
 
@@ -1019,8 +1022,8 @@ func TestGetRecentForUser_Empty(t *testing.T) {
 
 func TestGetRecentForUser_RepoError(t *testing.T) {
 	repo := &mockEpisodeRepo{
-		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, error) {
-			return nil, 0, fmt.Errorf("database error")
+		getRecentByUserIDFunc: func(ctx context.Context, uid uuid.UUID, limit, offset int) ([]repository.RecentEpisodeRow, int, int, error) {
+			return nil, 0, 0, fmt.Errorf("database error")
 		},
 	}
 
