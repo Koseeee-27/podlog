@@ -19,6 +19,10 @@ export function useRecentEpisodes(enabled: boolean) {
   useEffect(() => {
     if (!enabled) {
       setLoading(false);
+      setEpisodes([]);
+      setError(null);
+      setIsEmpty(false);
+      setRecordedPodcastCount(0);
       return;
     }
 
