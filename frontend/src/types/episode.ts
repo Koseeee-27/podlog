@@ -81,12 +81,17 @@ export interface RecentEpisodeItem {
   description?: string | null;
   duration_ms?: number | null;
   published_at?: string | null;
-  podcast: EpisodePodcastInfo;
 }
 
-/** GET /api/v1/users/me/recent-episodes のレスポンス */
-export interface RecentEpisodesResult {
+/** 番組ごとにグループ化された未聴取エピソード */
+export interface RecentPodcastGroup {
+  podcast: EpisodePodcastInfo;
   episodes: RecentEpisodeItem[];
-  total: number;
+  total_unlistened: number;
+}
+
+/** GET /api/v1/users/me/recent-episodes のレスポンス（番組グループ化形式） */
+export interface RecentEpisodesResult {
+  podcasts: RecentPodcastGroup[];
   recorded_podcast_count: number;
 }
