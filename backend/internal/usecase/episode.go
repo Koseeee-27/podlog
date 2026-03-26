@@ -90,24 +90,30 @@ type FetchFromFeedResult struct {
 }
 
 // RecentEpisodeListResult は記録ページ用の「最近のエピソード」一覧のレスポンスです。
-// ユーザーが聴取記録をつけた番組のうち、まだ聴いていないエピソードを返します。
+// ユーザーが聴取記録をつけた番組のうち、まだ聴いていないエピソードを番組ごとにグループ化して返します。
 // RecordedPodcastCount はユーザーが記録をつけた番組数で、
 // 初回利用（0）と「記録はあるが新着なし」を区別するために使います。
 type RecentEpisodeListResult struct {
-	Episodes             []RecentEpisodeItem `json:"episodes"`
-	Total                int                 `json:"total"`
-	RecordedPodcastCount int                 `json:"recorded_podcast_count"`
+	Podcasts             []RecentPodcastGroup `json:"podcasts"`
+	RecordedPodcastCount int                  `json:"recorded_podcast_count"`
+}
+
+// RecentPodcastGroup は番組ごとにグループ化された未聴取エピソードです。
+// Podcast に番組情報、Episodes にその番組の未聴取エピソード（最新3件）、
+// TotalUnlistened にその番組の未聴取エピソード総数を含みます。
+type RecentPodcastGroup struct {
+	Podcast         EpisodePodcastInfo   `json:"podcast"`
+	Episodes        []RecentEpisodeItem  `json:"episodes"`
+	TotalUnlistened int                  `json:"total_unlistened"`
 }
 
 // RecentEpisodeItem は「最近のエピソード」の各レコードです。
-// エピソード情報に加えて、番組情報（podcast）を含みます。
 type RecentEpisodeItem struct {
-	ID          uuid.UUID         `json:"id"`
-	Title       string            `json:"title"`
-	Description *string           `json:"description,omitempty"`
-	DurationMs  *int64            `json:"duration_ms,omitempty"`
-	PublishedAt *string           `json:"published_at,omitempty"`
-	Podcast     EpisodePodcastInfo `json:"podcast"`
+	ID          uuid.UUID `json:"id"`
+	Title       string    `json:"title"`
+	Description *string   `json:"description,omitempty"`
+	DurationMs  *int64    `json:"duration_ms,omitempty"`
+	PublishedAt *string   `json:"published_at,omitempty"`
 }
 
 // EpisodeUsecase はエピソードに関するビジネスロジックです。
@@ -117,7 +123,7 @@ type EpisodeUsecase interface {
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
 	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
-	GetRecentForUser(ctx context.Context, userID uuid.UUID, limit, offset int) (*RecentEpisodeListResult, error)
+	GetRecentForUser(ctx context.Context, userID uuid.UUID) (*RecentEpisodeListResult, error)
 }
 
 type episodeUsecase struct {
@@ -404,53 +410,92 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 	return result, nil
 }
 
-// GetRecentForUser はユーザーが記録をつけた番組の、まだ聴いていないエピソードを取得します。
+// GetRecentForUser はユーザーが記録をつけた番組の、まだ聴いていないエピソードを
+// 番組ごとにグループ化して取得します。
 // 記録ページの「最近のエピソード」表示に使用します。
 //
 // 処理の流れ:
-//  1. limit/offset のバリデーション（不正値はデフォルト値に補正）
-//  2. リポジトリから未聴取エピソードを公開日順で取得
-//  3. レスポンス用の構造体に変換して返却
-func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID, limit, offset int) (*RecentEpisodeListResult, error) {
-	// 1. ページネーションのバリデーション
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
-	if offset < 0 {
-		offset = 0
-	}
-
-	// 2. リポジトリから取得
-	rows, total, recordedPodcastCount, err := u.episodeRepo.GetRecentByUserID(ctx, userID, limit, offset)
+//  1. リポジトリから番組ごとにグループ化された未聴取エピソード（各番組最大3件）を取得
+//  2. フラットな行データを番組ごとにグループ化してレスポンス構造体に変換
+//  3. 番組の最新エピソード公開日が新しい順でソート
+func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID) (*RecentEpisodeListResult, error) {
+	// 1. リポジトリから取得
+	rows, recordedPodcastCount, err := u.episodeRepo.GetRecentByUserID(ctx, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get recent episodes: %w", err)
 	}
 
-	// 3. レスポンス構造体に変換
-	items := make([]RecentEpisodeItem, 0, len(rows))
+	// 2. フラットな行データを番組ごとにグループ化
+	// Go の map は順序が保証されないので、出現順を別スライスで管理します。
+	// podcastOrder は番組IDの出現順を記録し、groupMap は番組IDをキーにグループを保持します。
+	groupMap := make(map[uuid.UUID]*RecentPodcastGroup)
+	podcastOrder := make([]uuid.UUID, 0)
+
 	for _, row := range rows {
+		// エピソードアイテムを構築
 		item := RecentEpisodeItem{
 			ID:          row.ID,
 			Title:       row.Title,
 			Description: row.Description,
 			DurationMs:  row.DurationMs,
-			Podcast: EpisodePodcastInfo{
-				ID:         row.PodcastID,
-				Title:      row.PodcastTitle,
-				ArtworkURL: row.PodcastArtwork,
-			},
 		}
-		// published_at が nil の場合はフィールドを省略する（omitempty）
 		if row.PublishedAt != nil {
 			formatted := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
 			item.PublishedAt = &formatted
 		}
-		items = append(items, item)
+
+		// 番組グループに追加（まだなければ新規作成）
+		group, exists := groupMap[row.PodcastID]
+		if !exists {
+			group = &RecentPodcastGroup{
+				Podcast: EpisodePodcastInfo{
+					ID:         row.PodcastID,
+					Title:      row.PodcastTitle,
+					ArtworkURL: row.PodcastArtwork,
+				},
+				Episodes:        make([]RecentEpisodeItem, 0, 3),
+				TotalUnlistened: row.TotalUnlistened,
+			}
+			groupMap[row.PodcastID] = group
+			podcastOrder = append(podcastOrder, row.PodcastID)
+		}
+		group.Episodes = append(group.Episodes, item)
+	}
+
+	// 3. 番組の最新エピソード公開日が新しい順でソート
+	// 各グループの最初のエピソード（= その番組で最も新しいエピソード）の公開日で比較します。
+	sort.SliceStable(podcastOrder, func(i, j int) bool {
+		gi := groupMap[podcastOrder[i]]
+		gj := groupMap[podcastOrder[j]]
+		// エピソードが空の場合は末尾に（通常は発生しない）
+		if len(gi.Episodes) == 0 {
+			return false
+		}
+		if len(gj.Episodes) == 0 {
+			return true
+		}
+		pi := gi.Episodes[0].PublishedAt
+		pj := gj.Episodes[0].PublishedAt
+		if pi == nil && pj == nil {
+			return false
+		}
+		if pi == nil {
+			return false
+		}
+		if pj == nil {
+			return true
+		}
+		return *pi > *pj // RFC3339 文字列は辞書順で日付比較が可能
+	})
+
+	// ソート済みの順序でグループを組み立て
+	podcasts := make([]RecentPodcastGroup, 0, len(podcastOrder))
+	for _, pid := range podcastOrder {
+		podcasts = append(podcasts, *groupMap[pid])
 	}
 
 	return &RecentEpisodeListResult{
-		Episodes:             items,
-		Total:                total,
+		Podcasts:             podcasts,
 		RecordedPodcastCount: recordedPodcastCount,
 	}, nil
 }
