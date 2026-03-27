@@ -98,10 +98,10 @@ export default async function RecentListeningSection({
               {/* テキスト領域: エピソード詳細ページへ遷移 */}
               <Link
                 href={`/episodes/${record.episode.id}`}
-                className="min-w-0 flex-1 group"
+                className="min-w-0 flex-1 rounded-lg px-2 py-1.5 -mx-1 hover:bg-stone-50 transition-colors group"
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-stone-900 group-hover:text-rose-600 line-clamp-1">
+                  <span className="text-sm font-medium text-stone-900 group-hover:text-rose-600 transition-colors line-clamp-1">
                     {record.episode.title}
                   </span>
                   <span className="text-xs text-stone-400 shrink-0">
