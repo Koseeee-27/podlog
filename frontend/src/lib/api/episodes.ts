@@ -1,5 +1,5 @@
 import { apiGet, apiPost } from "./client";
-import type { Episode, EpisodeDetailResult, EpisodeListResult, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import type { Episode, EpisodeDetailResult, EpisodeListResult, CreateEpisodeRequest, FetchFromFeedResult, RecentEpisodesResult } from "@/types/episode";
 
 export function getEpisodesByPodcast(
   podcastId: string,
@@ -34,4 +34,12 @@ export function fetchEpisodesFromFeed(
   return apiPost<FetchFromFeedResult>(
     `/podcasts/${encodeURIComponent(podcastId)}/episodes/fetch`
   );
+}
+
+/**
+ * ユーザーが過去に聴取記録をつけた番組の新着エピソードを取得する。
+ * 認証必須。
+ */
+export function getRecentEpisodes(): Promise<RecentEpisodesResult> {
+  return apiGet<RecentEpisodesResult>("/users/me/recent-episodes");
 }

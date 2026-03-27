@@ -217,15 +217,13 @@ func (h *EpisodeHandler) FetchFromFeed(c echo.Context) error {
 	return response.Success(c, http.StatusOK, result)
 }
 
-// GetRecentEpisodes は認証ユーザーがまだ聴いていないエピソードを取得するハンドラーです。
-// ユーザーが聴取記録をつけた番組のうち、未聴取のエピソードを公開日の新しい順で返します。
+// GetRecentEpisodes は認証ユーザーがまだ聴いていないエピソードを番組ごとにグループ化して取得するハンドラーです。
+// ユーザーが聴取記録をつけた番組のうち、未聴取のエピソードを各番組最新3件まで返します。
 // 記録ページの「最近のエピソード」セクションで使用します。
-// @Summary 最近のエピソード取得
-// @Description 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します
+// @Summary 最近のエピソード取得（番組グループ化）
+// @Description 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。
 // @Tags episodes
 // @Produce json
-// @Param limit query int false "最大取得件数" default(20)
-// @Param offset query int false "スキップ件数" default(0)
 // @Success 200 {object} usecase.RecentEpisodeListResult
 // @Failure 401 {object} map[string]string
 // @Security BearerAuth
@@ -237,11 +235,8 @@ func (h *EpisodeHandler) GetRecentEpisodes(c echo.Context) error {
 		return response.Error(c, http.StatusUnauthorized, "unauthorized")
 	}
 
-	// クエリパラメータから limit と offset を取得（不正値はデフォルトに補正）
-	limit, offset := parsePagination(c)
-
 	// ユースケースを呼び出してエピソード一覧を取得
-	result, err := h.episodeUsecase.GetRecentForUser(c.Request().Context(), userID, limit, offset)
+	result, err := h.episodeUsecase.GetRecentForUser(c.Request().Context(), userID)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get recent episodes")
 	}

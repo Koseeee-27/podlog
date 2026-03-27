@@ -448,8 +448,6 @@ definitions:
         type: integer
       id:
         type: string
-      podcast:
-        $ref: '#/definitions/usecase.EpisodePodcastInfo'
       published_at:
         type: string
       title:
@@ -457,11 +455,22 @@ definitions:
     type: object
   usecase.RecentEpisodeListResult:
     properties:
+      podcasts:
+        items:
+          $ref: '#/definitions/usecase.RecentPodcastGroup'
+        type: array
+      recorded_podcast_count:
+        type: integer
+    type: object
+  usecase.RecentPodcastGroup:
+    properties:
       episodes:
         items:
           $ref: '#/definitions/usecase.RecentEpisodeItem'
         type: array
-      total:
+      podcast:
+        $ref: '#/definitions/usecase.EpisodePodcastInfo'
+      total_unlistened:
         type: integer
     type: object
   usecase.ReviewEpisodeInfo:
@@ -1682,18 +1691,7 @@ paths:
       - listening-records
   /users/me/recent-episodes:
     get:
-      description: 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します
-      parameters:
-      - default: 20
-        description: 最大取得件数
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: スキップ件数
-        in: query
-        name: offset
-        type: integer
+      description: 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。
       produces:
       - application/json
       responses:
@@ -1709,7 +1707,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 最近のエピソード取得
+      summary: 最近のエピソード取得（番組グループ化）
       tags:
       - episodes
   /users/me/reviews:

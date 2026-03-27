@@ -1510,30 +1510,14 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを公開日順で取得します",
+                "description": "認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "episodes"
                 ],
-                "summary": "最近のエピソード取得",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "最大取得件数",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "スキップ件数",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
+                "summary": "最近のエピソード取得（番組グループ化）",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -2547,9 +2531,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "podcast": {
-                    "$ref": "#/definitions/usecase.EpisodePodcastInfo"
-                },
                 "published_at": {
                     "type": "string"
                 },
@@ -2561,13 +2542,30 @@ const docTemplate = `{
         "usecase.RecentEpisodeListResult": {
             "type": "object",
             "properties": {
+                "podcasts": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.RecentPodcastGroup"
+                    }
+                },
+                "recorded_podcast_count": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.RecentPodcastGroup": {
+            "type": "object",
+            "properties": {
                 "episodes": {
                     "type": "array",
                     "items": {
                         "$ref": "#/definitions/usecase.RecentEpisodeItem"
                     }
                 },
-                "total": {
+                "podcast": {
+                    "$ref": "#/definitions/usecase.EpisodePodcastInfo"
+                },
+                "total_unlistened": {
                     "type": "integer"
                 }
             }

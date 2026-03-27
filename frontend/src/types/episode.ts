@@ -44,9 +44,9 @@ export interface EpisodePodcastInfo {
 export interface EpisodeListItem {
   id: string;
   title: string;
-  description: string | null;
-  duration_ms: number | null;
-  published_at: string | null;
+  description?: string | null;
+  duration_ms?: number | null;
+  published_at?: string | null;
   average_rating: number;
   total_reviews: number;
 }
@@ -72,4 +72,26 @@ export interface FetchFromFeedResult {
   skipped_count: number;
   failed_count: number;
   episodes: Episode[];
+}
+
+/** GET /api/v1/users/me/recent-episodes のレスポンス内のエピソード */
+export interface RecentEpisodeItem {
+  id: string;
+  title: string;
+  description?: string | null;
+  duration_ms?: number | null;
+  published_at?: string | null;
+}
+
+/** 番組ごとにグループ化された未聴取エピソード */
+export interface RecentPodcastGroup {
+  podcast: EpisodePodcastInfo;
+  episodes: RecentEpisodeItem[];
+  total_unlistened: number;
+}
+
+/** GET /api/v1/users/me/recent-episodes のレスポンス（番組グループ化形式） */
+export interface RecentEpisodesResult {
+  podcasts: RecentPodcastGroup[];
+  recorded_podcast_count: number;
 }

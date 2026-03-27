@@ -34,6 +34,7 @@ type RecentEpisodeRow struct {
 	PodcastID       uuid.UUID  `db:"podcast_id"`
 	PodcastTitle    string     `db:"podcast_title"`
 	PodcastArtwork  *string    `db:"podcast_artwork_url"`
+	TotalUnlistened int        `db:"total_unlistened"`
 }
 
 // EpisodeRepository はエピソードデータへのアクセスを提供します。
@@ -44,7 +45,7 @@ type EpisodeRepository interface {
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
 	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
-	GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error)
+	GetRecentByUserID(ctx context.Context, userID uuid.UUID) ([]RecentEpisodeRow, int, error)
 }
 
 type episodeRepository struct {
@@ -167,59 +168,91 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 	return rows, total, nil
 }
 
-// GetRecentByUserID はユーザーが記録をつけた番組のうち、まだ聴いていないエピソードを取得します。
+// GetRecentByUserID はユーザーが記録をつけた番組のうち、まだ聴いていないエピソードを
+// 番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。
 //
 // 処理ロジック:
 //  1. listening_records から、ユーザーが記録をつけた podcast_id をユニークに取得（サブクエリ）
 //  2. それらの番組のエピソードのうち、ユーザーがまだ聴取記録をつけていないものを抽出
-//  3. 公開日の新しい順でソートし、limit/offset でページネーション
+//  3. ROW_NUMBER() ウィンドウ関数で番組ごとに公開日の新しい順に番号を振り、上位3件を取得
+//  4. 番組の最新エピソード公開日が新しい順でソート
 //
-// NOT EXISTS を使って「まだ聴いていない」エピソードを効率的にフィルタリングしています。
-// IN + サブクエリで「記録をつけた番組」を特定し、NOT EXISTS で「未聴取」を判定します。
-func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]RecentEpisodeRow, int, error) {
+// ROW_NUMBER() は各行に番組内での順位（1, 2, 3...）を付けるウィンドウ関数で、
+// PARTITION BY で番組ごとにグループ化し、ORDER BY で並び順を指定します。
+// 外側の WHERE rn <= 3 で各番組から上位3件だけを抽出しています。
+//
+// total_unlistened は各番組の未聴取エピソード総数です。
+// フロントエンドの「もっと見る」表示の判定に使用します。
+//
+// 戻り値:
+//   - rows: 番組ごとにグループ化されたエピソード（各番組最大3件）
+//   - recordedPodcastCount: ユーザーが記録をつけた番組の総数
+//   - error: エラー
+func (r *episodeRepository) GetRecentByUserID(ctx context.Context, userID uuid.UUID) ([]RecentEpisodeRow, int, error) {
+	// ユーザーが記録をつけた番組の podcast_id を特定するサブクエリ（共通で使用）
+	recordedPodcastSubquery := `
+		SELECT DISTINCT ep.podcast_id
+		FROM listening_records lr2
+		JOIN episodes ep ON lr2.episode_id = ep.id
+		WHERE lr2.user_id = $1
+	`
+
 	// 「ユーザーが記録をつけた番組の、まだ聴いていないエピソード」の条件を共通化
-	// WHERE 句をカウントクエリとデータクエリの両方で使うため、変数にまとめています
 	whereClause := `
-		WHERE e.podcast_id IN (
-			SELECT DISTINCT ep.podcast_id
-			FROM listening_records lr2
-			JOIN episodes ep ON lr2.episode_id = ep.id
-			WHERE lr2.user_id = $1
-		)
+		WHERE e.podcast_id IN (` + recordedPodcastSubquery + `)
 		AND NOT EXISTS (
 			SELECT 1 FROM listening_records lr3
 			WHERE lr3.user_id = $1 AND lr3.episode_id = e.id
 		)
 	`
 
-	// 1. 総件数を取得
-	var total int
-	countQuery := `SELECT COUNT(*) FROM episodes e` + whereClause
-	if err := r.db.GetContext(ctx, &total, countQuery, userID); err != nil {
-		return nil, 0, fmt.Errorf("failed to count recent episodes: %w", err)
+	// 1. 記録をつけた番組数を取得（初回利用の判定に使用）
+	var recordedPodcastCount int
+	podcastCountQuery := `SELECT COUNT(*) FROM (` + recordedPodcastSubquery + `) sub`
+	if err := r.db.GetContext(ctx, &recordedPodcastCount, podcastCountQuery, userID); err != nil {
+		return nil, 0, fmt.Errorf("failed to count recorded podcasts: %w", err)
 	}
 
-	// 2. データ取得（番組情報を JOIN して取得）
+	// 2. 番組ごとにグループ化してデータ取得
+	// ROW_NUMBER() で番組内の新しい順に番号を振り、上位3件を取得
+	// total_unlistened は番組ごとの未聴取エピソード総数（COUNT(*) OVER で計算）
 	dataQuery := `
 		SELECT
-			e.id,
-			e.title,
-			e.description,
-			e.duration_ms,
-			e.published_at,
-			e.podcast_id,
-			p.title AS podcast_title,
-			p.artwork_url AS podcast_artwork_url
-		FROM episodes e
-		JOIN podcasts p ON e.podcast_id = p.id
+			sub.id,
+			sub.title,
+			sub.description,
+			sub.duration_ms,
+			sub.published_at,
+			sub.podcast_id,
+			sub.podcast_title,
+			sub.podcast_artwork_url,
+			sub.total_unlistened
+		FROM (
+			SELECT
+				e.id,
+				e.title,
+				e.description,
+				e.duration_ms,
+				e.published_at,
+				e.podcast_id,
+				p.title AS podcast_title,
+				p.artwork_url AS podcast_artwork_url,
+				ROW_NUMBER() OVER (
+					PARTITION BY e.podcast_id
+					ORDER BY e.published_at DESC NULLS LAST, e.id DESC
+				) AS rn,
+				COUNT(*) OVER (PARTITION BY e.podcast_id) AS total_unlistened
+			FROM episodes e
+			JOIN podcasts p ON e.podcast_id = p.id
 	` + whereClause + `
-		ORDER BY e.published_at DESC NULLS LAST, e.id DESC
-		LIMIT $2 OFFSET $3
+		) sub
+		WHERE sub.rn <= 3
+		ORDER BY sub.published_at DESC NULLS LAST, sub.id DESC
 	`
 	var rows []RecentEpisodeRow
-	if err := r.db.SelectContext(ctx, &rows, dataQuery, userID, limit, offset); err != nil {
+	if err := r.db.SelectContext(ctx, &rows, dataQuery, userID); err != nil {
 		return nil, 0, fmt.Errorf("failed to get recent episodes: %w", err)
 	}
 
-	return rows, total, nil
+	return rows, recordedPodcastCount, nil
 }
