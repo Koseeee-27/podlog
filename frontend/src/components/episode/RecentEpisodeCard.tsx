@@ -1,16 +1,19 @@
 import Link from "next/link";
 import type { RecentEpisodeItem } from "@/types/episode";
 import { formatDate } from "@/lib/utils";
+import ListenButton from "./ListenButton";
 
 interface RecentEpisodeCardProps {
   episode: RecentEpisodeItem;
+  /** true の場合、カード右端にインラインの聴取記録ボタンを表示する */
+  showListenButton?: boolean;
 }
 
 /**
  * 記録ページの新着エピソードカード（番組グループ内で使用）。
  * エピソードタイトル・公開日を表示する。番組情報は親コンポーネントで表示する。
  */
-export default function RecentEpisodeCard({ episode }: RecentEpisodeCardProps) {
+export default function RecentEpisodeCard({ episode, showListenButton }: RecentEpisodeCardProps) {
   return (
     <Link
       href={`/episodes/${episode.id}`}
@@ -21,11 +24,23 @@ export default function RecentEpisodeCard({ episode }: RecentEpisodeCardProps) {
           {episode.title}
         </h4>
       </div>
-      {episode.published_at && (
-        <span className="text-xs text-stone-400 flex-shrink-0">
-          {formatDate(episode.published_at)}
-        </span>
-      )}
+      <div className="flex items-center gap-2 flex-shrink-0">
+        {episode.published_at && (
+          <span className="text-xs text-stone-400">
+            {formatDate(episode.published_at)}
+          </span>
+        )}
+        {showListenButton && (
+          <div
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+          >
+            <ListenButton episodeId={episode.id} compact />
+          </div>
+        )}
+      </div>
     </Link>
   );
 }
