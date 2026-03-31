@@ -5,13 +5,19 @@ import { searchPodcasts, getPopularPodcasts, getPodcastsByGenre } from "@/lib/ap
 import type { PodcastSearchItem } from "@/types/podcast";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
-export function usePodcastSearch() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PodcastSearchItem[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+interface UsePodcastSearchOptions {
+  initialQuery?: string;
+  initialResults?: PodcastSearchItem[];
+}
 
-  const search = useCallback(async (term: string) => {
+export function usePodcastSearch(options: UsePodcastSearchOptions = {}) {
+  const { initialQuery = "", initialResults = [] } = options;
+  const [query, setQuery] = useState(initialQuery);
+  const [results, setResults] = useState<PodcastSearchItem[]>(initialResults);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  const search = useCallback((term: string) => {
     const trimmed = term.trim();
     setQuery(trimmed);
 
@@ -21,18 +27,16 @@ export function usePodcastSearch() {
       return;
     }
 
-    setLoading(true);
     setError(null);
-
-    try {
-      const data = await searchPodcasts(trimmed);
-      setResults(data);
-    } catch (err) {
-      setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
+    startTransition(async () => {
+      try {
+        const data = await searchPodcasts(trimmed);
+        setResults(data);
+      } catch (err) {
+        setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
+        setResults([]);
+      }
+    });
   }, []);
 
   const clear = useCallback(() => {
@@ -41,7 +45,7 @@ export function usePodcastSearch() {
     setError(null);
   }, []);
 
-  return { query, setQuery, results, loading, error, search, clear };
+  return { query, results, loading: isPending, error, search, clear };
 }
 
 export function usePopularPodcasts(enabled = true, limit = 10) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePodcastSearch, usePopularPodcasts, useGenrePodcasts } from "@/hooks/usePodcastSearch";
 import { useGenres } from "@/hooks/useGenres";
 import { useAuth } from "@/hooks/useAuth";
@@ -13,25 +13,21 @@ import ErrorMessage from "@/components/ui/ErrorMessage";
 import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import type { PodcastSearchItem } from "@/types/podcast";
 
 interface DiscoverClientProps {
   initialQuery: string;
+  initialResults?: PodcastSearchItem[];
 }
 
-export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
-  const { query, results, loading: searchLoading, error: searchError, search, clear } = usePodcastSearch();
+export default function DiscoverClient({ initialQuery, initialResults = [] }: DiscoverClientProps) {
+  const { query, results, loading: searchLoading, error: searchError, search, clear } =
+    usePodcastSearch({ initialQuery, initialResults });
   const [inputValue, setInputValue] = useState(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const { genres, loading: genresLoading, error: genresError } = useGenres();
   const auth = useAuth();
-
-  // 初期クエリがあれば検索実行
-  useEffect(() => {
-    if (initialQuery.trim()) {
-      search(initialQuery);
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const isSearching = query.trim().length > 0;
 
