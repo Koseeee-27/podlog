@@ -3,9 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/google/uuid"
+	"github.com/Koseeee-27/podlog/backend/internal/external/itunes"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
@@ -64,14 +66,17 @@ type PodcastUsecase interface {
 }
 
 type podcastUsecase struct {
-	podcastRepo repository.PodcastRepository
+	podcastRepo  repository.PodcastRepository
+	itunesClient *itunes.Client // iTunes API クライアント（nil の場合はフォールバック無効）
 }
 
 // NewPodcastUsecase は PodcastUsecase の新しいインスタンスを生成します。
-// iTunes API クライアントへの依存を除去し、アプリ内 DB 検索のみを使用します。
-func NewPodcastUsecase(podcastRepo repository.PodcastRepository) PodcastUsecase {
+// itunesClient を渡すと、DB 検索の結果が少ない場合に iTunes API でフォールバック検索を行います。
+// nil を渡すとフォールバックは無効になります（テスト時など）。
+func NewPodcastUsecase(podcastRepo repository.PodcastRepository, itunesClient *itunes.Client) PodcastUsecase {
 	return &podcastUsecase{
-		podcastRepo: podcastRepo,
+		podcastRepo:  podcastRepo,
+		itunesClient: itunesClient,
 	}
 }
 
@@ -156,10 +161,105 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 		})
 	}
 
+	// ── iTunes API フォールバック ──
+	// 条件: キーワード検索あり && DB 結果が 3 件以下 && 最初のページ && iTunes クライアントが有効
+	// DB にまだ登録されていない番組を iTunes から取得して補完します。
+	if query != "" && total <= 3 && offset == 0 && u.itunesClient != nil {
+		itunesResults, itunesErr := u.itunesClient.SearchPodcasts(ctx, query, 10)
+		if itunesErr != nil {
+			// iTunes API のエラーはログに記録するが、DB の結果だけ返す（ユーザーには影響させない）
+			log.Printf("iTunes API フォールバック検索でエラー: %v", itunesErr)
+		} else {
+			// DB に既存の itunes_id を集めて、重複チェックに使う
+			// （DB 検索結果の番組は itunes_id を持っていない場合もあるため、
+			//   iTunes の結果ごとに DB を確認する）
+			for _, result := range itunesResults {
+				// DB に同じ itunes_id の番組が既に存在するか確認
+				existing, getErr := u.podcastRepo.GetByItunesID(ctx, result.CollectionID)
+				if getErr != nil {
+					log.Printf("iTunes フォールバック: GetByItunesID エラー (itunesID=%d): %v", result.CollectionID, getErr)
+					continue
+				}
+				if existing != nil {
+					// 既に DB にある番組 → DB キーワード検索の結果に含まれているか確認
+					alreadyInResults := false
+					for _, item := range items {
+						if item.ID == existing.ID {
+							alreadyInResults = true
+							break
+						}
+					}
+					if alreadyInResults {
+						continue
+					}
+					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加
+					items = append(items, PodcastSearchItem{
+						ID:         existing.ID,
+						Title:      existing.Title,
+						Author:     existing.Author,
+						ArtworkURL: existing.ArtworkURL,
+					})
+					continue
+				}
+
+				// iTunes の検索結果から Podcast モデルを構築して DB に保存
+				newPodcast := itunesResultToPodcast(result)
+				if createErr := u.podcastRepo.Create(ctx, newPodcast); createErr != nil {
+					log.Printf("iTunes フォールバック: 番組保存エラー (title=%q): %v", result.CollectionName, createErr)
+					continue
+				}
+
+				// 保存成功した番組を検索結果に追加
+				// 新規番組なのでレビュー・お気に入りは 0
+				items = append(items, PodcastSearchItem{
+					ID:            newPodcast.ID,
+					Title:         newPodcast.Title,
+					Author:        newPodcast.Author,
+					ArtworkURL:    newPodcast.ArtworkURL,
+					AverageRating: 0,
+					TotalReviews:  0,
+					FavoriteCount: 0,
+				})
+			}
+			// total を更新（DB の件数 + iTunes から追加した件数）
+			total = len(items)
+		}
+	}
+
 	return &PodcastSearchResult{
 		Podcasts: items,
 		Total:    total,
 	}, nil
+}
+
+// itunesResultToPodcast は iTunes API の検索結果を Podcast モデルに変換します。
+// ポインタ型のフィールドは、値がある場合のみセットします。
+func itunesResultToPodcast(result itunes.SearchResult) *model.Podcast {
+	podcast := &model.Podcast{
+		ID:         uuid.New(),
+		ItunesID:   &result.CollectionID,
+		Title:      result.CollectionName,
+		SourceType: "itunes",
+	}
+
+	// 空文字でないフィールドだけポインタにセットする
+	if result.ArtistName != "" {
+		podcast.Author = &result.ArtistName
+	}
+	if result.FeedURL != "" {
+		podcast.FeedURL = &result.FeedURL
+	}
+	if result.ArtworkURL600 != "" {
+		podcast.ArtworkURL = &result.ArtworkURL600
+	}
+	if result.CollectionURL != "" {
+		podcast.ItunesURL = &result.CollectionURL
+	}
+	if result.PrimaryGenre != "" {
+		podcast.Genre = &result.PrimaryGenre
+	}
+
+	return podcast
 }
 
 // GetPopular はレビュー件数の多い人気番組を取得します。
