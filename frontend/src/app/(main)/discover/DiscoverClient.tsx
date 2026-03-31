@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePodcastSearch, usePopularPodcasts, useGenrePodcasts } from "@/hooks/usePodcastSearch";
 import { useGenres } from "@/hooks/useGenres";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,13 +19,34 @@ interface DiscoverClientProps {
 }
 
 export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
-  const { query, setQuery, results, loading: searchLoading, error: searchError } = usePodcastSearch(initialQuery);
+  const { query, results, loading: searchLoading, error: searchError, search, clear } = usePodcastSearch();
+  const [inputValue, setInputValue] = useState(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const { genres, loading: genresLoading, error: genresError } = useGenres();
   const auth = useAuth();
 
+  // 初期クエリがあれば検索実行
+  useEffect(() => {
+    if (initialQuery.trim()) {
+      search(initialQuery);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const isSearching = query.trim().length > 0;
+
+  const handleSearchSubmit = () => {
+    if (inputValue.trim()) {
+      search(inputValue);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    if (!value.trim()) {
+      clear();
+    }
+  };
 
   // ジャンルが選択されていて、かつ検索中でない場合のみジャンル番組を取得
   const activeGenre = !isSearching ? selectedGenre : null;
@@ -45,8 +66,9 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
   const handleGenreSelect = (genreId: string) => {
     setSelectedGenre(genreId);
     // ジャンル選択時に検索をクリア
-    if (query.trim()) {
-      setQuery("");
+    if (inputValue.trim()) {
+      setInputValue("");
+      clear();
     }
   };
 
@@ -61,7 +83,7 @@ export default function DiscoverClient({ initialQuery }: DiscoverClientProps) {
     <div>
       <h1 className="sr-only">探す</h1>
 
-      <SearchBar value={query} onChange={setQuery} loading={searchLoading} />
+      <SearchBar value={inputValue} onChange={handleInputChange} onSubmit={handleSearchSubmit} loading={searchLoading} />
 
       <div className="mt-6">
         {isSearching ? (

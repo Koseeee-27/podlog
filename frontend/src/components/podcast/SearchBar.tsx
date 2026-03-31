@@ -3,10 +3,11 @@
 interface SearchBarProps {
   value: string;
   onChange: (value: string) => void;
+  onSubmit: () => void;
   loading?: boolean;
 }
 
-export default function SearchBar({ value, onChange, loading }: SearchBarProps) {
+export default function SearchBar({ value, onChange, onSubmit, loading }: SearchBarProps) {
   return (
     <div className="relative">
       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -18,6 +19,12 @@ export default function SearchBar({ value, onChange, loading }: SearchBarProps) 
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+            e.preventDefault();
+            onSubmit();
+          }
+        }}
         placeholder="番組名で検索..."
         aria-label="番組を検索"
         className="block w-full pl-10 pr-10 py-3 rounded-xl border border-stone-300 text-sm shadow-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"

@@ -101,15 +101,32 @@ export default function RecordClient() {
 
   const {
     query,
-    setQuery,
     results: searchResults,
     loading: searchLoading,
     error: searchError,
+    search,
+    clear,
   } = usePodcastSearch();
 
+  const [inputValue, setInputValue] = useState("");
   const [selectedPodcast, setSelectedPodcast] = useState<PodcastSearchItem | null>(null);
 
   const isSearching = query.trim().length > 0;
+
+  const handleSearchSubmit = () => {
+    if (inputValue.trim()) {
+      search(inputValue);
+      setSelectedPodcast(null);
+    }
+  };
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value);
+    setSelectedPodcast(null);
+    if (!value.trim()) {
+      clear();
+    }
+  };
 
   // 初回利用の判定: 記録をつけた番組が0件の場合
   // recorded_podcast_count で判定するため、「記録はあるが新着なし」と区別できる
@@ -138,7 +155,7 @@ export default function RecordClient() {
             : "番組を検索"
           }
         </h2>
-        <SearchBar value={query} onChange={(v) => { setQuery(v); setSelectedPodcast(null); }} loading={searchLoading} />
+        <SearchBar value={inputValue} onChange={handleInputChange} onSubmit={handleSearchSubmit} loading={searchLoading} />
 
         <div className="mt-4">
           {selectedPodcast ? (
