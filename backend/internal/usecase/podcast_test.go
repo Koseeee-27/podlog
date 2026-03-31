@@ -2,10 +2,14 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/Koseeee-27/podlog/backend/internal/external/itunes"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
@@ -15,9 +19,10 @@ import (
 // mockPodcastRepoForSearch は PodcastRepository のモック実装です。
 // 検索テスト用に searchFn を差し替えて DB の振る舞いをシミュレートします。
 type mockPodcastRepoForSearch struct {
-	createFn      func(ctx context.Context, podcast *model.Podcast) error
-	searchFn      func(ctx context.Context, query string, genres []string, limit, offset int) ([]repository.PodcastSearchRow, int, error)
-	getByIDFn     func(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
+	createFn       func(ctx context.Context, podcast *model.Podcast) error
+	searchFn       func(ctx context.Context, query string, genres []string, limit, offset int) ([]repository.PodcastSearchRow, int, error)
+	getByIDFn      func(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
+	getByItunesIDFn func(ctx context.Context, itunesID int64) (*model.Podcast, error)
 }
 
 func (m *mockPodcastRepoForSearch) Create(ctx context.Context, podcast *model.Podcast) error {
@@ -32,8 +37,12 @@ func (m *mockPodcastRepoForSearch) GetByID(ctx context.Context, id uuid.UUID) (*
 	}
 	return m.getByIDFn(ctx, id)
 }
-func (m *mockPodcastRepoForSearch) GetByItunesID(_ context.Context, _ int64) (*model.Podcast, error) {
-	return nil, fmt.Errorf("not implemented")
+func (m *mockPodcastRepoForSearch) GetByItunesID(ctx context.Context, itunesID int64) (*model.Podcast, error) {
+	if m.getByItunesIDFn != nil {
+		return m.getByItunesIDFn(ctx, itunesID)
+	}
+	// デフォルト: 見つからない（フォールバック時に新規番組と判定される）
+	return nil, nil
 }
 func (m *mockPodcastRepoForSearch) Search(ctx context.Context, query string, genres []string, limit, offset int) ([]repository.PodcastSearchRow, int, error) {
 	if m.searchFn == nil {
@@ -89,7 +98,7 @@ func TestPodcastUsecase_Create(t *testing.T) {
 					SourceType: "manual",
 				}, nil
 			},
-		})
+		}, nil)
 
 		input := CreatePodcastInput{
 			Title:       "テスト番組",
@@ -112,7 +121,7 @@ func TestPodcastUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("タイトルが空 → ValidationError", func(t *testing.T) {
-		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{})
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{}, nil)
 
 		_, err := uc.Create(ctx, CreatePodcastInput{Title: ""})
 		if err == nil {
@@ -128,7 +137,7 @@ func TestPodcastUsecase_Create(t *testing.T) {
 	})
 
 	t.Run("タイトルが空白のみ → ValidationError", func(t *testing.T) {
-		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{})
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{}, nil)
 
 		_, err := uc.Create(ctx, CreatePodcastInput{Title: "   "})
 		if err == nil {
@@ -145,7 +154,7 @@ func TestPodcastUsecase_Create(t *testing.T) {
 			createFn: func(_ context.Context, _ *model.Podcast) error {
 				return fmt.Errorf("database connection error")
 			},
-		})
+		}, nil)
 
 		_, err := uc.Create(ctx, CreatePodcastInput{Title: "テスト番組"})
 		if err == nil {
@@ -186,7 +195,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 					},
 				}, 1, nil
 			},
-		})
+		}, nil)
 
 		result, err := uc.Search(ctx, "テスト", "", 20, 0)
 		if err != nil {
@@ -222,7 +231,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
 				return []repository.PodcastSearchRow{}, 0, nil
 			},
-		})
+		}, nil)
 
 		result, err := uc.Search(ctx, "存在しない番組", "", 20, 0)
 		if err != nil {
@@ -277,7 +286,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 					},
 				}, 1, nil
 			},
-		})
+		}, nil)
 
 		result, err := uc.Search(ctx, "テスト", "Comedy", 20, 0)
 		if err != nil {
@@ -339,7 +348,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 					},
 				}, 2, nil
 			},
-		})
+		}, nil)
 
 		// query を空にして genre だけ指定
 		result, err := uc.Search(ctx, "", "Comedy", 20, 0)
@@ -366,7 +375,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 				}
 				return []repository.PodcastSearchRow{}, 0, nil
 			},
-		})
+		}, nil)
 
 		result, err := uc.Search(ctx, "", "", 20, 0)
 		if err != nil {
@@ -385,7 +394,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 				}
 				return nil, 0, nil
 			},
-		})
+		}, nil)
 
 		_, err := uc.Search(ctx, "テスト", "", 0, 0)
 		if err != nil {
@@ -401,7 +410,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 				}
 				return nil, 0, nil
 			},
-		})
+		}, nil)
 
 		_, err := uc.Search(ctx, "テスト", "", 100, 0)
 		if err != nil {
@@ -417,7 +426,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 				}
 				return nil, 0, nil
 			},
-		})
+		}, nil)
 
 		_, err := uc.Search(ctx, "テスト", "", 20, -5)
 		if err != nil {
@@ -430,11 +439,279 @@ func TestPodcastUsecase_Search(t *testing.T) {
 			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
 				return nil, 0, fmt.Errorf("database connection error")
 			},
-		})
+		}, nil)
 
 		_, err := uc.Search(ctx, "テスト", "", 20, 0)
 		if err == nil {
 			t.Fatal("expected error, got nil")
+		}
+	})
+}
+
+// ── テスト: Search iTunes フォールバック ──
+
+func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("正常系: DB結果が少ない場合にiTunesからフォールバック取得", func(t *testing.T) {
+		// httptest サーバーでiTunes APIをモック
+		server := newTestItunesServer(t, itunes.SearchResponse{
+			ResultCount: 2,
+			Results: []itunes.SearchResult{
+				{
+					CollectionID:   12345,
+					CollectionName: "iTunes番組A",
+					ArtistName:     "配信者A",
+					ArtworkURL600:  "https://example.com/a.jpg",
+					FeedURL:        "https://example.com/feed-a.xml",
+					PrimaryGenre:   "Comedy",
+				},
+				{
+					CollectionID:   67890,
+					CollectionName: "iTunes番組B",
+					ArtistName:     "配信者B",
+					ArtworkURL600:  "https://example.com/b.jpg",
+					FeedURL:        "https://example.com/feed-b.xml",
+					PrimaryGenre:   "News",
+				},
+			},
+		})
+		defer server.Close()
+
+		// iTunes クライアントをモックサーバーに接続
+		itunesClient := itunes.NewClient()
+		itunesClient.SetBaseURL(server.URL)
+
+		// DB には1件だけヒットする
+		dbAuthor := "DB配信者"
+		dbArtwork := "https://example.com/db.jpg"
+		var createdPodcasts []*model.Podcast
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{
+					{
+						ID:            uuid.New(),
+						Title:         "DB番組",
+						Author:        &dbAuthor,
+						ArtworkURL:    &dbArtwork,
+						AverageRating: 4.0,
+						TotalReviews:  10,
+						FavoriteCount: 3,
+					},
+				}, 1, nil
+			},
+			// GetByItunesID: DB に存在しない → nil を返す（デフォルト動作）
+			createFn: func(_ context.Context, podcast *model.Podcast) error {
+				createdPodcasts = append(createdPodcasts, podcast)
+				return nil
+			},
+		}, itunesClient)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+
+		// DB の1件 + iTunes の2件 = 3件
+		if result.Total != 3 {
+			t.Errorf("total = %d, want 3", result.Total)
+		}
+		if len(result.Podcasts) != 3 {
+			t.Fatalf("podcasts count = %d, want 3", len(result.Podcasts))
+		}
+
+		// 最初の1件は DB 検索結果
+		if result.Podcasts[0].Title != "DB番組" {
+			t.Errorf("podcasts[0].title = %q, want %q", result.Podcasts[0].Title, "DB番組")
+		}
+		// 2件目以降は iTunes から取得した新規番組
+		if result.Podcasts[1].Title != "iTunes番組A" {
+			t.Errorf("podcasts[1].title = %q, want %q", result.Podcasts[1].Title, "iTunes番組A")
+		}
+		if result.Podcasts[2].Title != "iTunes番組B" {
+			t.Errorf("podcasts[2].title = %q, want %q", result.Podcasts[2].Title, "iTunes番組B")
+		}
+		// 新規番組のレビュー関連は0
+		if result.Podcasts[1].AverageRating != 0 {
+			t.Errorf("podcasts[1].average_rating = %f, want 0", result.Podcasts[1].AverageRating)
+		}
+
+		// DB に2件保存されたことを確認
+		if len(createdPodcasts) != 2 {
+			t.Fatalf("created podcasts count = %d, want 2", len(createdPodcasts))
+		}
+		if createdPodcasts[0].SourceType != "itunes" {
+			t.Errorf("source_type = %q, want %q", createdPodcasts[0].SourceType, "itunes")
+		}
+	})
+
+	t.Run("DB結果が4件以上ならフォールバックしない", func(t *testing.T) {
+		// iTunes クライアントを渡しているが、DB結果が4件なのでフォールバックは発動しない
+		itunesClient := itunes.NewClient()
+
+		author := "配信者"
+		artwork := "https://example.com/art.jpg"
+		rows := make([]repository.PodcastSearchRow, 4)
+		for i := range rows {
+			rows[i] = repository.PodcastSearchRow{
+				ID:         uuid.New(),
+				Title:      fmt.Sprintf("番組%d", i+1),
+				Author:     &author,
+				ArtworkURL: &artwork,
+			}
+		}
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return rows, 4, nil
+			},
+		}, itunesClient)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// フォールバックなしなので DB の4件のみ
+		if result.Total != 4 {
+			t.Errorf("total = %d, want 4", result.Total)
+		}
+	})
+
+	t.Run("offset が 0 でない場合はフォールバックしない", func(t *testing.T) {
+		itunesClient := itunes.NewClient()
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+		}, itunesClient)
+
+		// offset=10 なので2ページ目 → フォールバックしない
+		result, err := uc.Search(ctx, "テスト", "", 20, 10)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0 (no fallback on non-first page)", result.Total)
+		}
+	})
+
+	t.Run("query が空（ジャンルブラウズ）の場合はフォールバックしない", func(t *testing.T) {
+		itunesClient := itunes.NewClient()
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+		}, itunesClient)
+
+		// query が空なのでフォールバック条件を満たさない
+		result, err := uc.Search(ctx, "", "Comedy", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0 (no fallback without keyword)", result.Total)
+		}
+	})
+
+	t.Run("iTunes結果がDBに既存の場合はスキップされる", func(t *testing.T) {
+		server := newTestItunesServer(t, itunes.SearchResponse{
+			ResultCount: 1,
+			Results: []itunes.SearchResult{
+				{
+					CollectionID:   99999,
+					CollectionName: "既存番組",
+					ArtistName:     "配信者",
+				},
+			},
+		})
+		defer server.Close()
+
+		itunesClient := itunes.NewClient()
+		itunesClient.SetBaseURL(server.URL)
+
+		existingID := uuid.New()
+		var createCalled bool
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+			getByItunesIDFn: func(_ context.Context, itunesID int64) (*model.Podcast, error) {
+				if itunesID == 99999 {
+					// DB に既存 → この番組はスキップされるべき
+					return &model.Podcast{ID: existingID, Title: "既存番組"}, nil
+				}
+				return nil, nil
+			},
+			createFn: func(_ context.Context, _ *model.Podcast) error {
+				createCalled = true
+				return nil
+			},
+		}, itunesClient)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// 既存番組はスキップされるので追加されない
+		if len(result.Podcasts) != 0 {
+			t.Errorf("podcasts count = %d, want 0 (existing should be skipped)", len(result.Podcasts))
+		}
+		if createCalled {
+			t.Error("Create should not be called for existing podcast")
+		}
+	})
+
+	t.Run("iTunes APIエラーでもDB結果は返る", func(t *testing.T) {
+		// 壊れたレスポンスを返すモックサーバー
+		server := newTestItunesServerRaw(t, "invalid json")
+		defer server.Close()
+
+		itunesClient := itunes.NewClient()
+		itunesClient.SetBaseURL(server.URL)
+
+		dbAuthor := "DB配信者"
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{
+					{
+						ID:     uuid.New(),
+						Title:  "DB番組",
+						Author: &dbAuthor,
+					},
+				}, 1, nil
+			},
+		}, itunesClient)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// iTunes エラーでも DB 結果は返る
+		if result.Total != 1 {
+			t.Errorf("total = %d, want 1", result.Total)
+		}
+		if result.Podcasts[0].Title != "DB番組" {
+			t.Errorf("title = %q, want %q", result.Podcasts[0].Title, "DB番組")
+		}
+	})
+
+	t.Run("itunesClient が nil ならフォールバックしない", func(t *testing.T) {
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+		}, nil)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if result.Total != 0 {
+			t.Errorf("total = %d, want 0", result.Total)
 		}
 	})
 }
@@ -456,7 +733,7 @@ func TestPodcastUsecase_GetByID(t *testing.T) {
 					Title: "テスト番組",
 				}, nil
 			},
-		})
+		}, nil)
 
 		result, err := uc.GetByID(ctx, podcastID)
 		if err != nil {
@@ -472,7 +749,7 @@ func TestPodcastUsecase_GetByID(t *testing.T) {
 			getByIDFn: func(_ context.Context, _ uuid.UUID) (*model.Podcast, error) {
 				return nil, nil
 			},
-		})
+		}, nil)
 
 		_, err := uc.GetByID(ctx, uuid.New())
 		if err == nil {
@@ -492,11 +769,41 @@ func TestPodcastUsecase_GetByID(t *testing.T) {
 			getByIDFn: func(_ context.Context, _ uuid.UUID) (*model.Podcast, error) {
 				return nil, fmt.Errorf("database error")
 			},
-		})
+		}, nil)
 
 		_, err := uc.GetByID(ctx, uuid.New())
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
 	})
+}
+
+// ── テスト用ヘルパー: iTunes モックサーバー ──
+
+// newTestItunesServer は iTunes API のモックサーバーを作成します。
+// 指定した SearchResponse を JSON で返します。
+// httptest.NewServer は net/http/httptest パッケージの関数で、
+// テスト用のローカルHTTPサーバーを立ち上げます。
+func newTestItunesServer(t *testing.T, resp itunes.SearchResponse) *httptest.Server {
+	t.Helper()
+	data, err := json.Marshal(resp)
+	if err != nil {
+		t.Fatalf("failed to marshal response: %v", err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write(data)
+	}))
+	return server
+}
+
+// newTestItunesServerRaw は生の文字列を返す iTunes API モックサーバーを作成します。
+// 不正な JSON を返すテストケースで使用します。
+func newTestItunesServerRaw(t *testing.T, body string) *httptest.Server {
+	t.Helper()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(body))
+	}))
+	return server
 }
