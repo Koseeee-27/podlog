@@ -55,3 +55,43 @@ export const WithError: Story = {
     onToggle: () => {},
   },
 };
+
+export const CompactNotListened: Story = {
+  args: {
+    listened: false,
+    loading: false,
+    toggling: false,
+    compact: true,
+    onToggle: () => {},
+  },
+};
+
+export const CompactListened: Story = {
+  args: {
+    listened: true,
+    loading: false,
+    toggling: false,
+    compact: true,
+    onToggle: () => {},
+  },
+};
+
+export const CompactLoading: Story = {
+  args: {
+    listened: false,
+    loading: true,
+    toggling: false,
+    compact: true,
+    onToggle: () => {},
+  },
+};
+
+export const CompactToggling: Story = {
+  args: {
+    listened: false,
+    loading: false,
+    toggling: true,
+    compact: true,
+    onToggle: () => {},
+  },
+};

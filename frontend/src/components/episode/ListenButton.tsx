@@ -11,9 +11,11 @@ interface ListenButtonProps {
   onJustMarked?: () => void;
   /** 聴取記録を取り消した直後に呼ばれるコールバック */
   onUnmarked?: () => void;
+  /** true の場合、テキストなしのアイコンのみ小さいボタンを表示する */
+  compact?: boolean;
 }
 
-export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: ListenButtonProps) {
+export default function ListenButton({ episodeId, onJustMarked, onUnmarked, compact }: ListenButtonProps) {
   const { listened, loading, toggling, error, toggle } = useListeningStatus(episodeId);
   const { showToast } = useToast();
 
@@ -37,6 +39,7 @@ export default function ListenButton({ episodeId, onJustMarked, onUnmarked }: Li
       toggling={toggling}
       error={error}
       onToggle={handleToggle}
+      compact={compact}
     />
   );
 }

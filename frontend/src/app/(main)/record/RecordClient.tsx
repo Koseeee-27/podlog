@@ -67,7 +67,7 @@ function PodcastEpisodeList({ podcast, onBack }: { podcast: PodcastSearchItem; o
 
       <div className="space-y-2">
         {episodes.map((episode) => (
-          <EpisodeCard key={episode.id} episode={episode} />
+          <EpisodeCard key={episode.id} episode={episode} showListenButton />
         ))}
       </div>
 
@@ -217,7 +217,7 @@ export default function RecordClient() {
                 {/* エピソード一覧（最大3件） */}
                 <div className="space-y-1.5 ml-[52px]">
                   {group.episodes.map((episode) => (
-                    <RecentEpisodeCard key={episode.id} episode={episode} />
+                    <RecentEpisodeCard key={episode.id} episode={episode} showListenButton />
                   ))}
                 </div>
 
