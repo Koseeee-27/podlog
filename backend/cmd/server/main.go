@@ -22,6 +22,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	dbmigrate "github.com/Koseeee-27/podlog/backend/db"
 	"github.com/Koseeee-27/podlog/backend/internal/config"
+	"github.com/Koseeee-27/podlog/backend/internal/external/itunes"
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
 	"github.com/Koseeee-27/podlog/backend/internal/handler"
@@ -97,6 +98,7 @@ func main() {
 	}
 
 	// 6. 外部APIクライアントを初期化
+	itunesClient := itunes.NewClient()
 	ogpScraper := ogp.NewScraper()
 	rssClient := rss.NewClient()
 
@@ -113,7 +115,7 @@ func main() {
 	podcastRequestRepo := repository.NewPodcastRequestRepository(db)
 
 	userUsecase := usecase.NewUserUsecase(userRepo, fileStorage)
-	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo)
+	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
