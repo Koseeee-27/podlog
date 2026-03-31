@@ -181,7 +181,24 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					continue
 				}
 				if existing != nil {
-					// 既に DB にある番組はスキップ（DB 検索結果に含まれているはず）
+					// 既に DB にある番組 → DB キーワード検索の結果に含まれているか確認
+					alreadyInResults := false
+					for _, item := range items {
+						if item.ID == existing.ID {
+							alreadyInResults = true
+							break
+						}
+					}
+					if alreadyInResults {
+						continue
+					}
+					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加
+					items = append(items, PodcastSearchItem{
+						ID:         existing.ID,
+						Title:      existing.Title,
+						Author:     existing.Author,
+						ArtworkURL: existing.ArtworkURL,
+					})
 					continue
 				}
 

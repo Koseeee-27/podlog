@@ -616,7 +616,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 	})
 
-	t.Run("iTunes結果がDBに既存の場合はスキップされる", func(t *testing.T) {
+	t.Run("iTunes結果がDBに既存でDB検索にヒット済みならスキップ", func(t *testing.T) {
 		server := newTestItunesServer(t, itunes.SearchResponse{
 			ResultCount: 1,
 			Results: []itunes.SearchResult{
@@ -633,22 +633,19 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		itunesClient.SetBaseURL(server.URL)
 
 		existingID := uuid.New()
-		var createCalled bool
 
 		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
 			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
-				return []repository.PodcastSearchRow{}, 0, nil
+				// DB 検索で既にヒットしている
+				return []repository.PodcastSearchRow{
+					{ID: existingID, Title: "既存番組"},
+				}, 1, nil
 			},
 			getByItunesIDFn: func(_ context.Context, itunesID int64) (*model.Podcast, error) {
 				if itunesID == 99999 {
-					// DB に既存 → この番組はスキップされるべき
 					return &model.Podcast{ID: existingID, Title: "既存番組"}, nil
 				}
 				return nil, nil
-			},
-			createFn: func(_ context.Context, _ *model.Podcast) error {
-				createCalled = true
-				return nil
 			},
 		}, itunesClient)
 
@@ -656,12 +653,54 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		// 既存番組はスキップされるので追加されない
-		if len(result.Podcasts) != 0 {
-			t.Errorf("podcasts count = %d, want 0 (existing should be skipped)", len(result.Podcasts))
+		// DB 検索結果の1件のみ（重複追加されない）
+		if len(result.Podcasts) != 1 {
+			t.Errorf("podcasts count = %d, want 1", len(result.Podcasts))
 		}
-		if createCalled {
-			t.Error("Create should not be called for existing podcast")
+	})
+
+	t.Run("iTunes結果がDBに既存だがDB検索にヒットしていない場合は結果に追加", func(t *testing.T) {
+		server := newTestItunesServer(t, itunes.SearchResponse{
+			ResultCount: 1,
+			Results: []itunes.SearchResult{
+				{
+					CollectionID:   99999,
+					CollectionName: "既存番組",
+					ArtistName:     "配信者",
+				},
+			},
+		})
+		defer server.Close()
+
+		itunesClient := itunes.NewClient()
+		itunesClient.SetBaseURL(server.URL)
+
+		existingID := uuid.New()
+		author := "配信者"
+
+		uc := NewPodcastUsecase(&mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				// DB キーワード検索では0件（タイトルが一致しない）
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+			getByItunesIDFn: func(_ context.Context, itunesID int64) (*model.Podcast, error) {
+				if itunesID == 99999 {
+					return &model.Podcast{ID: existingID, Title: "既存番組", Author: &author}, nil
+				}
+				return nil, nil
+			},
+		}, itunesClient)
+
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		// DB 検索ではヒットしなかったが、iTunes 経由で既存番組が結果に追加される
+		if len(result.Podcasts) != 1 {
+			t.Fatalf("podcasts count = %d, want 1", len(result.Podcasts))
+		}
+		if result.Podcasts[0].ID != existingID {
+			t.Errorf("podcast ID = %v, want %v", result.Podcasts[0].ID, existingID)
 		}
 	})
 
