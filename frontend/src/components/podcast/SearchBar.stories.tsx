@@ -11,13 +11,13 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
-  args: { value: "", onChange: () => {} },
+  args: { value: "", onChange: () => {}, onSubmit: () => {} },
 };
 
 export const WithQuery: Story = {
-  args: { value: "Rebuild", onChange: () => {} },
+  args: { value: "Rebuild", onChange: () => {}, onSubmit: () => {} },
 };
 
 export const Loading: Story = {
-  args: { value: "Rebuild", onChange: () => {}, loading: true },
+  args: { value: "Rebuild", onChange: () => {}, onSubmit: () => {}, loading: true },
 };

@@ -1,57 +1,51 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useEffect, useCallback, useTransition } from "react";
 import { searchPodcasts, getPopularPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
-const DEBOUNCE_MS = 400;
+interface UsePodcastSearchOptions {
+  initialQuery?: string;
+  initialResults?: PodcastSearchItem[];
+}
 
-export function usePodcastSearch(initialQuery = "") {
+export function usePodcastSearch(options: UsePodcastSearchOptions = {}) {
+  const { initialQuery = "", initialResults = [] } = options;
   const [query, setQuery] = useState(initialQuery);
-  const [results, setResults] = useState<PodcastSearchItem[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [results, setResults] = useState<PodcastSearchItem[]>(initialResults);
   const [error, setError] = useState<string | null>(null);
-  const timerRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [isPending, startTransition] = useTransition();
 
-  const search = useCallback(async (term: string) => {
-    if (!term.trim()) {
+  const search = useCallback((term: string) => {
+    const trimmed = term.trim();
+    setQuery(trimmed);
+
+    if (!trimmed) {
       setResults([]);
       setError(null);
       return;
     }
 
-    setLoading(true);
     setError(null);
-
-    try {
-      const data = await searchPodcasts(term);
-      setResults(data);
-    } catch (err) {
-      setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
-      setResults([]);
-    } finally {
-      setLoading(false);
-    }
+    startTransition(async () => {
+      try {
+        const data = await searchPodcasts(trimmed);
+        setResults(data);
+      } catch (err) {
+        setError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
+        setResults([]);
+      }
+    });
   }, []);
 
-  useEffect(() => {
-    clearTimeout(timerRef.current);
+  const clear = useCallback(() => {
+    setQuery("");
+    setResults([]);
+    setError(null);
+  }, []);
 
-    if (!query.trim()) {
-      setResults([]);
-      setError(null);
-      return;
-    }
-
-    timerRef.current = setTimeout(() => {
-      search(query);
-    }, DEBOUNCE_MS);
-
-    return () => clearTimeout(timerRef.current);
-  }, [query, search]);
-
-  return { query, setQuery, results, loading, error };
+  return { query, results, loading: isPending, error, search, clear };
 }
 
 export function usePopularPodcasts(enabled = true, limit = 10) {
