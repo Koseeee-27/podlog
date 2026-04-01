@@ -26,7 +26,7 @@ export default function PrivacyPage() {
         <h1 className="text-2xl font-bold text-stone-900">
           プライバシーポリシー
         </h1>
-        <p className="mt-2 text-xs text-stone-500">最終更新日: 2026年3月19日</p>
+        <p className="mt-2 text-xs text-stone-500">最終更新日: 2026年4月2日</p>
 
         <div className="mt-8 space-y-8 text-sm text-stone-700 leading-relaxed">
           <section>
@@ -132,7 +132,7 @@ export default function PrivacyPage() {
               <li>アカウントの削除</li>
             </ul>
             <p className="mt-2">
-              これらのご請求は、本サービス内の設定画面またはお問い合わせにて対応します。
+              これらのご請求は、本サービス内の設定画面または下記お問い合わせ先メールアドレスにて対応します。
             </p>
           </section>
 
@@ -161,7 +161,16 @@ export default function PrivacyPage() {
               9. お問い合わせ
             </h2>
             <p>
-              本ポリシーに関するお問い合わせは、本サービス内のお問い合わせ機能よりご連絡ください。
+              本ポリシーに関するお問い合わせは、以下のメールアドレスまでご連絡ください。
+            </p>
+            <p className="mt-2">
+              メール:{" "}
+              <a
+                href="mailto:podlog.contact@gmail.com"
+                className="text-rose-500 hover:text-rose-600 underline"
+              >
+                podlog.contact@gmail.com
+              </a>
             </p>
           </section>
         </div>
