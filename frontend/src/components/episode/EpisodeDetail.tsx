@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import type { EpisodeDetailResult } from "@/types/episode";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 import ListenButton from "./ListenButton";
 import ReviewPrompt from "./ReviewPrompt";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
@@ -11,10 +12,11 @@ import LoginPromptButton from "@/components/ui/LoginPromptButton";
 
 interface EpisodeDetailProps {
   episode: EpisodeDetailResult;
-  isLoggedIn: boolean;
 }
 
-export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProps) {
+export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
+  const auth = useAuth();
+  const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
 
   const handleJustMarked = useCallback(() => {
@@ -79,7 +81,7 @@ export default function EpisodeDetail({ episode, isLoggedIn }: EpisodeDetailProp
       <hr className="my-8 border-stone-200" />
 
       <div id="review-section">
-        <EpisodeReviewSection key={`${episode.id}-${isLoggedIn}`} episodeId={episode.id} isLoggedIn={isLoggedIn} />
+        <EpisodeReviewSection key={episode.id} episodeId={episode.id} />
       </div>
     </div>
   );

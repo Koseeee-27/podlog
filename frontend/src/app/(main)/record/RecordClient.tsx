@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { redirect } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecentEpisodes } from "@/hooks/useRecentEpisodes";
 import { usePodcastSearch } from "@/hooks/usePodcastSearch";
@@ -137,16 +138,18 @@ export default function RecordClient() {
     return <Loading />;
   }
 
-  // 未認証・プロフィール未設定の場合は Server Component 側でリダイレクト済みだが、
-  // クライアント側でもフォールバックとして表示
-  if (auth.status === "unauthenticated" || auth.status === "no_profile") {
+  // 未認証の場合は Server Component 側でリダイレクト済みだがフォールバック表示
+  if (auth.status === "unauthenticated") {
     return <Loading message="リダイレクト中..." />;
+  }
+
+  // プロフィール未設定の場合はセットアップへ誘導
+  if (auth.status === "no_profile") {
+    redirect("/profile/setup");
   }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
-
       {/* 番組検索セクション */}
       <section>
         <h2 className="text-lg font-semibold text-stone-900 mb-3">

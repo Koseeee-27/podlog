@@ -1,5 +1,4 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
@@ -31,13 +30,5 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     throw err;
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const isLoggedIn = !!user;
-
-  return (
-    <EpisodeDetail key={episode.id} episode={episode} isLoggedIn={isLoggedIn} />
-  );
+  return <EpisodeDetail key={episode.id} episode={episode} />;
 }
