@@ -148,8 +148,6 @@ export default function RecordClient() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
-
       {/* 番組検索セクション */}
       <section>
         <h2 className="text-lg font-semibold text-stone-900 mb-3">
