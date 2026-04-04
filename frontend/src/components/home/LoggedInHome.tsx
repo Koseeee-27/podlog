@@ -3,6 +3,9 @@
 import { useAuth } from "@/hooks/useAuth";
 import { useListeningRecords } from "@/hooks/useListeningRecord";
 import GreetingSection from "./GreetingSection";
+import HeroSection from "./HeroSection";
+import FeaturesSection from "./FeaturesSection";
+import CtaSection from "./CtaSection";
 import Link from "next/link";
 import Image from "next/image";
 import EmptyState from "@/components/ui/EmptyState";
@@ -13,9 +16,11 @@ import { formatDate } from "@/lib/utils";
 const DISPLAY_LIMIT = 5;
 
 /**
- * ログイン済みユーザー向けのトップページコンテンツ。
- * 挨拶 + 最近の聴取履歴を表示する。
- * 認証状態はクライアント側の useAuth で判定する。
+ * Cookie ありのユーザー向けトップページコンテンツ。
+ * useAuth で正確な認証状態を判定し、表示を切り替える。
+ *
+ * - 認証済み → 挨拶 + 最近の聴取履歴
+ * - 未認証（Cookie が残っているがセッション期限切れ等）→ マーケティング UI にフォールバック
  */
 export default function LoggedInHome() {
   const auth = useAuth();
@@ -24,8 +29,15 @@ export default function LoggedInHome() {
     return <Loading />;
   }
 
+  // Cookie はあったが実際には未認証 → マーケティング UI を表示
   if (auth.status !== "authenticated") {
-    return null;
+    return (
+      <>
+        <HeroSection />
+        <FeaturesSection />
+        <CtaSection />
+      </>
+    );
   }
 
   return (
