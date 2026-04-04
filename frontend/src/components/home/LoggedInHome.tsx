@@ -29,8 +29,8 @@ export default function LoggedInHome() {
     return <Loading />;
   }
 
-  // Cookie はあったが実際には未認証 → マーケティング UI を表示
-  if (auth.status !== "authenticated") {
+  // 未認証（Cookie はあったがセッション期限切れ等）→ マーケティング UI を表示
+  if (auth.status === "unauthenticated") {
     return (
       <>
         <HeroSection />
@@ -38,6 +38,11 @@ export default function LoggedInHome() {
         <CtaSection />
       </>
     );
+  }
+
+  // no_profile（ログイン済みだがプロフィール未設定 or プロフィール取得失敗）
+  if (auth.status === "no_profile") {
+    return null;
   }
 
   return (

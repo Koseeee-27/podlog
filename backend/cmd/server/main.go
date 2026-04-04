@@ -59,18 +59,35 @@ func main() {
 		log.Fatalf("config validation failed: %v", err)
 	}
 
-	// 2. データベースに接続
-	// DatabaseDSN() は net/url を使ってユーザー名・パスワードを安全にエスケープする
-	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN())
-	if err != nil {
-		log.Fatalf("failed to connect to database: %v", err)
+	// 2. データベースに接続（リトライあり）
+	// Neon（サーバーレス PostgreSQL）はアイドル時にスリープするため、
+	// 初回接続でコールドスタートの遅延が発生することがある。
+	// 最大3回リトライして接続を試みる。
+	var db *sqlx.DB
+	const maxRetries = 3
+	for i := range maxRetries {
+		var err error
+		db, err = sqlx.Connect("postgres", cfg.DatabaseDSN())
+		if err == nil {
+			break
+		}
+		if i == maxRetries-1 {
+			log.Fatalf("failed to connect to database after %d attempts: %v", maxRetries, err)
+		}
+		log.Printf("database connection attempt %d/%d failed, retrying in %ds: %v", i+1, maxRetries, (i+1)*2, err)
+		time.Sleep(time.Duration((i+1)*2) * time.Second)
 	}
 	defer db.Close()
 
-	db.SetMaxOpenConns(25)
-	db.SetMaxIdleConns(5)
-	db.SetConnMaxLifetime(30 * time.Minute)
-	db.SetConnMaxIdleTime(5 * time.Minute)
+	// Neon（サーバーレス PostgreSQL）向けの接続プール設定:
+	// - MaxOpenConns: 同時接続数の上限（Neon 無料枠のコネクション数に合わせて控えめに）
+	// - MaxIdleConns: アイドル接続を少なく保ち、古い接続を早めに解放
+	// - ConnMaxLifetime: 長時間の接続を防ぎ、Neon 側のタイムアウトに対応
+	// - ConnMaxIdleTime: アイドル接続を早めに閉じ、切断された接続の再利用を防止
+	db.SetMaxOpenConns(10)
+	db.SetMaxIdleConns(2)
+	db.SetConnMaxLifetime(10 * time.Minute)
+	db.SetConnMaxIdleTime(1 * time.Minute)
 
 	log.Println("Connected to database successfully")
 
