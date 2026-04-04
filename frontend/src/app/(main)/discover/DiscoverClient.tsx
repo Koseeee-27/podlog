@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { usePodcastSearch, useGenrePodcasts } from "@/hooks/usePodcastSearch";
 import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/podcast/SearchBar";
@@ -37,6 +38,7 @@ export default function DiscoverClient({
   const [inputValue, setInputValue] = useState(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
+  const router = useRouter();
   const auth = useAuth();
 
   const genres = initialGenres;
@@ -54,6 +56,10 @@ export default function DiscoverClient({
     setInputValue(value);
     if (!value.trim()) {
       clear();
+      // URL のクエリパラメータを消して page.tsx を再実行し、ジャンル・人気番組を再取得
+      if (initialQuery) {
+        router.push("/discover");
+      }
     }
   };
 
