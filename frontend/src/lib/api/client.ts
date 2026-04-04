@@ -34,23 +34,38 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const headers = await getAuthHeaders();
+  let lastError: unknown;
 
   // サーバーエラー（500等）時に1回リトライ（Neon コールドスタート対策）
   for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method: "GET",
-      headers,
-    });
+    try {
+      const response = await fetch(`${API_BASE_URL}${path}`, {
+        method: "GET",
+        headers,
+      });
 
-    if (response.status >= 500 && attempt === 0) {
-      await new Promise((r) => setTimeout(r, 1000));
-      continue;
+      if (response.status >= 500 && attempt === 0) {
+        // リトライ前にレスポンスボディを破棄してリソースを解放
+        await response.body?.cancel().catch(() => undefined);
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+
+      return handleResponse<T>(response);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
     }
-
-    return handleResponse<T>(response);
   }
 
-  throw new ApiRequestError(500, "Request failed after retry");
+  // リトライ後も失敗した場合
+  if (lastError instanceof ApiRequestError) {
+    throw lastError;
+  }
+  throw new ApiRequestError(500, lastError instanceof Error ? lastError.message : "Request failed after retry");
 }
 
 /**
