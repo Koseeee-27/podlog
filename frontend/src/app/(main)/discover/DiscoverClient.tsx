@@ -58,7 +58,7 @@ export default function DiscoverClient({
       clear();
       // URL のクエリパラメータを消して page.tsx を再実行し、ジャンル・人気番組を再取得
       if (initialQuery) {
-        router.push("/discover");
+        router.replace("/discover");
       }
     }
   };
