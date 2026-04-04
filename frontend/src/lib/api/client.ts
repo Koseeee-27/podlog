@@ -34,11 +34,23 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 export async function apiGet<T>(path: string): Promise<T> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method: "GET",
-    headers,
-  });
-  return handleResponse<T>(response);
+
+  // サーバーエラー（500等）時に1回リトライ（Neon コールドスタート対策）
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      method: "GET",
+      headers,
+    });
+
+    if (response.status >= 500 && attempt === 0) {
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+
+    return handleResponse<T>(response);
+  }
+
+  throw new ApiRequestError(500, "Request failed after retry");
 }
 
 /**
