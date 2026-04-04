@@ -12,7 +12,7 @@ export default function DiscoverLoading() {
 
       <div className="mt-6">
         {/* ジャンルグリッドのスケルトン */}
-        <section>
+        <section aria-label="ジャンルから探す">
           <div className="h-7 w-40 bg-stone-100 rounded animate-pulse mb-4" />
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {Array.from({ length: 8 }).map((_, i) => (
@@ -25,7 +25,7 @@ export default function DiscoverLoading() {
         </section>
 
         {/* 人気番組のスケルトン */}
-        <section className="mt-8">
+        <section className="mt-8" aria-label="人気の番組">
           <div className="h-7 w-32 bg-stone-100 rounded animate-pulse mb-4" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
