@@ -30,14 +30,25 @@ export function useAuth() {
       return;
     }
 
-    try {
-      const profile = await getMyProfile();
-      setState({ status: "authenticated", authUser: user, profile });
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 404) {
+    // プロフィール取得を最大2回試行（コールドスタート対策）
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const profile = await getMyProfile();
+        setState({ status: "authenticated", authUser: user, profile });
+        return;
+      } catch (err) {
+        if (err instanceof ApiRequestError && err.status === 404) {
+          setState({ status: "no_profile", authUser: user });
+          return;
+        }
+        // サーバーエラー（500等）: 1回目ならリトライ、2回目なら諦める
+        if (attempt === 0) {
+          await new Promise((r) => setTimeout(r, 1000));
+          continue;
+        }
+        // リトライ後も失敗 → unauthenticated ではなく no_profile として扱う
+        // （認証自体は成功しているため、ログアウト扱いにしない）
         setState({ status: "no_profile", authUser: user });
-      } else {
-        setState({ status: "unauthenticated" });
       }
     }
   }, [getOrCreateClient]);
