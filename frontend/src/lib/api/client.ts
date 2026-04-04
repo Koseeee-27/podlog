@@ -36,21 +36,25 @@ export async function apiGet<T>(path: string): Promise<T> {
   const headers = await getAuthHeaders();
 
   // サーバーエラー（500等）時に1回リトライ（Neon コールドスタート対策）
-  for (let attempt = 0; attempt < 2; attempt++) {
-    const response = await fetch(`${API_BASE_URL}${path}`, {
-      method: "GET",
-      headers,
-    });
+  const doFetch = () =>
+    fetch(`${API_BASE_URL}${path}`, { method: "GET", headers });
 
-    if (response.status >= 500 && attempt === 0) {
+  let response: Response;
+  try {
+    response = await doFetch();
+    if (response.status >= 500) {
+      console.warn(`[apiGet] ${path} returned ${response.status}, retrying...`);
+      await response.body?.cancel().catch(() => undefined);
       await new Promise((r) => setTimeout(r, 1000));
-      continue;
+      response = await doFetch();
     }
-
-    return handleResponse<T>(response);
+  } catch (err) {
+    console.warn(`[apiGet] ${path} failed, retrying...`, err);
+    await new Promise((r) => setTimeout(r, 1000));
+    response = await doFetch();
   }
 
-  throw new ApiRequestError(500, "Request failed after retry");
+  return handleResponse<T>(response);
 }
 
 /**
