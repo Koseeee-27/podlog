@@ -1,6 +1,21 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
+// 認証が必要なパスの定義（フルオープン型: 書き込み系のみ認証必須）
+const PROTECTED_PATHS = ["/record", "/profile/setup", "/settings", "/admin"];
+
+function isProtectedPath(pathname: string): boolean {
+  return PROTECTED_PATHS.some(
+    (path) => pathname === path || pathname.startsWith(path + "/")
+  );
+}
+
+/**
+ * Supabase セッションの更新と認証チェックを行う Middleware。
+ *
+ * 公開ページ: Cookie があればトークンリフレッシュのみ行い、getUser() は呼ばない（高速）
+ * 認証必須ページ: getUser() で認証検証 + 未認証ならリダイレクト
+ */
 export async function updateSession(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -11,11 +26,20 @@ export async function updateSession(request: NextRequest) {
   }
 
   // /signup は /login にリダイレクト（Google 認証のみのため統合）
-  // 認証チェック不要なので Supabase クライアント生成前に処理する
   if (request.nextUrl.pathname === "/signup") {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
+  }
+
+  const isProtected = isProtectedPath(request.nextUrl.pathname);
+
+  // 公開ページかつ認証 Cookie がなければ、Supabase クライアント生成自体をスキップ
+  const hasAuthCookie = request.cookies.getAll().some(
+    (c) => c.name.startsWith("sb-")
+  );
+  if (!isProtected && !hasAuthCookie) {
+    return NextResponse.next({ request });
   }
 
   let supabaseResponse = NextResponse.next({
@@ -41,38 +65,49 @@ export async function updateSession(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // 認証必須ページ: getUser() でセッション検証 + リダイレクト判定
+  if (isProtected) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  // 認証が必要なパスの定義（フルオープン型: 書き込み系のみ認証必須）
-  const protectedPaths = ["/profile/setup", "/settings", "/admin"];
-  const isProtectedPath = protectedPaths.some(
-    (path) =>
-      request.nextUrl.pathname === path ||
-      request.nextUrl.pathname.startsWith(path + "/")
-  );
+    if (!user) {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      const redirectResponse = NextResponse.redirect(url);
+      supabaseResponse.cookies.getAll().forEach((cookie) => {
+        redirectResponse.cookies.set(cookie);
+      });
+      return redirectResponse;
+    }
+  }
 
-  // 未認証ユーザーを保護されたルートからログインへリダイレクト
-  if (!user && isProtectedPath) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
-    return redirectResponse;
+  // 公開ページ（Cookie あり）: getSession() でトークンリフレッシュのみ
+  // getSession() は Cookie を読んでリフレッシュするが、Supabase サーバーへの通信は不要
+  if (!isProtected && hasAuthCookie) {
+    await supabase.auth.getSession();
   }
 
   // 認証済みユーザーが /login にアクセスしたらトップへ
-  if (user && request.nextUrl.pathname === "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/";
-    const redirectResponse = NextResponse.redirect(url);
-    supabaseResponse.cookies.getAll().forEach((cookie) => {
-      redirectResponse.cookies.set(cookie);
-    });
-    return redirectResponse;
+  if (request.nextUrl.pathname === "/login") {
+    const hasSession = request.cookies.getAll().some(
+      (c) => c.name.startsWith("sb-")
+    );
+    if (hasSession) {
+      // getUser() で正確に判定（/login → / のリダイレクトは頻度が低いのでコスト許容）
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/";
+        const redirectResponse = NextResponse.redirect(url);
+        supabaseResponse.cookies.getAll().forEach((cookie) => {
+          redirectResponse.cookies.set(cookie);
+        });
+        return redirectResponse;
+      }
+    }
   }
 
   return supabaseResponse;

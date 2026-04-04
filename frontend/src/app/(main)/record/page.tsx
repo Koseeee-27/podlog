@@ -1,11 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { serverGet } from "@/lib/api/server";
-import { ApiRequestError } from "@/types/api";
 import RecordClient from "./RecordClient";
-import type { User } from "@/types/user";
 
 export default async function RecordPage() {
+  // Middleware で未認証リダイレクト済みだが、防御的に二重チェック
   const supabase = await createClient();
   const {
     data: { user },
@@ -15,15 +13,12 @@ export default async function RecordPage() {
     redirect("/login");
   }
 
-  // プロフィール未設定ならセットアップ画面へリダイレクト
-  try {
-    await serverGet<User>("/users/me");
-  } catch (err) {
-    if (err instanceof ApiRequestError && err.status === 404) {
-      redirect("/profile/setup");
-    }
-    throw err;
-  }
+  // プロフィール未設定チェックは RecordClient 側の useAuth で行う
 
-  return <RecordClient />;
+  return (
+    <div>
+      <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
+      <RecordClient />
+    </div>
+  );
 }

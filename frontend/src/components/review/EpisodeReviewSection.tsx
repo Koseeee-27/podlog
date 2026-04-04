@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
+import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 import type { Review, MyReviewResult } from "@/types/review";
@@ -18,10 +19,11 @@ function toMyReviewResult(review: Review): MyReviewResult {
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
-  isLoggedIn: boolean;
 }
 
-export default function EpisodeReviewSection({ episodeId, isLoggedIn }: EpisodeReviewSectionProps) {
+export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSectionProps) {
+  const auth = useAuth();
+  const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
   const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
