@@ -20,6 +20,8 @@ interface DiscoverClientProps {
   initialResults?: PodcastSearchItem[];
   initialGenres?: Genre[];
   initialPopularPodcasts?: PodcastSearchItem[];
+  genresError?: boolean;
+  popularError?: boolean;
 }
 
 export default function DiscoverClient({
@@ -27,6 +29,8 @@ export default function DiscoverClient({
   initialResults = [],
   initialGenres = [],
   initialPopularPodcasts = [],
+  genresError = false,
+  popularError = false,
 }: DiscoverClientProps) {
   const { query, results, loading: searchLoading, error: searchError, search, clear } =
     usePodcastSearch({ initialQuery, initialResults });
@@ -184,19 +188,25 @@ export default function DiscoverClient({
             {/* ジャンルグリッド */}
             <section>
               <h2 className="text-lg font-bold text-stone-900 mb-4">ジャンルから探す</h2>
-              <GenreGrid
-                genres={genres}
-                onSelect={handleGenreSelect}
-              />
+              {genresError ? (
+                <ErrorMessage message="ジャンルの取得に失敗しました" />
+              ) : (
+                <GenreGrid
+                  genres={genres}
+                  onSelect={handleGenreSelect}
+                />
+              )}
             </section>
 
             {/* 人気の番組（コンパクト表示） */}
             <section className="mt-8">
               <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
 
-              {popular.length === 0 && (
+              {popularError ? (
+                <ErrorMessage message="人気の番組の取得に失敗しました" />
+              ) : popular.length === 0 ? (
                 <p className="text-sm text-stone-500">まだレビューのある番組がありません</p>
-              )}
+              ) : null}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {popular.map((podcast) => (

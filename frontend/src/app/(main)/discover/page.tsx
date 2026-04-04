@@ -11,23 +11,39 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
   const { q } = await searchParams;
   const query = Array.isArray(q) ? q[0] ?? "" : q ?? "";
 
-  // ジャンル・人気番組・検索結果を並列でサーバーサイドフェッチ
-  const [genresResult, popularResult, searchResult] = await Promise.allSettled([
-    serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
-    serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", { noAuth: true, revalidate: 300 }),
-    query
-      ? serverGet<PodcastSearchResult>(
-          `/podcasts/search?q=${encodeURIComponent(query)}`,
-          { noAuth: true, revalidate: 0 },
-        )
-      : Promise.resolve(null),
-  ]);
+  let genres: GenreListResponse["genres"] = [];
+  let popularPodcasts: PodcastSearchResult["podcasts"] = [];
+  let initialResults: PodcastSearchResult["podcasts"] = [];
+  let genresError = false;
+  let popularError = false;
 
-  const genres = genresResult.status === "fulfilled" ? genresResult.value.genres : [];
-  const popularPodcasts = popularResult.status === "fulfilled" ? popularResult.value.podcasts : [];
-  const initialResults = searchResult.status === "fulfilled" && searchResult.value
-    ? searchResult.value.podcasts
-    : [];
+  if (query) {
+    // 検索時は検索結果のみ取得（ジャンル・人気番組は初期表示に不要）
+    const searchResult = await serverGet<PodcastSearchResult>(
+      `/podcasts/search?q=${encodeURIComponent(query)}`,
+      { noAuth: true, revalidate: 0 },
+    ).catch(() => null);
+
+    initialResults = searchResult?.podcasts ?? [];
+  } else {
+    // 初期表示: ジャンル・人気番組を並列フェッチ
+    const [genresResult, popularResult] = await Promise.allSettled([
+      serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
+      serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", { noAuth: true, revalidate: 300 }),
+    ]);
+
+    if (genresResult.status === "fulfilled") {
+      genres = genresResult.value.genres;
+    } else {
+      genresError = true;
+    }
+
+    if (popularResult.status === "fulfilled") {
+      popularPodcasts = popularResult.value.podcasts;
+    } else {
+      popularError = true;
+    }
+  }
 
   return (
     <DiscoverClient
@@ -36,6 +52,8 @@ export default async function DiscoverPage({ searchParams }: DiscoverPageProps) 
       initialResults={initialResults}
       initialGenres={genres}
       initialPopularPodcasts={popularPodcasts}
+      genresError={genresError}
+      popularError={popularError}
     />
   );
 }
