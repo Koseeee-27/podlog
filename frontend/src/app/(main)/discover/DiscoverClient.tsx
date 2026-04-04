@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { usePodcastSearch, usePopularPodcasts, useGenrePodcasts } from "@/hooks/usePodcastSearch";
-import { useGenres } from "@/hooks/useGenres";
+import { useRouter } from "next/navigation";
+import { usePodcastSearch, useGenrePodcasts } from "@/hooks/usePodcastSearch";
 import { useAuth } from "@/hooks/useAuth";
 import SearchBar from "@/components/podcast/SearchBar";
 import PodcastCard from "@/components/podcast/PodcastCard";
@@ -14,20 +14,35 @@ import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type { PodcastSearchItem } from "@/types/podcast";
+import type { Genre } from "@/types/genre";
 
 interface DiscoverClientProps {
   initialQuery: string;
   initialResults?: PodcastSearchItem[];
+  initialGenres?: Genre[];
+  initialPopularPodcasts?: PodcastSearchItem[];
+  genresError?: boolean;
+  popularError?: boolean;
 }
 
-export default function DiscoverClient({ initialQuery, initialResults = [] }: DiscoverClientProps) {
+export default function DiscoverClient({
+  initialQuery,
+  initialResults = [],
+  initialGenres = [],
+  initialPopularPodcasts = [],
+  genresError = false,
+  popularError = false,
+}: DiscoverClientProps) {
   const { query, results, loading: searchLoading, error: searchError, search, clear } =
     usePodcastSearch({ initialQuery, initialResults });
   const [inputValue, setInputValue] = useState(initialQuery);
   const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
-  const { genres, loading: genresLoading, error: genresError } = useGenres();
+  const router = useRouter();
   const auth = useAuth();
+
+  const genres = initialGenres;
+  const popular = initialPopularPodcasts;
 
   const isSearching = query.trim().length > 0;
 
@@ -41,6 +56,10 @@ export default function DiscoverClient({ initialQuery, initialResults = [] }: Di
     setInputValue(value);
     if (!value.trim()) {
       clear();
+      // URL のクエリパラメータを消して page.tsx を再実行し、ジャンル・人気番組を再取得
+      if (initialQuery) {
+        router.replace("/discover");
+      }
     }
   };
 
@@ -54,10 +73,6 @@ export default function DiscoverClient({ initialQuery, initialResults = [] }: Di
     loadMore: genreLoadMore,
     isLoadingMore: genreIsLoadingMore,
   } = useGenrePodcasts(activeGenre);
-
-  // 人気番組は、検索中でもジャンル選択中でもない場合のみ取得
-  const showPopular = !isSearching && selectedGenre === null;
-  const { podcasts: popular, loading: popularLoading, error: popularError } = usePopularPodcasts(showPopular, 6);
 
   const handleGenreSelect = (genreId: string) => {
     setSelectedGenre(genreId);
@@ -179,24 +194,25 @@ export default function DiscoverClient({ initialQuery, initialResults = [] }: Di
             {/* ジャンルグリッド */}
             <section>
               <h2 className="text-lg font-bold text-stone-900 mb-4">ジャンルから探す</h2>
-              {genresError && <ErrorMessage message={genresError} />}
-              <GenreGrid
-                genres={genres}
-                onSelect={handleGenreSelect}
-                loading={genresLoading}
-              />
+              {genresError ? (
+                <ErrorMessage message="ジャンルの取得に失敗しました" />
+              ) : (
+                <GenreGrid
+                  genres={genres}
+                  onSelect={handleGenreSelect}
+                />
+              )}
             </section>
 
             {/* 人気の番組（コンパクト表示） */}
             <section className="mt-8">
               <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
 
-              {popularLoading && <Loading />}
-              {popularError && <ErrorMessage message={popularError} />}
-
-              {!popularLoading && popular.length === 0 && !popularError && (
+              {popularError ? (
+                <ErrorMessage message="人気の番組の取得に失敗しました" />
+              ) : popular.length === 0 ? (
                 <p className="text-sm text-stone-500">まだレビューのある番組がありません</p>
-              )}
+              ) : null}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {popular.map((podcast) => (
