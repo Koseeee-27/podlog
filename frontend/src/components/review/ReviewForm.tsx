@@ -30,21 +30,17 @@ export default function ReviewForm({
   const [rating, setRating] = useState(initialRating);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [commentLength, setCommentLength] = useState(initialComment.length);
-  const formRef = useRef<HTMLFormElement>(null);
   const prevSuccessRef = useRef(false);
 
   useEffect(() => {
     if (state.success && !prevSuccessRef.current && state.review) {
       onSuccess?.(state.review);
-      formRef.current?.reset();
-      setRating(0);
-      setCommentLength(0);
     }
     prevSuccessRef.current = state.success;
   }, [state, onSuccess]);
 
   return (
-    <form ref={formRef} action={formAction} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <input type="hidden" name="rating" value={rating} />
 
       <div>
