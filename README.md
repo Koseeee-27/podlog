@@ -8,7 +8,7 @@
 |---|---|
 | フロントエンド | Next.js (App Router) / TypeScript |
 | バックエンド | Go / Echo |
-| データベース | PostgreSQL 17 |
+| データベース | PostgreSQL 17 (Neon) |
 | 認証 | Supabase Auth |
 | インフラ | Docker / Docker Compose |
 | CI | GitHub Actions |

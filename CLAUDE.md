@@ -17,9 +17,10 @@ podlog は聴いたポッドキャストを記録・管理するWebアプリ。
 - **APIドキュメント**: Swagger (swaggo/swag)
 - **ルーティング**: TBD（gin / echo など）
 
-### データベース・ホスティング
-- **DB**: PostgreSQL
-- **BaaS**: Supabase（初期ホスティング）
+### データベース・認証・ホスティング
+- **DB**: PostgreSQL（Neon）
+- **認証**: Supabase Auth
+- **フロントエンドホスティング**: Netlify
 
 ### インフラ・DevOps
 - **クラウド**: GCP
