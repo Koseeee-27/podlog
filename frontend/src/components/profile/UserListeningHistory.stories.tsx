@@ -60,12 +60,19 @@ export const HasMore: Story = {
   },
 };
 
-export const InitialLoading: Story = {
+export const LoadingMore: Story = {
   args: {
-    records: [],
-    total: 0,
+    records: [
+      {
+        id: "lr1",
+        episode: { id: "e1", title: "第100回 特別編", podcast_id: "p1" },
+        podcast: { id: "p1", title: "オールナイトニッポン" },
+        created_at: "2026-03-10T12:00:00Z",
+      },
+    ],
+    total: 20,
     isPending: true,
-    hasMore: false,
+    hasMore: true,
     onLoadMore: () => {},
   },
 };
