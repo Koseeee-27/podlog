@@ -22,15 +22,12 @@ export default function PublicProfileClient({ username, initialProfile }: Public
   const auth = useAuth();
   const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
 
-  // コールドスタート対策: 直列に fetch する
-  // 1つ目の API が通れば DB が起きるので、後続は失敗しにくくなる
+  // プロフィールはサーバーから取得済みなので常に ready
   const {
     podcasts: favoritePodcasts,
     loading: favLoading,
     error: favError,
   } = useUserFavoritePodcasts(username, true);
-
-  const favDone = !favLoading;
   const {
     records,
     total: recordsTotal,
@@ -38,9 +35,7 @@ export default function PublicProfileClient({ username, initialProfile }: Public
     error: recordsError,
     hasMore: recordsHasMore,
     loadMore: loadMoreRecords,
-  } = useUserListeningRecords(username, favDone);
-
-  const recordsDone = favDone && !recordsLoading;
+  } = useUserListeningRecords(username, true);
   const {
     reviews,
     total: reviewsTotal,
@@ -48,7 +43,7 @@ export default function PublicProfileClient({ username, initialProfile }: Public
     error: reviewsError,
     hasMore: reviewsHasMore,
     loadMore: loadMoreReviews,
-  } = useUserReviews(username, recordsDone);
+  } = useUserReviews(username, true);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
