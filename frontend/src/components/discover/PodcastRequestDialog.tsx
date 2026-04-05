@@ -54,7 +54,7 @@ function PodcastRequestDialogContent({
   return (
     <dialog
       ref={(dialog) => {
-        dialog?.showModal();
+        if (dialog && !dialog.open) dialog.showModal();
       }}
       onClose={onClose}
       onClick={(e) => {

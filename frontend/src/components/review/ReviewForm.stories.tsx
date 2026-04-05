@@ -25,7 +25,7 @@ export const WithInitialValues: Story = {
   args: {
     action: noopAction,
     initialRating: 4,
-    initialComment: "とても面白いエピ���ードでした！",
+    initialComment: "とても面白いエピソードでした！",
     submitLabel: "更新する",
   },
 };
