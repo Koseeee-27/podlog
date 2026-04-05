@@ -73,20 +73,21 @@ export default function PublicProfileClient({
         各セクションを ErrorBoundary + Suspense でラップ。
         - Suspense: データ読み込み中に「読み込み中...」を表示
         - ErrorBoundary: API エラー時にセクション単位でエラー表示（ページ全体はクラッシュしない）
+        - key={username}: ユーザー切り替え時に state をリセットするため再マウントさせる
       */}
-      <ErrorBoundary fallback={<SectionError title="好きな番組" />}>
+      <ErrorBoundary key={`fav-${username}`} fallback={<SectionError title="好きな番組" />}>
         <Suspense fallback={<SectionSkeleton title="好きな番組" />}>
           <FavoritePodcastsLoader promise={favoritesPromise} />
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionError title="聴取履歴" />}>
+      <ErrorBoundary key={`records-${username}`} fallback={<SectionError title="聴取履歴" />}>
         <Suspense fallback={<SectionSkeleton title="聴取履歴" />}>
           <ListeningHistoryLoader promise={recordsPromise} username={username} />
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary fallback={<SectionError title="レビュー" />}>
+      <ErrorBoundary key={`reviews-${username}`} fallback={<SectionError title="レビュー" />}>
         <Suspense fallback={<SectionSkeleton title="レビュー" />}>
           <ReviewListLoader promise={reviewsPromise} username={username} />
         </Suspense>
