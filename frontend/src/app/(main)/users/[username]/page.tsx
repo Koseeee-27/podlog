@@ -33,17 +33,18 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
 
   // 各セクションのデータを Promise として作成（await しない）
   // プロフィール取得で DB が起きているので、コールドスタートの影響を受けにくい
+  // ユーザー操作で頻繁に変わるデータなのでキャッシュしない（revalidate: 0）
   const favoritesPromise = serverGet<FavoritePodcastListResult>(
     `/users/${encodedUsername}/favorite-podcasts`,
-    { noAuth: true, revalidate: 60 },
+    { noAuth: true, revalidate: 0 },
   );
   const recordsPromise = serverGet<ListeningRecordListResult>(
     `/users/${encodedUsername}/listening-records?limit=${PAGE_SIZE}&offset=0`,
-    { noAuth: true, revalidate: 60 },
+    { noAuth: true, revalidate: 0 },
   );
   const reviewsPromise = serverGet<UserReviewListResult>(
     `/users/${encodedUsername}/reviews?limit=${PAGE_SIZE}&offset=0`,
-    { noAuth: true, revalidate: 60 },
+    { noAuth: true, revalidate: 0 },
   );
 
   return (
