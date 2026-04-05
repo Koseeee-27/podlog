@@ -78,14 +78,31 @@ export async function serverGet<T>(
     : await getServerAuthHeaders();
   const baseUrl = getApiBaseUrl();
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: "GET",
-    headers,
-    next: {
-      revalidate: options?.revalidate ?? 0,
-      tags: options?.tags,
-    },
-  });
+  // サーバーエラー（500等）時に1回リトライ（Neon コールドスタート対策）
+  const doFetch = () =>
+    fetch(`${baseUrl}${path}`, {
+      method: "GET",
+      headers,
+      next: {
+        revalidate: options?.revalidate ?? 0,
+        tags: options?.tags,
+      },
+    });
+
+  let response: Response;
+  try {
+    response = await doFetch();
+    if (response.status >= 500) {
+      console.warn(`[serverGet] ${path} returned ${response.status}, retrying...`);
+      await response.body?.cancel().catch(() => undefined);
+      await new Promise((r) => setTimeout(r, 1000));
+      response = await doFetch();
+    }
+  } catch (err) {
+    console.warn(`[serverGet] ${path} failed, retrying...`, err);
+    await new Promise((r) => setTimeout(r, 1000));
+    response = await doFetch();
+  }
 
   return handleResponse<T>(response);
 }
