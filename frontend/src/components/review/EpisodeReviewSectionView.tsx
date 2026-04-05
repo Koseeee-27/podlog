@@ -1,4 +1,5 @@
-import type { ReviewItem, MyReviewResult } from "@/types/review";
+import type { ReviewItem, MyReviewResult, Review } from "@/types/review";
+import type { ReviewFormState } from "@/lib/actions/review";
 import ReviewForm from "./ReviewForm";
 import ReviewCard from "./ReviewCard";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -14,11 +15,19 @@ export interface EpisodeReviewSectionViewProps {
   listLoading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
-  onSubmit: (rating: number, comment: string) => Promise<void>;
-  onUpdate: (rating: number, comment: string) => Promise<void>;
+  createAction: (
+    prevState: ReviewFormState,
+    formData: FormData,
+  ) => Promise<ReviewFormState>;
+  updateAction: (
+    prevState: ReviewFormState,
+    formData: FormData,
+  ) => Promise<ReviewFormState>;
+  onCreateSuccess: (review: Review) => void;
+  onUpdateSuccess: (review: Review) => void;
   onDelete: () => Promise<void>;
-  actionLoading: boolean;
-  actionError?: string | null;
+  deleteLoading: boolean;
+  deleteError?: string | null;
   listError?: string | null;
   submitted: boolean;
   isLoggedIn: boolean;
@@ -41,11 +50,13 @@ export default function EpisodeReviewSectionView({
   listLoading,
   hasMore,
   onLoadMore,
-  onSubmit,
-  onUpdate,
+  createAction,
+  updateAction,
+  onCreateSuccess,
+  onUpdateSuccess,
   onDelete,
-  actionLoading,
-  actionError,
+  deleteLoading,
+  deleteError,
   listError,
   submitted,
   isLoggedIn,
@@ -84,7 +95,7 @@ export default function EpisodeReviewSectionView({
             <p className="text-sm text-stone-500">読み込み中...</p>
           ) : myReview && !editing ? (
             <>
-              {actionError && <ErrorMessage message={actionError} />}
+              {deleteError && <ErrorMessage message={deleteError} />}
               <MyReviewCard
                 review={myReview}
                 onEdit={onStartEdit}
@@ -92,7 +103,7 @@ export default function EpisodeReviewSectionView({
                 confirmDelete={confirmDelete}
                 onConfirmDelete={onDelete}
                 onCancelDelete={onCancelDelete}
-                actionLoading={actionLoading}
+                actionLoading={deleteLoading}
               />
             </>
           ) : myReview && editing ? (
@@ -107,20 +118,21 @@ export default function EpisodeReviewSectionView({
                   キャンセル
                 </button>
               </div>
-              {actionError && <ErrorMessage message={actionError} />}
               <ReviewForm
-                onSubmit={onUpdate}
+                action={updateAction}
                 initialRating={myReview.rating}
                 initialComment={myReview.comment ?? ""}
                 submitLabel="更新する"
-                loading={actionLoading}
+                onSuccess={onUpdateSuccess}
               />
             </div>
           ) : !submitted ? (
             <div className="rounded-xl border border-stone-200 bg-white p-4 shadow-sm">
               <h3 className="text-sm font-medium text-stone-700 mb-3">レビューを書く</h3>
-              {actionError && <ErrorMessage message={actionError} />}
-              <ReviewForm onSubmit={onSubmit} loading={actionLoading} />
+              <ReviewForm
+                action={createAction}
+                onSuccess={onCreateSuccess}
+              />
             </div>
           ) : (
             <p className="text-sm text-green-600">レビューを投稿しました！</p>

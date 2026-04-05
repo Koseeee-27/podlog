@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
+import { createReviewAction, updateReviewAction } from "@/lib/actions/review";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 import type { Review, MyReviewResult } from "@/types/review";
 
@@ -26,7 +27,7 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
   const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
   const { reviews, total, averageRating, loading: listLoading, error: listError, hasMore, loadMore, refresh } =
     useEpisodeReviews(episodeId);
-  const { create, update, remove, loading: actionLoading, error: actionError } = useReviewActions(episodeId);
+  const { remove, loading: deleteLoading, error: deleteError } = useReviewActions(episodeId);
   const { myReview, loading: myReviewLoading, error: myReviewError, clearMyReview, updateMyReview } =
     useMyReviewForEpisode(episodeId, isLoggedIn);
   const { showToast } = useToast();
@@ -35,31 +36,22 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletedReviewId, setDeletedReviewId] = useState<string | null>(null);
 
-  const handleSubmit = async (rating: number, comment: string) => {
-    const review = await create({
-      rating,
-      comment: comment || undefined,
-    });
-    if (review) {
-      updateMyReview(toMyReviewResult(review));
-      setSubmitted(true);
-      refresh();
-      showToast("レビューを投稿しました");
-    }
-  };
+  const boundCreateAction = createReviewAction.bind(null, episodeId);
+  const boundUpdateAction = updateReviewAction.bind(null, episodeId);
 
-  const handleUpdate = async (rating: number, comment: string) => {
-    const review = await update({
-      rating,
-      comment: comment || undefined,
-    });
-    if (review) {
-      updateMyReview(toMyReviewResult(review));
-      setEditing(false);
-      refresh();
-      showToast("レビューを更新しました");
-    }
-  };
+  const handleCreateSuccess = useCallback((review: Review) => {
+    updateMyReview(toMyReviewResult(review));
+    setSubmitted(true);
+    refresh();
+    showToast("レビューを投稿しました");
+  }, [updateMyReview, refresh, showToast]);
+
+  const handleUpdateSuccess = useCallback((review: Review) => {
+    updateMyReview(toMyReviewResult(review));
+    setEditing(false);
+    refresh();
+    showToast("レ��ューを更新しました");
+  }, [updateMyReview, refresh, showToast]);
 
   const handleDelete = async () => {
     const reviewId = myReview?.id ?? null;
@@ -82,11 +74,13 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
       listLoading={listLoading}
       hasMore={hasMore}
       onLoadMore={loadMore}
-      onSubmit={handleSubmit}
-      onUpdate={handleUpdate}
+      createAction={boundCreateAction}
+      updateAction={boundUpdateAction}
+      onCreateSuccess={handleCreateSuccess}
+      onUpdateSuccess={handleUpdateSuccess}
       onDelete={handleDelete}
-      actionLoading={actionLoading}
-      actionError={actionError}
+      deleteLoading={deleteLoading}
+      deleteError={deleteError}
       listError={listError}
       submitted={submitted}
       isLoggedIn={isLoggedIn}

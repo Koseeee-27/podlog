@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { ReviewFormState } from "@/lib/actions/review";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
+
+const noopAction = async (_prev: ReviewFormState, _fd: FormData): Promise<ReviewFormState> => ({
+  success: false,
+});
 
 const meta = {
   title: "Review/EpisodeReviewSection",
@@ -12,8 +17,10 @@ type Story = StoryObj<typeof meta>;
 
 const defaultHandlers = {
   onLoadMore: () => {},
-  onSubmit: async () => {},
-  onUpdate: async () => {},
+  createAction: noopAction,
+  updateAction: noopAction,
+  onCreateSuccess: () => {},
+  onUpdateSuccess: () => {},
   onDelete: async () => {},
   onStartEdit: () => {},
   onCancelEdit: () => {},
@@ -44,7 +51,7 @@ export const WithReviews: Story = {
     averageRating: 4.0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: true,
     myReview: null,
@@ -75,7 +82,7 @@ export const WithMyReview: Story = {
     averageRating: 3.5,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: true,
     myReview: {
@@ -106,7 +113,7 @@ export const EditingMyReview: Story = {
     averageRating: 4.0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: true,
     myReview: {
@@ -129,7 +136,7 @@ export const Empty: Story = {
     averageRating: 0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: true,
     myReview: null,
@@ -154,7 +161,7 @@ export const Submitted: Story = {
     averageRating: 5.0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: true,
     isLoggedIn: true,
     myReview: null,
@@ -179,7 +186,7 @@ export const NotLoggedIn: Story = {
     averageRating: 5.0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: false,
     myReview: null,
@@ -196,7 +203,7 @@ export const NotLoggedInEmpty: Story = {
     averageRating: 0,
     listLoading: false,
     hasMore: false,
-    actionLoading: false,
+    deleteLoading: false,
     submitted: false,
     isLoggedIn: false,
     myReview: null,
