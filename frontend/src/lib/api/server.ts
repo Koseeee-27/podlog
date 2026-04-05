@@ -122,3 +122,37 @@ export async function serverGet<T>(
   if (response) return handleResponse<T>(response);
   throw lastError;
 }
+
+/**
+ * Server Component / Server Action 用の POST リクエスト。
+ */
+export async function serverPost<T>(
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const headers = await getServerAuthHeaders();
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "POST",
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(response);
+}
+
+/**
+ * Server Component / Server Action 用の PUT リクエスト。
+ */
+export async function serverPut<T>(
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const headers = await getServerAuthHeaders();
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "PUT",
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(response);
+}
