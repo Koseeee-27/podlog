@@ -1,15 +1,14 @@
 import Link from "next/link";
 import type { UserReviewItem } from "@/types/review";
 import { formatDate } from "@/lib/utils";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import { BookOpenIcon } from "@heroicons/react/24/outline";
 
 interface UserReviewListProps {
   reviews: UserReviewItem[];
   total: number;
-  loading: boolean;
-  error?: string | null;
+  /** useTransition の isPending。true の間ボタンを disabled にする */
+  isPending: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -17,8 +16,7 @@ interface UserReviewListProps {
 export default function UserReviewList({
   reviews,
   total,
-  loading,
-  error,
+  isPending,
   hasMore,
   onLoadMore,
 }: UserReviewListProps) {
@@ -29,9 +27,7 @@ export default function UserReviewList({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {loading && reviews.length === 0 ? (
-        <p className="text-sm text-stone-500">読み込み中...</p>
-      ) : reviews.length === 0 && !error ? (
+      {reviews.length === 0 ? (
         <EmptyState
           icon={<BookOpenIcon className="h-12 w-12" />}
           message="まだレビューがありません"
@@ -74,16 +70,14 @@ export default function UserReviewList({
         </div>
       )}
 
-      {error && <ErrorMessage message={error} />}
-
       {hasMore && reviews.length > 0 && (
         <button
           type="button"
           onClick={onLoadMore}
-          disabled={loading}
+          disabled={isPending}
           className="mt-3 w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
-          {loading ? "読み込み中..." : "もっと見る"}
+          {isPending ? "読み込み中..." : "もっと見る"}
         </button>
       )}
     </section>
