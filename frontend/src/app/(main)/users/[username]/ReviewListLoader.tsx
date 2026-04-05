@@ -5,9 +5,7 @@ import UserReviewListSection from "@/components/profile/UserReviewList";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { UserReviewListResult } from "@/types/review";
-import { loadMoreReviews } from "./actions";
-
-const PAGE_SIZE = 10;
+import { loadMoreReviews, PAGE_SIZE } from "./actions";
 
 /**
  * use() で Promise を解決し、レビューセクションに渡す。

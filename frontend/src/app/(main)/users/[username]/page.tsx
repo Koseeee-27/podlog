@@ -6,12 +6,11 @@ import type { UserPublicProfile } from "@/types/user";
 import type { FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
+import { PAGE_SIZE } from "./actions";
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;
 }
-
-const PAGE_SIZE = 10;
 
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
   const { username } = await params;
