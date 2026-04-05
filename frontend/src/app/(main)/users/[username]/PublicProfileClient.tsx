@@ -1,22 +1,21 @@
 "use client";
 
-import { Suspense, useState, useTransition, use } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
-import ErrorMessage from "@/components/ui/ErrorMessage";
-import { formatDate, getUserFriendlyErrorMessage } from "@/lib/utils";
-import UserFavoritePodcastsSection from "@/components/profile/UserFavoritePodcasts";
-import UserListeningHistorySection from "@/components/profile/UserListeningHistory";
-import UserReviewListSection from "@/components/profile/UserReviewList";
+import { formatDate } from "@/lib/utils";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import AdminBadge from "@/components/ui/AdminBadge";
 import type { UserPublicProfile, FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
-import { loadMoreListeningRecords, loadMoreReviews } from "./actions";
+import { SectionSkeleton, SectionError } from "./SectionFallbacks";
+import FavoritePodcastsLoader from "./FavoritePodcastsLoader";
+import ListeningHistoryLoader from "./ListeningHistoryLoader";
+import ReviewListLoader from "./ReviewListLoader";
 
 interface PublicProfileClientProps {
   username: string;
@@ -93,150 +92,5 @@ export default function PublicProfileClient({
         </Suspense>
       </ErrorBoundary>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ローディング・エラー用のフォールバック UI
-// ---------------------------------------------------------------------------
-
-function SectionSkeleton({ title }: { title: string }) {
-  return (
-    <section>
-      <h2 className="text-lg font-semibold text-stone-900 mb-3">{title}</h2>
-      <p className="text-sm text-stone-500">読み込み中...</p>
-    </section>
-  );
-}
-
-function SectionError({ title }: { title: string }) {
-  return (
-    <section>
-      <h2 className="text-lg font-semibold text-stone-900 mb-3">{title}</h2>
-      <ErrorMessage message={`${title}の取得に失敗しました`} />
-    </section>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// use() で Promise を解決し、表示用コンポーネントに渡すローダー
-// use() が Promise を受け取ると、データが届くまで Suspense のフォールバックが表示される。
-// Promise が reject した場合は、ErrorBoundary がキャッチしてエラー表示する。
-// ---------------------------------------------------------------------------
-
-function FavoritePodcastsLoader({ promise }: { promise: Promise<FavoritePodcastListResult> }) {
-  const data = use(promise);
-  return <UserFavoritePodcastsSection podcasts={data.podcasts ?? []} />;
-}
-
-function ListeningHistoryLoader({
-  promise,
-  username,
-}: {
-  promise: Promise<ListeningRecordListResult>;
-  username: string;
-}) {
-  const data = use(promise);
-  return <ListeningHistoryWithLoadMore initialData={data} username={username} />;
-}
-
-function ReviewListLoader({
-  promise,
-  username,
-}: {
-  promise: Promise<UserReviewListResult>;
-  username: string;
-}) {
-  const data = use(promise);
-  return <ReviewListWithLoadMore initialData={data} username={username} />;
-}
-
-// ---------------------------------------------------------------------------
-// 「もっと見る」（ページネーション）を管理するコンポーネント
-//
-// - useTransition で連打防止（isPending は即座に true になるため、useState より安全）
-// - Server Action のエラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
-// - total はサーバーの最新値で更新し、hasMore の判定が正確になるようにする
-// ---------------------------------------------------------------------------
-
-const PAGE_SIZE = 10;
-
-function ListeningHistoryWithLoadMore({
-  initialData,
-  username,
-}: {
-  initialData: ListeningRecordListResult;
-  username: string;
-}) {
-  const [records, setRecords] = useState(initialData.records ?? []);
-  const [total, setTotal] = useState(initialData.total);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const hasMore = records.length < total;
-
-  const handleLoadMore = () => {
-    startTransition(async () => {
-      try {
-        setError(null);
-        const data = await loadMoreListeningRecords(username, records.length, PAGE_SIZE);
-        setRecords((prev) => [...prev, ...(data.records ?? [])]);
-        setTotal(data.total);
-      } catch (err) {
-        setError(getUserFriendlyErrorMessage(err));
-      }
-    });
-  };
-
-  return (
-    <>
-      <UserListeningHistorySection
-        records={records}
-        total={total}
-        isPending={isPending}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-      />
-      {error && <ErrorMessage message={error} />}
-    </>
-  );
-}
-
-function ReviewListWithLoadMore({
-  initialData,
-  username,
-}: {
-  initialData: UserReviewListResult;
-  username: string;
-}) {
-  const [reviews, setReviews] = useState(initialData.reviews ?? []);
-  const [total, setTotal] = useState(initialData.total);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const hasMore = reviews.length < total;
-
-  const handleLoadMore = () => {
-    startTransition(async () => {
-      try {
-        setError(null);
-        const data = await loadMoreReviews(username, reviews.length, PAGE_SIZE);
-        setReviews((prev) => [...prev, ...(data.reviews ?? [])]);
-        setTotal(data.total);
-      } catch (err) {
-        setError(getUserFriendlyErrorMessage(err));
-      }
-    });
-  };
-
-  return (
-    <>
-      <UserReviewListSection
-        reviews={reviews}
-        total={total}
-        isPending={isPending}
-        hasMore={hasMore}
-        onLoadMore={handleLoadMore}
-      />
-      {error && <ErrorMessage message={error} />}
-    </>
   );
 }
