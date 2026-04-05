@@ -2,6 +2,7 @@
 
 import { createReviewRequestSchema } from "@/lib/schemas/review";
 import { serverPost, serverPut } from "@/lib/api/server";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { Review } from "@/types/review";
 
 export interface ReviewFormState {
@@ -38,7 +39,7 @@ export async function createReviewAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "レビューの投稿に失敗しました",
+      error: getUserFriendlyErrorMessage(err, "レビューの投稿に失敗しました"),
     };
   }
 }
@@ -67,7 +68,7 @@ export async function updateReviewAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "レビューの更新に失敗しました",
+      error: getUserFriendlyErrorMessage(err, "レビューの更新に失敗しました"),
     };
   }
 }

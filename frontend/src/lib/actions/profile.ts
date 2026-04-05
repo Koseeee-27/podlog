@@ -2,6 +2,7 @@
 
 import { createProfileRequestSchema } from "@/lib/schemas/user";
 import { serverPost } from "@/lib/api/server";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { User } from "@/types/user";
 
 export interface ProfileFormState {
@@ -44,7 +45,7 @@ export async function createProfileAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "プロフィールの作成に失敗しました",
+      error: getUserFriendlyErrorMessage(err, "プロフィールの作成に失敗しました"),
     };
   }
 }

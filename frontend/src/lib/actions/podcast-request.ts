@@ -2,6 +2,7 @@
 
 import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
 import { serverPost } from "@/lib/api/server";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { PodcastRequestResult } from "@/types/podcast-request";
 
 export interface PodcastRequestFormState {
@@ -44,7 +45,7 @@ export async function submitPodcastRequestAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : "送信に失敗しました",
+      error: getUserFriendlyErrorMessage(err, "送信に失敗しました"),
     };
   }
 }

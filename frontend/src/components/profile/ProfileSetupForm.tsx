@@ -17,6 +17,7 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
   const [completeError, setCompleteError] = useState("");
 
   async function wrappedAction(prevState: ProfileFormState, formData: FormData) {
+    setCompleteError("");
     const result = await createProfileAction(prevState, formData);
     if (result.success) {
       try {
