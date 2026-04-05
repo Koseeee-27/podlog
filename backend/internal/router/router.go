@@ -28,9 +28,13 @@ type Handlers struct {
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
 // adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
 func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) {
+	// タイムアウトが異なるため、同じプレフィックスで2つのグループを作成する。
+	// context.WithTimeout は親コンテキストのデッドラインを超えられないため、
+	// 外部通信を含むエンドポイントは別グループに分離する必要がある。
 	v1 := e.Group("/api/v1", mw.Timeout(mw.DefaultTimeout))
+	v1Ext := e.Group("/api/v1", mw.Timeout(mw.ExternalTimeout))
 
-	// ── 認証不要のルート ──
+	// ── 認証不要のルート（デフォルトタイムアウト: 30秒） ──
 	v1.GET("/health", h.Health.Check)
 
 	// Users (公開)
@@ -43,8 +47,6 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	v1.GET("/genres", h.Genre.ListGenres)
 
 	// Podcasts (公開)
-	// 検索は iTunes API への外部通信を含むためタイムアウトを長めに設定
-	v1.GET("/podcasts/search", h.Podcast.Search, mw.Timeout(mw.ExternalTimeout))
 	v1.GET("/podcasts/popular", h.Podcast.GetPopular)
 	v1.GET("/podcasts/:id", h.Podcast.GetByID)
 	v1.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
@@ -59,7 +61,11 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	// Timeline (公開)
 	v1.GET("/timeline", h.Review.GetTimeline)
 
-	// ── 認証が必要なルート ──
+	// ── 認証不要 + 外部通信を含むルート（タイムアウト: 60秒） ──
+	// iTunes API への検索リクエストを含む
+	v1Ext.GET("/podcasts/search", h.Podcast.Search)
+
+	// ── 認証が必要なルート（デフォルトタイムアウト: 30秒） ──
 	auth := v1.Group("", mw.JWTAuth(supabaseURL))
 
 	// Users (認証必要)
@@ -70,14 +76,8 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	// 画像最大 2MB + multipart ヘッダー分の余裕を持たせて 3MB に制限
 	auth.POST("/users/me/avatar", h.User.UploadAvatar, middleware.BodyLimit("3M"))
 
-	// Podcasts (認証必要)
-	// OGP 取得のため外部通信を含む
-	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL, mw.Timeout(mw.ExternalTimeout))
-
 	// Episodes (認証必要)
 	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
-	// RSS フィード取得のため外部通信を含む
-	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed, mw.Timeout(mw.ExternalTimeout))
 
 	// Episodes (認証必要 - ユーザー固有)
 	auth.GET("/users/me/recent-episodes", h.Episode.GetRecentEpisodes)
@@ -100,6 +100,13 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 
 	// Podcast Requests (認証必要)
 	auth.POST("/podcasts/request", h.PodcastRequest.Create)
+
+	// ── 認証が必要 + 外部通信を含むルート（タイムアウト: 60秒） ──
+	authExt := v1Ext.Group("", mw.JWTAuth(supabaseURL))
+	// OGP 取得のため外部通信を含む
+	authExt.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
+	// RSS フィード取得のため外部通信を含む
+	authExt.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed)
 
 	// ── 管理用ルート（認証 + 管理者権限が必要） ──
 	// AdminAuth ミドルウェアで、認証済みユーザーが管理者リストに含まれるかチェックする。

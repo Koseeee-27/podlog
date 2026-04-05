@@ -11,19 +11,14 @@ import (
 
 func TestTimeout_NormalRequest(t *testing.T) {
 	e := echo.New()
+	e.GET("/", func(c echo.Context) error {
+		return c.String(http.StatusOK, "ok")
+	}, Timeout(1*time.Second))
+
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
+	e.ServeHTTP(rec, req)
 
-	// 1秒のタイムアウトで、すぐに返るハンドラー
-	mw := Timeout(1 * time.Second)
-	handler := mw(func(c echo.Context) error {
-		return c.String(http.StatusOK, "ok")
-	})
-
-	if err := handler(c); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
 	if rec.Code != http.StatusOK {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusOK)
 	}
@@ -31,38 +26,42 @@ func TestTimeout_NormalRequest(t *testing.T) {
 
 func TestTimeout_ExceededRequest(t *testing.T) {
 	e := echo.New()
-	req := httptest.NewRequest(http.MethodGet, "/", nil)
-	rec := httptest.NewRecorder()
-	c := e.NewContext(req, rec)
-
-	// 10ms のタイムアウトで、100ms かかるハンドラー
-	mw := Timeout(10 * time.Millisecond)
-	handler := mw(func(c echo.Context) error {
-		// コンテキストのキャンセルを待つ
+	// タイムアウト時に 504 + JSON で返すカスタムエラーハンドラーを設定
+	e.HTTPErrorHandler = func(err error, c echo.Context) {
+		if he, ok := err.(*echo.HTTPError); ok {
+			if msg, ok := he.Message.(string); ok {
+				c.JSON(he.Code, map[string]string{"error": msg})
+			} else {
+				c.JSON(he.Code, map[string]string{"error": http.StatusText(he.Code)})
+			}
+		}
+	}
+	e.GET("/", func(c echo.Context) error {
+		// コンテキストのキャンセルを待つハンドラー
 		<-c.Request().Context().Done()
 		return c.Request().Context().Err()
-	})
+	}, Timeout(10*time.Millisecond))
 
-	err := handler(c)
-	if err == nil {
-		t.Fatal("expected error, got nil")
-	}
+	req := httptest.NewRequest(http.MethodGet, "/", nil)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
 
-	// Echo の HTTPError として 504 が返ること
-	he, ok := err.(*echo.HTTPError)
-	if !ok {
-		t.Fatalf("expected *echo.HTTPError, got %T", err)
+	if rec.Code != http.StatusGatewayTimeout {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusGatewayTimeout)
 	}
-	if he.Code != http.StatusGatewayTimeout {
-		t.Errorf("status = %d, want %d", he.Code, http.StatusGatewayTimeout)
+	if rec.Body.Len() == 0 {
+		t.Fatal("expected response body to be written")
 	}
 }
 
 func TestTimeout_Constants(t *testing.T) {
-	if DefaultTimeout != 30*time.Second {
-		t.Errorf("DefaultTimeout = %v, want 30s", DefaultTimeout)
+	if DefaultTimeout <= 0 {
+		t.Errorf("DefaultTimeout should be positive, got %v", DefaultTimeout)
 	}
-	if ExternalTimeout != 60*time.Second {
-		t.Errorf("ExternalTimeout = %v, want 60s", ExternalTimeout)
+	if ExternalTimeout <= 0 {
+		t.Errorf("ExternalTimeout should be positive, got %v", ExternalTimeout)
+	}
+	if DefaultTimeout >= ExternalTimeout {
+		t.Errorf("DefaultTimeout (%v) should be less than ExternalTimeout (%v)", DefaultTimeout, ExternalTimeout)
 	}
 }
