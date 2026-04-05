@@ -1,9 +1,12 @@
 package middleware
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
@@ -31,10 +34,30 @@ func TestClassifyError(t *testing.T) {
 			wantMsg:  "Unauthorized",
 		},
 		{
+			name:     "echo.HTTPError の 5xx は本番で詳細を隠す",
+			err:      echo.NewHTTPError(http.StatusInternalServerError, "db connection pool exhausted"),
+			isDev:    false,
+			wantCode: http.StatusInternalServerError,
+			wantMsg:  "Internal Server Error",
+		},
+		{
+			name:     "echo.HTTPError の 5xx は開発環境で詳細を返す",
+			err:      echo.NewHTTPError(http.StatusInternalServerError, "db connection pool exhausted"),
+			isDev:    true,
+			wantCode: http.StatusInternalServerError,
+			wantMsg:  "db connection pool exhausted",
+		},
+		{
 			name:     "NotFoundError は 404 を返す",
 			err:      &usecase.NotFoundError{Resource: "podcast"},
 			wantCode: http.StatusNotFound,
 			wantMsg:  "podcast not found",
+		},
+		{
+			name:     "ラップされた NotFoundError も 404 を返す",
+			err:      fmt.Errorf("usecase: %w", &usecase.NotFoundError{Resource: "episode"}),
+			wantCode: http.StatusNotFound,
+			wantMsg:  "episode not found",
 		},
 		{
 			name:     "ValidationError は 400 を返す",
@@ -98,9 +121,30 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
 		}
 
-		body := rec.Body.String()
-		if want := `"error":"episode not found"`; !contains(body, want) {
-			t.Errorf("body = %q, want to contain %q", body, want)
+		var body map[string]string
+		if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+			t.Fatalf("failed to parse response body: %v", err)
+		}
+		if body["error"] != "episode not found" {
+			t.Errorf("error = %q, want %q", body["error"], "episode not found")
+		}
+	})
+
+	t.Run("HEAD リクエストではボディを返さない", func(t *testing.T) {
+		e := echo.New()
+		handler := NewHTTPErrorHandler(false)
+
+		req := httptest.NewRequest(http.MethodHead, "/", nil)
+		rec := httptest.NewRecorder()
+		c := e.NewContext(req, rec)
+
+		handler(&usecase.NotFoundError{Resource: "podcast"}, c)
+
+		if rec.Code != http.StatusNotFound {
+			t.Errorf("status = %d, want %d", rec.Code, http.StatusNotFound)
+		}
+		if rec.Body.Len() != 0 {
+			t.Errorf("body should be empty for HEAD, got %q", rec.Body.String())
 		}
 	})
 
@@ -114,6 +158,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 
 		// レスポンスを先にコミット
 		c.String(http.StatusOK, "already sent")
+		originalBody := rec.Body.String()
 
 		handler(errors.New("should be ignored"), c)
 
@@ -121,18 +166,9 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 		if rec.Code != http.StatusOK {
 			t.Errorf("status = %d, want %d (should not change)", rec.Code, http.StatusOK)
 		}
-	})
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > 0 && containsSubstr(s, substr))
-}
-
-func containsSubstr(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
+		// ボディが変わっていないこと
+		if !strings.Contains(rec.Body.String(), originalBody) {
+			t.Errorf("body should not change after committed response")
 		}
-	}
-	return false
+	})
 }

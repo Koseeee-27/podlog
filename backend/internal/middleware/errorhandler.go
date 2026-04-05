@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 )
@@ -30,8 +31,16 @@ func NewHTTPErrorHandler(isDev bool) func(err error, c echo.Context) {
 			log.Printf("HTTP %d: %v", code, err)
 		}
 
-		// Echo の仕様に合わせて JSON レスポンスを返す
-		if err := c.JSON(code, map[string]string{"error": message}); err != nil {
+		// HEAD リクエストではボディを返さない（HTTP 仕様）
+		if c.Request().Method == http.MethodHead {
+			if err := c.NoContent(code); err != nil {
+				log.Printf("failed to send error response: %v", err)
+			}
+			return
+		}
+
+		// 共通ヘルパーで統一フォーマットのエラーレスポンスを返す
+		if err := response.Error(c, code, message); err != nil {
 			log.Printf("failed to send error response: %v", err)
 		}
 	}
@@ -43,8 +52,12 @@ func classifyError(err error, isDev bool) (int, string) {
 	var echoErr *echo.HTTPError
 	if errors.As(err, &echoErr) {
 		msg := http.StatusText(echoErr.Code)
-		if m, ok := echoErr.Message.(string); ok {
+		if m, ok := echoErr.Message.(string); ok && m != "" {
 			msg = m
+		}
+		// 5xx は本番では詳細を露出しない
+		if echoErr.Code >= 500 && !isDev {
+			return echoErr.Code, http.StatusText(echoErr.Code)
 		}
 		return echoErr.Code, msg
 	}
