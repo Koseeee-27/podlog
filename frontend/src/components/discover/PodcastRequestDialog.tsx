@@ -4,6 +4,7 @@ import { useRef, useEffect, useActionState, useCallback } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
+import type { PodcastRequestFormState } from "@/lib/actions/podcast-request";
 import {
   submitPodcastRequestAction,
   podcastRequestFormInitialState,
@@ -25,26 +26,28 @@ export default function PodcastRequestDialog({
   const dialogRef = useRef<HTMLDialogElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
-  const [state, formAction, isPending] = useActionState(
-    submitPodcastRequestAction,
-    podcastRequestFormInitialState,
-  );
-
-  const prevSuccessRef = useRef(false);
 
   const resetAndClose = useCallback(() => {
     formRef.current?.reset();
     onClose();
   }, [onClose]);
 
-  // 送信成功時にダイアログを閉じてトースト表示
-  useEffect(() => {
-    if (state.success && !prevSuccessRef.current) {
-      showToast("リクエストを送信しました");
-      resetAndClose();
-    }
-    prevSuccessRef.current = state.success;
-  }, [state, showToast, resetAndClose]);
+  const wrappedAction = useCallback(
+    async (prevState: PodcastRequestFormState, formData: FormData) => {
+      const result = await submitPodcastRequestAction(prevState, formData);
+      if (result.success) {
+        showToast("リクエストを送信しました");
+        resetAndClose();
+      }
+      return result;
+    },
+    [showToast, resetAndClose],
+  );
+
+  const [state, formAction, isPending] = useActionState(
+    wrappedAction,
+    podcastRequestFormInitialState,
+  );
 
   // open の変更に応じてダイアログの開閉を制御
   useEffect(() => {

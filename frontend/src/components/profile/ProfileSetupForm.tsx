@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
+import type { ProfileFormState } from "@/lib/actions/profile";
 import { createProfileAction, profileFormInitialState } from "@/lib/actions/profile";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
@@ -13,19 +14,28 @@ interface ProfileSetupFormProps {
 
 export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) {
   const router = useRouter();
-  const [state, formAction, isPending] = useActionState(
-    createProfileAction,
-    profileFormInitialState,
-  );
   const [completeError, setCompleteError] = useState("");
 
-  useEffect(() => {
-    if (state.success) {
-      onComplete()
-        .then(() => router.push("/"))
-        .catch(() => setCompleteError("プロフィールの反映に失敗しました"));
-    }
-  }, [state.success, onComplete, router]);
+  const wrappedAction = useCallback(
+    async (prevState: ProfileFormState, formData: FormData) => {
+      const result = await createProfileAction(prevState, formData);
+      if (result.success) {
+        try {
+          await onComplete();
+          router.push("/");
+        } catch {
+          setCompleteError("プロフィールの反映に失敗しました");
+        }
+      }
+      return result;
+    },
+    [onComplete, router],
+  );
+
+  const [state, formAction, isPending] = useActionState(
+    wrappedAction,
+    profileFormInitialState,
+  );
 
   return (
     <form action={formAction} className="space-y-4">

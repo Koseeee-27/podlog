@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useEffect, useRef } from "react";
+import { useActionState, useState, useCallback } from "react";
 import type { ReviewFormState } from "@/lib/actions/review";
 import { reviewFormInitialState } from "@/lib/actions/review";
 import type { Review } from "@/types/review";
@@ -23,21 +23,24 @@ export default function ReviewForm({
   submitLabel = "投稿する",
   onSuccess,
 }: ReviewFormProps) {
+  const wrappedAction = useCallback(
+    async (prevState: ReviewFormState, formData: FormData) => {
+      const result = await action(prevState, formData);
+      if (result.success && result.review) {
+        onSuccess?.(result.review);
+      }
+      return result;
+    },
+    [action, onSuccess],
+  );
+
   const [state, formAction, isPending] = useActionState(
-    action,
+    wrappedAction,
     reviewFormInitialState,
   );
   const [rating, setRating] = useState(initialRating);
   const [hoveredRating, setHoveredRating] = useState(0);
   const [commentLength, setCommentLength] = useState(initialComment.length);
-  const prevSuccessRef = useRef(false);
-
-  useEffect(() => {
-    if (state.success && !prevSuccessRef.current && state.review) {
-      onSuccess?.(state.review);
-    }
-    prevSuccessRef.current = state.success;
-  }, [state, onSuccess]);
 
   return (
     <form action={formAction} className="space-y-4">
