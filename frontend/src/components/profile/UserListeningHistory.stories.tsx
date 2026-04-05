@@ -69,14 +69,3 @@ export const InitialLoading: Story = {
     onLoadMore: () => {},
   },
 };
-
-export const Error: Story = {
-  args: {
-    records: [],
-    total: 0,
-    loading: false,
-    error: "聴取履歴の取得に失敗しました",
-    hasMore: false,
-    onLoadMore: () => {},
-  },
-};

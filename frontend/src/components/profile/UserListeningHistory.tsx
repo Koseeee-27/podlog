@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { ListeningRecordItem } from "@/types/listening-record";
 import { formatDate } from "@/lib/utils";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
 
@@ -9,7 +8,6 @@ interface UserListeningHistoryProps {
   records: ListeningRecordItem[];
   total: number;
   loading: boolean;
-  error?: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -18,7 +16,6 @@ export default function UserListeningHistory({
   records,
   total,
   loading,
-  error,
   hasMore,
   onLoadMore,
 }: UserListeningHistoryProps) {
@@ -29,9 +26,7 @@ export default function UserListeningHistory({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {loading && records.length === 0 ? (
-        <p className="text-sm text-stone-500">読み込み中...</p>
-      ) : records.length === 0 && !error ? (
+      {records.length === 0 ? (
         <EmptyState
           icon={<MusicalNoteIcon className="h-12 w-12" />}
           message="まだ聴取記録がありません"
@@ -62,8 +57,6 @@ export default function UserListeningHistory({
           ))}
         </div>
       )}
-
-      {error && <ErrorMessage message={error} />}
 
       {hasMore && records.length > 0 && (
         <button

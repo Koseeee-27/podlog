@@ -74,14 +74,3 @@ export const InitialLoading: Story = {
     onLoadMore: () => {},
   },
 };
-
-export const Error: Story = {
-  args: {
-    reviews: [],
-    total: 0,
-    loading: false,
-    error: "レビューの取得に失敗しました",
-    hasMore: false,
-    onLoadMore: () => {},
-  },
-};

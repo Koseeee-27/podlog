@@ -1,35 +1,14 @@
 import Link from "next/link";
 import Image from "next/image";
 import type { FavoritePodcastItem } from "@/types/user";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import { HeartIcon } from "@heroicons/react/24/outline";
 
 interface UserFavoritePodcastsProps {
   podcasts: FavoritePodcastItem[];
-  loading: boolean;
-  error?: string | null;
 }
 
-export default function UserFavoritePodcasts({ podcasts, loading, error }: UserFavoritePodcastsProps) {
-  if (loading) {
-    return (
-      <section>
-        <h2 className="text-lg font-semibold text-stone-900 mb-3">好きな番組</h2>
-        <p className="text-sm text-stone-500">読み込み中...</p>
-      </section>
-    );
-  }
-
-  if (error) {
-    return (
-      <section>
-        <h2 className="text-lg font-semibold text-stone-900 mb-3">好きな番組</h2>
-        <ErrorMessage message={error} />
-      </section>
-    );
-  }
-
+export default function UserFavoritePodcasts({ podcasts }: UserFavoritePodcastsProps) {
   if (podcasts.length === 0) {
     return (
       <section>

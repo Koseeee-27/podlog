@@ -1,7 +1,6 @@
 import Link from "next/link";
 import type { UserReviewItem } from "@/types/review";
 import { formatDate } from "@/lib/utils";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import EmptyState from "@/components/ui/EmptyState";
 import { BookOpenIcon } from "@heroicons/react/24/outline";
 
@@ -9,7 +8,6 @@ interface UserReviewListProps {
   reviews: UserReviewItem[];
   total: number;
   loading: boolean;
-  error?: string | null;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -18,7 +16,6 @@ export default function UserReviewList({
   reviews,
   total,
   loading,
-  error,
   hasMore,
   onLoadMore,
 }: UserReviewListProps) {
@@ -29,9 +26,7 @@ export default function UserReviewList({
         {total > 0 && <span className="text-sm text-stone-500">{total}件</span>}
       </div>
 
-      {loading && reviews.length === 0 ? (
-        <p className="text-sm text-stone-500">読み込み中...</p>
-      ) : reviews.length === 0 && !error ? (
+      {reviews.length === 0 ? (
         <EmptyState
           icon={<BookOpenIcon className="h-12 w-12" />}
           message="まだレビューがありません"
@@ -73,8 +68,6 @@ export default function UserReviewList({
           ))}
         </div>
       )}
-
-      {error && <ErrorMessage message={error} />}
 
       {hasMore && reviews.length > 0 && (
         <button
