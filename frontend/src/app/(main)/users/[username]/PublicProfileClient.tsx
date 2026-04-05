@@ -1,49 +1,39 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
-import { useUserListeningRecords, useUserReviews, useUserFavoritePodcasts } from "@/hooks/useUserPage";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { formatDate } from "@/lib/utils";
-import UserFavoritePodcasts from "@/components/profile/UserFavoritePodcasts";
-import UserListeningHistory from "@/components/profile/UserListeningHistory";
-import UserReviewList from "@/components/profile/UserReviewList";
 import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import AdminBadge from "@/components/ui/AdminBadge";
-import type { UserPublicProfile } from "@/types/user";
+import type { UserPublicProfile, FavoritePodcastListResult } from "@/types/user";
+import type { ListeningRecordListResult } from "@/types/listening-record";
+import type { UserReviewListResult } from "@/types/review";
+import { SectionSkeleton, SectionError } from "./SectionFallbacks";
+import FavoritePodcastsLoader from "./FavoritePodcastsLoader";
+import ListeningHistoryLoader from "./ListeningHistoryLoader";
+import ReviewListLoader from "./ReviewListLoader";
 
 interface PublicProfileClientProps {
   username: string;
   initialProfile: UserPublicProfile;
+  favoritesPromise: Promise<FavoritePodcastListResult>;
+  recordsPromise: Promise<ListeningRecordListResult>;
+  reviewsPromise: Promise<UserReviewListResult>;
 }
 
-export default function PublicProfileClient({ username, initialProfile }: PublicProfileClientProps) {
+export default function PublicProfileClient({
+  username,
+  initialProfile,
+  favoritesPromise,
+  recordsPromise,
+  reviewsPromise,
+}: PublicProfileClientProps) {
   const auth = useAuth();
   const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
-
-  // プロフィールはサーバーから取得済みなので常に ready
-  const {
-    podcasts: favoritePodcasts,
-    loading: favLoading,
-    error: favError,
-  } = useUserFavoritePodcasts(username, true);
-  const {
-    records,
-    total: recordsTotal,
-    loading: recordsLoading,
-    error: recordsError,
-    hasMore: recordsHasMore,
-    loadMore: loadMoreRecords,
-  } = useUserListeningRecords(username, true);
-  const {
-    reviews,
-    total: reviewsTotal,
-    loading: reviewsLoading,
-    error: reviewsError,
-    hasMore: reviewsHasMore,
-    loadMore: loadMoreReviews,
-  } = useUserReviews(username, true);
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -79,25 +69,29 @@ export default function PublicProfileClient({ username, initialProfile }: Public
         </div>
       </Card>
 
-      <UserFavoritePodcasts podcasts={favoritePodcasts} loading={favLoading} error={favError} />
+      {/*
+        各セクションを ErrorBoundary + Suspense でラップ。
+        - Suspense: データ読み込み中に「読み込み中...」を表示
+        - ErrorBoundary: API エラー時にセクション単位でエラー表示（ページ全体はクラッシュしない）
+        - key={username}: ユーザー切り替え時に state をリセットするため再マウントさせる
+      */}
+      <ErrorBoundary key={`fav-${username}`} fallback={<SectionError title="好きな番組" />}>
+        <Suspense fallback={<SectionSkeleton title="好きな番組" />}>
+          <FavoritePodcastsLoader promise={favoritesPromise} />
+        </Suspense>
+      </ErrorBoundary>
 
-      <UserListeningHistory
-        records={records}
-        total={recordsTotal}
-        loading={recordsLoading}
-        error={recordsError}
-        hasMore={recordsHasMore}
-        onLoadMore={loadMoreRecords}
-      />
+      <ErrorBoundary key={`records-${username}`} fallback={<SectionError title="聴取履歴" />}>
+        <Suspense fallback={<SectionSkeleton title="聴取履歴" />}>
+          <ListeningHistoryLoader promise={recordsPromise} username={username} />
+        </Suspense>
+      </ErrorBoundary>
 
-      <UserReviewList
-        reviews={reviews}
-        total={reviewsTotal}
-        loading={reviewsLoading}
-        error={reviewsError}
-        hasMore={reviewsHasMore}
-        onLoadMore={loadMoreReviews}
-      />
+      <ErrorBoundary key={`reviews-${username}`} fallback={<SectionError title="レビュー" />}>
+        <Suspense fallback={<SectionSkeleton title="レビュー" />}>
+          <ReviewListLoader promise={reviewsPromise} username={username} />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

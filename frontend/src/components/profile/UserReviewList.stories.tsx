@@ -30,7 +30,7 @@ export const WithReviews: Story = {
       },
     ],
     total: 2,
-    loading: false,
+    isPending: false,
     hasMore: false,
     onLoadMore: () => {},
   },
@@ -40,7 +40,7 @@ export const Empty: Story = {
   args: {
     reviews: [],
     total: 0,
-    loading: false,
+    isPending: false,
     hasMore: false,
     onLoadMore: () => {},
   },
@@ -59,29 +59,27 @@ export const HasMore: Story = {
       },
     ],
     total: 15,
-    loading: false,
+    isPending: false,
     hasMore: true,
     onLoadMore: () => {},
   },
 };
 
-export const InitialLoading: Story = {
+export const LoadingMore: Story = {
   args: {
-    reviews: [],
-    total: 0,
-    loading: true,
-    hasMore: false,
-    onLoadMore: () => {},
-  },
-};
-
-export const Error: Story = {
-  args: {
-    reviews: [],
-    total: 0,
-    loading: false,
-    error: "レビューの取得に失敗しました",
-    hasMore: false,
+    reviews: [
+      {
+        id: "r1",
+        episode: { id: "e1", title: "第100回 特別編", podcast_id: "p1" },
+        podcast: { id: "p1", title: "オールナイトニッポン" },
+        rating: 5,
+        comment: "最高のエピソードでした！",
+        created_at: "2026-03-10T12:00:00Z",
+      },
+    ],
+    total: 15,
+    isPending: true,
+    hasMore: true,
     onLoadMore: () => {},
   },
 };
