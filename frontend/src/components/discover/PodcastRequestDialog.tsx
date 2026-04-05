@@ -30,6 +30,8 @@ export default function PodcastRequestDialog({
     podcastRequestFormInitialState,
   );
 
+  const prevSuccessRef = useRef(false);
+
   const resetAndClose = useCallback(() => {
     formRef.current?.reset();
     onClose();
@@ -37,10 +39,11 @@ export default function PodcastRequestDialog({
 
   // 送信成功時にダイアログを閉じてトースト表示
   useEffect(() => {
-    if (state.success) {
+    if (state.success && !prevSuccessRef.current) {
       showToast("リクエストを送信しました");
       resetAndClose();
     }
+    prevSuccessRef.current = state.success;
   }, [state, showToast, resetAndClose]);
 
   // open の変更に応じてダイアログの開閉を制御

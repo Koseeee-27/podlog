@@ -50,7 +50,7 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
     updateMyReview(toMyReviewResult(review));
     setEditing(false);
     refresh();
-    showToast("レ��ューを更新しました");
+    showToast("レビューを更新しました");
   }, [updateMyReview, refresh, showToast]);
 
   const handleDelete = async () => {

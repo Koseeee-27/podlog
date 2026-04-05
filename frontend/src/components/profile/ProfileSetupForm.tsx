@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProfileAction, profileFormInitialState } from "@/lib/actions/profile";
 import Button from "@/components/ui/Button";
@@ -17,16 +17,21 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
     createProfileAction,
     profileFormInitialState,
   );
+  const [completeError, setCompleteError] = useState("");
 
   useEffect(() => {
     if (state.success) {
-      onComplete().then(() => router.push("/"));
+      onComplete()
+        .then(() => router.push("/"))
+        .catch(() => setCompleteError("プロフィールの反映に失敗しました"));
     }
   }, [state.success, onComplete, router]);
 
   return (
     <form action={formAction} className="space-y-4">
-      {state.error && <ErrorMessage message={state.error} />}
+      {(state.error || completeError) && (
+        <ErrorMessage message={state.error || completeError} />
+      )}
       <Input
         id="username"
         name="username"
