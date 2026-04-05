@@ -1,3 +1,5 @@
+"use client";
+
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
 /**
