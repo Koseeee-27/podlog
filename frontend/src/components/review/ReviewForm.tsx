@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useCallback } from "react";
+import { useActionState, useState } from "react";
 import type { ReviewFormState } from "@/lib/actions/review";
 import { reviewFormInitialState } from "@/lib/actions/review";
 import type { Review } from "@/types/review";
@@ -23,16 +23,13 @@ export default function ReviewForm({
   submitLabel = "投稿する",
   onSuccess,
 }: ReviewFormProps) {
-  const wrappedAction = useCallback(
-    async (prevState: ReviewFormState, formData: FormData) => {
-      const result = await action(prevState, formData);
-      if (result.success && result.review) {
-        onSuccess?.(result.review);
-      }
-      return result;
-    },
-    [action, onSuccess],
-  );
+  async function wrappedAction(prevState: ReviewFormState, formData: FormData) {
+    const result = await action(prevState, formData);
+    if (result.success && result.review) {
+      onSuccess?.(result.review);
+    }
+    return result;
+  }
 
   const [state, formAction, isPending] = useActionState(
     wrappedAction,

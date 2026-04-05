@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useActionState, useCallback } from "react";
+import { useActionState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
@@ -23,71 +23,45 @@ export default function PodcastRequestDialog({
   open,
   onClose,
 }: PodcastRequestDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
+  if (!open) return null;
+  return <PodcastRequestDialogContent onClose={onClose} />;
+}
+
+function PodcastRequestDialogContent({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
   const { showToast } = useToast();
 
-  const resetAndClose = useCallback(() => {
-    formRef.current?.reset();
-    onClose();
-  }, [onClose]);
-
-  const wrappedAction = useCallback(
-    async (prevState: PodcastRequestFormState, formData: FormData) => {
-      const result = await submitPodcastRequestAction(prevState, formData);
-      if (result.success) {
-        showToast("リクエストを送信しました");
-        resetAndClose();
-      }
-      return result;
-    },
-    [showToast, resetAndClose],
-  );
+  async function wrappedAction(
+    prevState: PodcastRequestFormState,
+    formData: FormData,
+  ) {
+    const result = await submitPodcastRequestAction(prevState, formData);
+    if (result.success) {
+      showToast("リクエストを送信しました");
+      onClose();
+    }
+    return result;
+  }
 
   const [state, formAction, isPending] = useActionState(
     wrappedAction,
     podcastRequestFormInitialState,
   );
 
-  // open の変更に応じてダイアログの開閉を制御
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open && !dialog.open) {
-      dialog.showModal();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
-
-  // ダイアログの close イベント（ESC キーや backdrop クリック）をハンドリング
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => {
-      formRef.current?.reset();
-      onClose();
-    };
-
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
-  }, [onClose]);
-
-  // backdrop クリックでダイアログを閉じる
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    if (e.target === dialog) {
-      dialog.close();
-    }
-  };
-
   return (
     <dialog
-      ref={dialogRef}
-      onClick={handleBackdropClick}
+      ref={(dialog) => {
+        dialog?.showModal();
+      }}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          e.currentTarget.close();
+        }
+      }}
       className="backdrop:bg-black/50 bg-transparent p-0 m-0 max-w-none w-full h-full max-h-none open:flex items-center justify-center"
     >
       <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-lg">
@@ -102,7 +76,7 @@ export default function PodcastRequestDialog({
           <p className="text-sm text-red-600 mb-4">{state.error}</p>
         )}
 
-        <form ref={formRef} action={formAction}>
+        <form action={formAction}>
           <div className="space-y-4">
             <Input
               id="podcast-request-title"
@@ -126,7 +100,7 @@ export default function PodcastRequestDialog({
             <Button
               type="button"
               variant="secondary"
-              onClick={() => dialogRef.current?.close()}
+              onClick={onClose}
               disabled={isPending}
             >
               キャンセル

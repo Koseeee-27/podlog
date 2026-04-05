@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useCallback, useState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileFormState } from "@/lib/actions/profile";
 import { createProfileAction, profileFormInitialState } from "@/lib/actions/profile";
@@ -16,21 +16,18 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
   const router = useRouter();
   const [completeError, setCompleteError] = useState("");
 
-  const wrappedAction = useCallback(
-    async (prevState: ProfileFormState, formData: FormData) => {
-      const result = await createProfileAction(prevState, formData);
-      if (result.success) {
-        try {
-          await onComplete();
-          router.push("/");
-        } catch {
-          setCompleteError("プロフィールの反映に失敗しました");
-        }
+  async function wrappedAction(prevState: ProfileFormState, formData: FormData) {
+    const result = await createProfileAction(prevState, formData);
+    if (result.success) {
+      try {
+        await onComplete();
+        router.push("/");
+      } catch {
+        setCompleteError("プロフィールの反映に失敗しました");
       }
-      return result;
-    },
-    [onComplete, router],
-  );
+    }
+    return result;
+  }
 
   const [state, formAction, isPending] = useActionState(
     wrappedAction,
