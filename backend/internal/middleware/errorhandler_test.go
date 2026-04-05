@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"testing"
 
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
@@ -28,7 +27,7 @@ func TestClassifyError(t *testing.T) {
 			wantMsg:  "bad request",
 		},
 		{
-			name:     "echo.HTTPError でメッセージが文字列でない場合はステータステキスト",
+			name:     "echo.HTTPError でメッセージ省略時はステータステキスト",
 			err:      echo.NewHTTPError(http.StatusUnauthorized),
 			wantCode: http.StatusUnauthorized,
 			wantMsg:  "Unauthorized",
@@ -167,7 +166,7 @@ func TestNewHTTPErrorHandler(t *testing.T) {
 			t.Errorf("status = %d, want %d (should not change)", rec.Code, http.StatusOK)
 		}
 		// ボディが変わっていないこと
-		if !strings.Contains(rec.Body.String(), originalBody) {
+		if rec.Body.String() != originalBody {
 			t.Errorf("body should not change after committed response")
 		}
 	})
