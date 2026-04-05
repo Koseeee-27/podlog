@@ -62,6 +62,7 @@ export async function apiGet<T>(path: string): Promise<T> {
       if (response.body) {
         await response.body.cancel().catch(() => undefined);
       }
+      response = undefined;
       await new Promise((r) => setTimeout(r, 1000));
       continue;
     }
