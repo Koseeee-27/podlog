@@ -6,7 +6,7 @@ import type { UserPublicProfile } from "@/types/user";
 import type { FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
-import { PAGE_SIZE } from "./actions";
+import { PAGE_SIZE } from "./constants";
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;

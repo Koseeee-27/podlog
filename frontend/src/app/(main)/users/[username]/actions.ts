@@ -5,9 +5,7 @@ import { serverGet } from "@/lib/api/server";
 import { usernameSchema } from "@/lib/schemas/common";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
-
-/** 初回取得・追加取得で共通のページサイズ */
-export const PAGE_SIZE = 10;
+import { PAGE_SIZE } from "./constants";
 
 /**
  * Server Actions の入力バリデーション用スキーマ。

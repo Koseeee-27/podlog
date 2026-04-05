@@ -5,7 +5,8 @@ import UserListeningHistorySection from "@/components/profile/UserListeningHisto
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { ListeningRecordListResult } from "@/types/listening-record";
-import { loadMoreListeningRecords, PAGE_SIZE } from "./actions";
+import { loadMoreListeningRecords } from "./actions";
+import { PAGE_SIZE } from "./constants";
 
 /**
  * use() で Promise を解決し、聴取履歴セクションに渡す。
