@@ -28,7 +28,7 @@ type Handlers struct {
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
 // adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
 func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) {
-	v1 := e.Group("/api/v1")
+	v1 := e.Group("/api/v1", mw.Timeout(mw.DefaultTimeout))
 
 	// ── 認証不要のルート ──
 	v1.GET("/health", h.Health.Check)
@@ -43,7 +43,8 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	v1.GET("/genres", h.Genre.ListGenres)
 
 	// Podcasts (公開)
-	v1.GET("/podcasts/search", h.Podcast.Search)
+	// 検索は iTunes API への外部通信を含むためタイムアウトを長めに設定
+	v1.GET("/podcasts/search", h.Podcast.Search, mw.Timeout(mw.ExternalTimeout))
 	v1.GET("/podcasts/popular", h.Podcast.GetPopular)
 	v1.GET("/podcasts/:id", h.Podcast.GetByID)
 	v1.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
@@ -70,11 +71,13 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	auth.POST("/users/me/avatar", h.User.UploadAvatar, middleware.BodyLimit("3M"))
 
 	// Podcasts (認証必要)
-	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
+	// OGP 取得のため外部通信を含む
+	auth.POST("/podcasts/fetch-url", h.Podcast.FetchURL, mw.Timeout(mw.ExternalTimeout))
 
 	// Episodes (認証必要)
 	auth.POST("/podcasts/:id/episodes", h.Episode.Create)
-	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed)
+	// RSS フィード取得のため外部通信を含む
+	auth.POST("/podcasts/:id/episodes/fetch", h.Episode.FetchFromFeed, mw.Timeout(mw.ExternalTimeout))
 
 	// Episodes (認証必要 - ユーザー固有)
 	auth.GET("/users/me/recent-episodes", h.Episode.GetRecentEpisodes)
