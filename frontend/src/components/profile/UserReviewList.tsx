@@ -7,7 +7,8 @@ import { BookOpenIcon } from "@heroicons/react/24/outline";
 interface UserReviewListProps {
   reviews: UserReviewItem[];
   total: number;
-  loading: boolean;
+  /** useTransition の isPending。true の間ボタンを disabled にする */
+  isPending: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
 }
@@ -15,7 +16,7 @@ interface UserReviewListProps {
 export default function UserReviewList({
   reviews,
   total,
-  loading,
+  isPending,
   hasMore,
   onLoadMore,
 }: UserReviewListProps) {
@@ -73,10 +74,10 @@ export default function UserReviewList({
         <button
           type="button"
           onClick={onLoadMore}
-          disabled={loading}
+          disabled={isPending}
           className="mt-3 w-full rounded-lg border border-stone-300 py-2 text-sm text-stone-700 hover:bg-stone-50 disabled:opacity-50"
         >
-          {loading ? "読み込み中..." : "もっと見る"}
+          {isPending ? "読み込み中..." : "もっと見る"}
         </button>
       )}
     </section>
