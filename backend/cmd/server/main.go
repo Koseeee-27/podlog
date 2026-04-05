@@ -102,27 +102,32 @@ func main() {
 	// 3. Echo インスタンスを作成
 	e := echo.New()
 
-	// 4. 基本ミドルウェアを登録
+	// 4. カスタムエラーハンドラーを設定
+	// ハンドラーから返されたエラーを型に応じて適切な HTTP レスポンスに変換する。
+	// 開発環境では 500 エラーの詳細をレスポンスに含め、本番では隠す。
+	e.HTTPErrorHandler = mw.NewHTTPErrorHandler(cfg.Environment == "development")
+
+	// 5. 基本ミドルウェアを登録
 	e.Use(middleware.Recover())
 	e.Use(middleware.Logger())
 	e.Use(mw.CORS(cfg.CORSAllowOrigins))
 
-	// 5. Swagger UIを登録（開発環境のみ）
+	// 6. Swagger UIを登録（開発環境のみ）
 	// 本番環境では API の内部構造が外部に露出するのを防ぐため、
 	// Swagger UI のルートを登録しない。
 	if cfg.Environment == "development" {
 		e.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 
-	// 6. 外部APIクライアントを初期化
+	// 7. 外部APIクライアントを初期化
 	itunesClient := itunes.NewClient()
 	ogpScraper := ogp.NewScraper()
 	rssClient := rss.NewClient()
 
-	// 7. ストレージクライアントを初期化
+	// 8. ストレージクライアントを初期化
 	fileStorage := storage.NewSupabaseStorage(cfg.SupabaseURL, cfg.SupabaseServiceKey)
 
-	// 8. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
+	// 9. DI: リポジトリ → ユースケース → ハンドラーの順に依存を注入
 	userRepo := repository.NewUserRepository(db)
 	podcastRepo := repository.NewPodcastRepository(db)
 	episodeRepo := repository.NewEpisodeRepository(db)
@@ -160,11 +165,11 @@ func main() {
 		Admin:           handler.NewAdminHandler(podcastUsecase, episodeUsecase),
 	}
 
-	// 9. ルーティングを設定
+	// 10. ルーティングを設定
 	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
 	router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs)
 
-	// 10. サーバーを起動
+	// 11. サーバーを起動
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
 	if err := e.Start(addr); err != nil {
