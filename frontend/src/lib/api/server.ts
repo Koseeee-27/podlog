@@ -89,20 +89,30 @@ export async function serverGet<T>(
       },
     });
 
-  let response: Response;
-  try {
-    response = await doFetch();
-    if (response.status >= 500) {
-      console.warn(`[serverGet] ${path} returned ${response.status}, retrying...`);
-      await response.body?.cancel().catch(() => undefined);
-      await new Promise((r) => setTimeout(r, 1000));
+  // 最大2回（初回 + リトライ1回）に制限
+  let response: Response | undefined;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
       response = await doFetch();
+      if (response.status >= 500 && attempt === 0) {
+        console.warn(`[serverGet] ${path} returned ${response.status}, retrying...`);
+        await response.body?.cancel().catch(() => undefined);
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      return handleResponse<T>(response);
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        console.warn(`[serverGet] ${path} failed, retrying...`, err);
+        await new Promise((r) => setTimeout(r, 1000));
+      }
     }
-  } catch (err) {
-    console.warn(`[serverGet] ${path} failed, retrying...`, err);
-    await new Promise((r) => setTimeout(r, 1000));
-    response = await doFetch();
   }
 
-  return handleResponse<T>(response);
+  // リトライ後も失敗した場合
+  if (response) return handleResponse<T>(response);
+  throw lastError;
 }
