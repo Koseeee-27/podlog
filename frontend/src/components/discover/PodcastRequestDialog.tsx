@@ -1,11 +1,13 @@
 "use client";
 
-import { useRef, useEffect, useTransition, useState, useCallback } from "react";
+import { useRef, useEffect, useActionState, useCallback } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { createPodcastRequest } from "@/lib/api/podcast-requests";
 import { useToast } from "@/components/ui/Toast";
-import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
+import {
+  submitPodcastRequestAction,
+  podcastRequestFormInitialState,
+} from "@/lib/actions/podcast-request";
 
 interface PodcastRequestDialogProps {
   open: boolean;
@@ -21,21 +23,25 @@ export default function PodcastRequestDialog({
   onClose,
 }: PodcastRequestDialogProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const { showToast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [state, formAction, isPending] = useActionState(
+    submitPodcastRequestAction,
+    podcastRequestFormInitialState,
+  );
 
-  // フォームの状態
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [titleError, setTitleError] = useState("");
-  const [urlError, setUrlError] = useState("");
+  const resetAndClose = useCallback(() => {
+    formRef.current?.reset();
+    onClose();
+  }, [onClose]);
 
-  const resetForm = useCallback(() => {
-    setTitle("");
-    setUrl("");
-    setTitleError("");
-    setUrlError("");
-  }, []);
+  // 送信成功時にダイアログを閉じてトースト表示
+  useEffect(() => {
+    if (state.success) {
+      showToast("リクエストを送信しました");
+      resetAndClose();
+    }
+  }, [state, showToast, resetAndClose]);
 
   // open の変更に応じてダイアログの開閉を制御
   useEffect(() => {
@@ -55,70 +61,18 @@ export default function PodcastRequestDialog({
     if (!dialog) return;
 
     const handleClose = () => {
-      resetForm();
+      formRef.current?.reset();
       onClose();
     };
 
     dialog.addEventListener("close", handleClose);
     return () => dialog.removeEventListener("close", handleClose);
-  }, [onClose, resetForm]);
-
-  const validate = (): boolean => {
-    const result = podcastRequestFormSchema.safeParse({
-      title: title.trim(),
-      url: url.trim(),
-    });
-
-    if (result.success) {
-      setTitleError("");
-      setUrlError("");
-      return true;
-    }
-
-    // フィールドごとにエラーを振り分ける
-    let valid = true;
-    const fieldErrors = result.error.flatten().fieldErrors;
-
-    if (fieldErrors.title?.length) {
-      setTitleError(fieldErrors.title[0]);
-      valid = false;
-    } else {
-      setTitleError("");
-    }
-
-    if (fieldErrors.url?.length) {
-      setUrlError(fieldErrors.url[0]);
-      valid = false;
-    } else {
-      setUrlError("");
-    }
-
-    return valid;
-  };
-
-  const handleSubmit = () => {
-    if (!validate()) return;
-
-    startTransition(async () => {
-      try {
-        await createPodcastRequest({
-          title: title.trim(),
-          url: url.trim() || undefined,
-        });
-        showToast("リクエストを送信しました");
-        resetForm();
-        onClose();
-      } catch {
-        showToast("送信に失敗しました。もう一度お試しください", "error");
-      }
-    });
-  };
+  }, [onClose]);
 
   // backdrop クリックでダイアログを閉じる
   const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
     const dialog = dialogRef.current;
     if (!dialog) return;
-    // dialog 要素自体がクリックされた場合（= backdrop 領域）のみ閉じる
     if (e.target === dialog) {
       dialog.close();
     }
@@ -138,52 +92,49 @@ export default function PodcastRequestDialog({
           お探しの番組が見つからない場合、追加リクエストを送信できます。
         </p>
 
-        <div className="space-y-4">
-          <Input
-            id="podcast-request-title"
-            label="番組名"
-            placeholder="例: オールナイトニッポン"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (titleError) setTitleError("");
-            }}
-            error={titleError}
-            required
-          />
+        {state.error && (
+          <p className="text-sm text-red-600 mb-4">{state.error}</p>
+        )}
 
-          <Input
-            id="podcast-request-url"
-            label="配信先URL（任意）"
-            placeholder="例: https://open.spotify.com/show/..."
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              if (urlError) setUrlError("");
-            }}
-            error={urlError}
-          />
-        </div>
+        <form ref={formRef} action={formAction}>
+          <div className="space-y-4">
+            <Input
+              id="podcast-request-title"
+              name="title"
+              label="番組名"
+              placeholder="例: オールナイトニッポン"
+              required
+              error={state.fieldErrors?.title}
+            />
 
-        <div className="mt-6 flex gap-3 justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => dialogRef.current?.close()}
-            disabled={isPending}
-          >
-            キャンセル
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            loading={isPending}
-            disabled={isPending || !title.trim()}
-          >
-            リクエストを送信
-          </Button>
-        </div>
+            <Input
+              id="podcast-request-url"
+              name="url"
+              label="配信先URL（任意）"
+              placeholder="例: https://open.spotify.com/show/..."
+              error={state.fieldErrors?.url}
+            />
+          </div>
+
+          <div className="mt-6 flex gap-3 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => dialogRef.current?.close()}
+              disabled={isPending}
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isPending}
+              disabled={isPending}
+            >
+              リクエストを送信
+            </Button>
+          </div>
+        </form>
       </div>
     </dialog>
   );
