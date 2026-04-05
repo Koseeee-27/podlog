@@ -12,7 +12,7 @@ const PAGE_SIZE = 20;
  * initialData が渡された場合は初回フェッチをスキップし、そのデータを初期値として使う。
  */
 export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) {
-  const hasInitialData = initialData !== undefined;
+  const hasInitialData = initialData !== undefined && initialData.length > 0;
   const [episodes, setEpisodes] = useState<EpisodeListItem[]>(initialData ?? []);
   const [loading, setLoading] = useState(!hasInitialData);
   const [error, setError] = useState<string | null>(null);
