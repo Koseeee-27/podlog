@@ -39,22 +39,38 @@ export async function apiGet<T>(path: string): Promise<T> {
   const doFetch = () =>
     fetch(`${API_BASE_URL}${path}`, { method: "GET", headers });
 
-  let response: Response;
-  try {
-    response = await doFetch();
-    if (response.status >= 500) {
-      console.warn(`[apiGet] ${path} returned ${response.status}, retrying...`);
-      await response.body?.cancel().catch(() => undefined);
-      await new Promise((r) => setTimeout(r, 1000));
+  // 最大2回（初回 + リトライ1回）に制限。
+  // handleResponse はループ外で1回だけ呼ぶ（4xx でのリトライ防止・body 二重消費防止）
+  let response: Response | undefined;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
       response = await doFetch();
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        console.warn(`[apiGet] ${path} failed, retrying...`, err);
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      break;
     }
-  } catch (err) {
-    console.warn(`[apiGet] ${path} failed, retrying...`, err);
-    await new Promise((r) => setTimeout(r, 1000));
-    response = await doFetch();
+
+    if (response.status >= 500 && attempt === 0) {
+      console.warn(`[apiGet] ${path} returned ${response.status}, retrying...`);
+      if (response.body) {
+        await response.body.cancel().catch(() => undefined);
+      }
+      response = undefined;
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+    break;
   }
 
-  return handleResponse<T>(response);
+  if (response) return handleResponse<T>(response);
+  throw lastError;
 }
 
 /**

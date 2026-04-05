@@ -78,14 +78,47 @@ export async function serverGet<T>(
     : await getServerAuthHeaders();
   const baseUrl = getApiBaseUrl();
 
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: "GET",
-    headers,
-    next: {
-      revalidate: options?.revalidate ?? 0,
-      tags: options?.tags,
-    },
-  });
+  // サーバーエラー（500等）時に1回リトライ（Neon コールドスタート対策）
+  const doFetch = () =>
+    fetch(`${baseUrl}${path}`, {
+      method: "GET",
+      headers,
+      next: {
+        revalidate: options?.revalidate ?? 0,
+        tags: options?.tags,
+      },
+    });
 
-  return handleResponse<T>(response);
+  // 最大2回（初回 + リトライ1回）に制限。
+  // handleResponse はループ外で1回だけ呼ぶ（4xx でのリトライ防止・body 二重消費防止）
+  let response: Response | undefined;
+  let lastError: unknown;
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      response = await doFetch();
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        console.warn(`[serverGet] ${path} failed, retrying...`, err);
+        await new Promise((r) => setTimeout(r, 1000));
+        continue;
+      }
+      break;
+    }
+
+    if (response.status >= 500 && attempt === 0) {
+      console.warn(`[serverGet] ${path} returned ${response.status}, retrying...`);
+      if (response.body) {
+        await response.body.cancel().catch(() => undefined);
+      }
+      response = undefined;
+      await new Promise((r) => setTimeout(r, 1000));
+      continue;
+    }
+    break;
+  }
+
+  if (response) return handleResponse<T>(response);
+  throw lastError;
 }
