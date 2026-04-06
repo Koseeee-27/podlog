@@ -1,68 +1,51 @@
 "use client";
 
-import { useEffect, useRef, useCallback, useTransition } from "react";
-import { useEpisodes } from "@/hooks/useEpisodes";
-import { fetchFromFeedAction } from "@/lib/actions/episodes";
-import ErrorMessage from "@/components/ui/ErrorMessage";
+import { useState, useTransition } from "react";
+import { getEpisodesByPodcast } from "@/lib/api/episodes";
 import EpisodeList from "@/components/episode/EpisodeList";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { EpisodeListItem } from "@/types/episode";
+
+const PAGE_SIZE = 20;
 
 interface EpisodeListClientProps {
   podcastId: string;
   initialEpisodes: EpisodeListItem[];
-  /** RSS フィード URL（ログイン済みかつ存在する場合に自動フェッチ） */
-  feedUrl?: string;
-  isAuthenticated: boolean;
 }
 
 export default function EpisodeListClient({
   podcastId,
   initialEpisodes,
-  feedUrl,
-  isAuthenticated,
 }: EpisodeListClientProps) {
-  const {
-    episodes,
-    loading: episodesLoading,
-    error: episodesError,
-    hasMore,
-    loadMore,
-    refresh,
-  } = useEpisodes(podcastId, initialEpisodes);
+  const [episodes, setEpisodes] = useState(initialEpisodes);
+  const [error, setError] = useState<string | null>(null);
+  const [hasMore, setHasMore] = useState(initialEpisodes.length >= PAGE_SIZE);
+  const [isLoadingMore, startLoadMore] = useTransition();
 
-  // RSS フィードからエピソードを取得（Server Action）
-  const [fetchPending, startFetchTransition] = useTransition();
-  const hasFetchedRef = useRef(false);
-
-  const handleFetchFromFeed = useCallback(() => {
-    startFetchTransition(async () => {
-      const result = await fetchFromFeedAction(podcastId);
-      if (result.success && result.newCount && result.newCount > 0) {
-        await refresh();
-      }
-      if (!result.success) {
-        hasFetchedRef.current = false;
+  function handleLoadMore() {
+    startLoadMore(async () => {
+      try {
+        const data = await getEpisodesByPodcast(podcastId, {
+          limit: PAGE_SIZE,
+          offset: episodes.length,
+        });
+        const list = data.episodes ?? [];
+        setEpisodes(prev => [...prev, ...list]);
+        setHasMore(list.length >= PAGE_SIZE);
+      } catch {
+        setError("エピソードの読み込みに失敗しました");
       }
     });
-  }, [podcastId, refresh]);
-
-  // ログイン済みかつ feed_url がある場合のみ、初回に自動で RSS フィードからエピソードを取得する
-  useEffect(() => {
-    if (!isAuthenticated || !feedUrl || hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
-    handleFetchFromFeed();
-  }, [isAuthenticated, feedUrl, handleFetchFromFeed]);
-
-  if (episodesError) {
-    return <ErrorMessage message={episodesError} />;
   }
+
+  if (error) return <ErrorMessage message={error} />;
 
   return (
     <EpisodeList
       episodes={episodes}
-      loading={episodesLoading || fetchPending}
+      loading={isLoadingMore}
       hasMore={hasMore}
-      onLoadMore={loadMore}
+      onLoadMore={handleLoadMore}
     />
   );
 }

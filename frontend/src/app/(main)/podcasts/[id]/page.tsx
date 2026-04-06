@@ -59,7 +59,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
 
       {/* エピソード一覧 — ストリーミング */}
       <Suspense fallback={<EpisodeSkeleton />}>
-        <EpisodeSection podcastId={id} feedUrl={podcast.feed_url ?? undefined} />
+        <EpisodeSection podcastId={id} />
       </Suspense>
     </div>
   );
