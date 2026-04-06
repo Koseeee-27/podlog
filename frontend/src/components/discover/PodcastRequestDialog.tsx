@@ -1,11 +1,11 @@
 "use client";
 
-import { useRef, useEffect, useTransition, useState, useCallback } from "react";
+import { useActionState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import { createPodcastRequest } from "@/lib/api/podcast-requests";
 import { useToast } from "@/components/ui/Toast";
-import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
+import type { PodcastRequestFormState } from "@/lib/actions/podcast-request";
+import { submitPodcastRequestAction } from "@/lib/actions/podcast-request";
 
 interface PodcastRequestDialogProps {
   open: boolean;
@@ -20,114 +20,45 @@ export default function PodcastRequestDialog({
   open,
   onClose,
 }: PodcastRequestDialogProps) {
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  if (!open) return null;
+  return <PodcastRequestDialogContent onClose={onClose} />;
+}
+
+function PodcastRequestDialogContent({
+  onClose,
+}: {
+  onClose: () => void;
+}) {
   const { showToast } = useToast();
-  const [isPending, startTransition] = useTransition();
 
-  // フォームの状態
-  const [title, setTitle] = useState("");
-  const [url, setUrl] = useState("");
-  const [titleError, setTitleError] = useState("");
-  const [urlError, setUrlError] = useState("");
-
-  const resetForm = useCallback(() => {
-    setTitle("");
-    setUrl("");
-    setTitleError("");
-    setUrlError("");
-  }, []);
-
-  // open の変更に応じてダイアログの開閉を制御
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    if (open && !dialog.open) {
-      dialog.showModal();
-    } else if (!open && dialog.open) {
-      dialog.close();
-    }
-  }, [open]);
-
-  // ダイアログの close イベント（ESC キーや backdrop クリック）をハンドリング
-  useEffect(() => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-
-    const handleClose = () => {
-      resetForm();
-      onClose();
-    };
-
-    dialog.addEventListener("close", handleClose);
-    return () => dialog.removeEventListener("close", handleClose);
-  }, [onClose, resetForm]);
-
-  const validate = (): boolean => {
-    const result = podcastRequestFormSchema.safeParse({
-      title: title.trim(),
-      url: url.trim(),
-    });
-
+  async function wrappedAction(
+    prevState: PodcastRequestFormState,
+    formData: FormData,
+  ) {
+    const result = await submitPodcastRequestAction(prevState, formData);
     if (result.success) {
-      setTitleError("");
-      setUrlError("");
-      return true;
+      showToast("リクエストを送信しました");
+      onClose();
     }
+    return result;
+  }
 
-    // フィールドごとにエラーを振り分ける
-    let valid = true;
-    const fieldErrors = result.error.flatten().fieldErrors;
-
-    if (fieldErrors.title?.length) {
-      setTitleError(fieldErrors.title[0]);
-      valid = false;
-    } else {
-      setTitleError("");
-    }
-
-    if (fieldErrors.url?.length) {
-      setUrlError(fieldErrors.url[0]);
-      valid = false;
-    } else {
-      setUrlError("");
-    }
-
-    return valid;
-  };
-
-  const handleSubmit = () => {
-    if (!validate()) return;
-
-    startTransition(async () => {
-      try {
-        await createPodcastRequest({
-          title: title.trim(),
-          url: url.trim() || undefined,
-        });
-        showToast("リクエストを送信しました");
-        resetForm();
-        onClose();
-      } catch {
-        showToast("送信に失敗しました。もう一度お試しください", "error");
-      }
-    });
-  };
-
-  // backdrop クリックでダイアログを閉じる
-  const handleBackdropClick = (e: React.MouseEvent<HTMLDialogElement>) => {
-    const dialog = dialogRef.current;
-    if (!dialog) return;
-    // dialog 要素自体がクリックされた場合（= backdrop 領域）のみ閉じる
-    if (e.target === dialog) {
-      dialog.close();
-    }
-  };
+  const [state, formAction, isPending] = useActionState<PodcastRequestFormState, FormData>(
+    wrappedAction,
+    { success: false },
+  );
 
   return (
     <dialog
-      ref={dialogRef}
-      onClick={handleBackdropClick}
+      ref={(dialog) => {
+        if (dialog && !dialog.open) dialog.showModal();
+      }}
+      onClose={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          e.currentTarget.close();
+        }
+      }}
       className="backdrop:bg-black/50 bg-transparent p-0 m-0 max-w-none w-full h-full max-h-none open:flex items-center justify-center"
     >
       <div className="bg-white rounded-xl p-6 w-full max-w-md mx-4 shadow-lg">
@@ -138,52 +69,49 @@ export default function PodcastRequestDialog({
           お探しの番組が見つからない場合、追加リクエストを送信できます。
         </p>
 
-        <div className="space-y-4">
-          <Input
-            id="podcast-request-title"
-            label="番組名"
-            placeholder="例: オールナイトニッポン"
-            value={title}
-            onChange={(e) => {
-              setTitle(e.target.value);
-              if (titleError) setTitleError("");
-            }}
-            error={titleError}
-            required
-          />
+        {state.error && (
+          <p className="text-sm text-red-600 mb-4">{state.error}</p>
+        )}
 
-          <Input
-            id="podcast-request-url"
-            label="配信先URL（任意）"
-            placeholder="例: https://open.spotify.com/show/..."
-            value={url}
-            onChange={(e) => {
-              setUrl(e.target.value);
-              if (urlError) setUrlError("");
-            }}
-            error={urlError}
-          />
-        </div>
+        <form action={formAction}>
+          <div className="space-y-4">
+            <Input
+              id="podcast-request-title"
+              name="title"
+              label="番組名"
+              placeholder="例: オールナイトニッポン"
+              required
+              error={state.fieldErrors?.title}
+            />
 
-        <div className="mt-6 flex gap-3 justify-end">
-          <Button
-            type="button"
-            variant="secondary"
-            onClick={() => dialogRef.current?.close()}
-            disabled={isPending}
-          >
-            キャンセル
-          </Button>
-          <Button
-            type="button"
-            variant="primary"
-            onClick={handleSubmit}
-            loading={isPending}
-            disabled={isPending || !title.trim()}
-          >
-            リクエストを送信
-          </Button>
-        </div>
+            <Input
+              id="podcast-request-url"
+              name="url"
+              label="配信先URL（任意）"
+              placeholder="例: https://open.spotify.com/show/..."
+              error={state.fieldErrors?.url}
+            />
+          </div>
+
+          <div className="mt-6 flex gap-3 justify-end">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={onClose}
+              disabled={isPending}
+            >
+              キャンセル
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={isPending}
+              disabled={isPending}
+            >
+              リクエストを送信
+            </Button>
+          </div>
+        </form>
       </div>
     </dialog>
   );

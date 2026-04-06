@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createProfile } from "@/lib/api/users";
-import { createProfileRequestSchema } from "@/lib/schemas/user";
+import type { ProfileFormState } from "@/lib/actions/profile";
+import { createProfileAction } from "@/lib/actions/profile";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -14,62 +14,48 @@ interface ProfileSetupFormProps {
 
 export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [bio, setBio] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [completeError, setCompleteError] = useState("");
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-
-    const result = createProfileRequestSchema.safeParse({
-      username: username.trim(),
-      display_name: displayName.trim(),
-      bio: bio.trim() || undefined,
-    });
-
-    if (!result.success) {
-      setError(result.error.issues[0].message);
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      await createProfile(result.data);
-      await onComplete();
-      router.push("/");
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("プロフィールの作成に失敗しました");
+  async function wrappedAction(prevState: ProfileFormState, formData: FormData) {
+    setCompleteError("");
+    const result = await createProfileAction(prevState, formData);
+    if (result.success) {
+      try {
+        await onComplete();
+        router.push("/");
+      } catch {
+        setCompleteError("プロフィールの反映に失敗しました");
       }
-      setLoading(false);
     }
+    return result;
   }
 
+  const [state, formAction, isPending] = useActionState<ProfileFormState, FormData>(
+    wrappedAction,
+    { success: false },
+  );
+
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      {error && <ErrorMessage message={error} />}
+    <form action={formAction} className="space-y-4">
+      {(state.error || completeError) && (
+        <ErrorMessage message={state.error || completeError} />
+      )}
       <Input
         id="username"
+        name="username"
         label="ユーザー名"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
         placeholder="your_username"
         required
+        error={state.fieldErrors?.username}
       />
       <p className="text-xs text-stone-500 -mt-2">3〜30文字、英数字とアンダースコアのみ</p>
       <Input
         id="display-name"
+        name="display_name"
         label="表示名"
-        value={displayName}
-        onChange={(e) => setDisplayName(e.target.value)}
         placeholder="あなたの名前"
         required
+        error={state.fieldErrors?.display_name}
       />
       <div>
         <label htmlFor="bio" className="block text-sm font-medium text-stone-700 mb-1">
@@ -77,14 +63,16 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
         </label>
         <textarea
           id="bio"
-          value={bio}
-          onChange={(e) => setBio(e.target.value)}
+          name="bio"
           placeholder="好きなポッドキャストについて..."
           rows={3}
           className="block w-full rounded-lg border border-stone-300 px-3 py-2 text-sm shadow-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
         />
+        {state.fieldErrors?.bio && (
+          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.bio}</p>
+        )}
       </div>
-      <Button type="submit" loading={loading} className="w-full">
+      <Button type="submit" loading={isPending} className="w-full">
         プロフィールを作成
       </Button>
     </form>

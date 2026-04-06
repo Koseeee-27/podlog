@@ -1,5 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import type { ReviewFormState } from "@/lib/actions/review";
 import ReviewForm from "./ReviewForm";
+
+const noopAction = async (_prev: ReviewFormState, _fd: FormData): Promise<ReviewFormState> => ({
+  success: false,
+});
 
 const meta = {
   title: "Review/ReviewForm",
@@ -12,22 +17,15 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    onSubmit: async () => {},
+    action: noopAction,
   },
 };
 
 export const WithInitialValues: Story = {
   args: {
-    onSubmit: async () => {},
+    action: noopAction,
     initialRating: 4,
     initialComment: "とても面白いエピソードでした！",
     submitLabel: "更新する",
-  },
-};
-
-export const Loading: Story = {
-  args: {
-    onSubmit: async () => {},
-    loading: true,
   },
 };

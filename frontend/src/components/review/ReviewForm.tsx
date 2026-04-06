@@ -1,50 +1,51 @@
 "use client";
 
-import type { FormEvent } from "react";
-import { useState } from "react";
-import { createReviewRequestSchema } from "@/lib/schemas/review";
+import { useActionState, useState } from "react";
+import type { ReviewFormState } from "@/lib/actions/review";
+import type { Review } from "@/types/review";
 
 interface ReviewFormProps {
-  onSubmit: (rating: number, comment: string) => Promise<void>;
+  action: (
+    prevState: ReviewFormState,
+    formData: FormData,
+  ) => Promise<ReviewFormState>;
   initialRating?: number;
   initialComment?: string;
   submitLabel?: string;
-  loading?: boolean;
+  onSuccess?: (review: Review) => void;
 }
 
 export default function ReviewForm({
-  onSubmit,
+  action,
   initialRating = 0,
   initialComment = "",
   submitLabel = "投稿する",
-  loading = false,
+  onSuccess,
 }: ReviewFormProps) {
-  const [rating, setRating] = useState(initialRating);
-  const [comment, setComment] = useState(initialComment);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [validationError, setValidationError] = useState("");
-
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    setValidationError("");
-
-    const result = createReviewRequestSchema.safeParse({
-      rating,
-      comment: comment || undefined,
-    });
-
-    if (!result.success) {
-      setValidationError(result.error.issues[0].message);
-      return;
+  async function wrappedAction(prevState: ReviewFormState, formData: FormData) {
+    const result = await action(prevState, formData);
+    if (result.success && result.review) {
+      onSuccess?.(result.review);
     }
+    return result;
+  }
 
-    await onSubmit(result.data.rating, result.data.comment ?? "");
-  };
+  const [state, formAction, isPending] = useActionState<ReviewFormState, FormData>(
+    wrappedAction,
+    { success: false },
+  );
+  const [rating, setRating] = useState(initialRating);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [commentLength, setCommentLength] = useState(initialComment.length);
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4">
+      <input type="hidden" name="rating" value={rating} />
+
       <div>
-        <label className="block text-sm font-medium text-stone-700 mb-1">評価</label>
+        <label className="block text-sm font-medium text-stone-700 mb-1">
+          評価
+        </label>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((star) => (
             <button
@@ -57,11 +58,13 @@ export default function ReviewForm({
               aria-pressed={rating === star}
               className="text-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-rose-500 focus-visible:rounded"
             >
-              <span className={
-                star <= (hoveredRating || rating)
-                  ? "text-yellow-400"
-                  : "text-stone-300"
-              }>
+              <span
+                className={
+                  star <= (hoveredRating || rating)
+                    ? "text-yellow-400"
+                    : "text-stone-300"
+                }
+              >
                 ★
               </span>
             </button>
@@ -70,35 +73,37 @@ export default function ReviewForm({
       </div>
 
       <div>
-        <label htmlFor="comment" className="block text-sm font-medium text-stone-700 mb-1">
+        <label
+          htmlFor="comment"
+          className="block text-sm font-medium text-stone-700 mb-1"
+        >
           コメント（任意）
         </label>
         <textarea
           id="comment"
-          value={comment}
-          onChange={(e) => setComment(e.target.value)}
+          name="comment"
+          defaultValue={initialComment}
+          onChange={(e) => setCommentLength(e.target.value.length)}
           maxLength={1000}
           rows={3}
           placeholder="感想を書いてみましょう..."
           className="w-full rounded-lg border border-stone-300 px-3 py-2 text-sm focus:border-rose-500 focus:ring-1 focus:ring-rose-500"
         />
-        <p className="mt-1 text-xs text-stone-400">{comment.length}/1000</p>
+        <p className="mt-1 text-xs text-stone-400">{commentLength}/1000</p>
       </div>
 
-      {validationError && (
-        <p className="text-sm text-red-600">{validationError}</p>
-      )}
+      {state.error && <p className="text-sm text-red-600">{state.error}</p>}
 
       <button
         type="submit"
-        disabled={rating === 0 || loading}
+        disabled={rating === 0 || isPending}
         className={`rounded-lg px-4 py-2 text-sm font-medium text-white transition-colors ${
-          rating === 0 || loading
+          rating === 0 || isPending
             ? "bg-stone-300 cursor-not-allowed"
             : "bg-rose-500 hover:bg-rose-600"
         }`}
       >
-        {loading ? "送信中..." : submitLabel}
+        {isPending ? "送信中..." : submitLabel}
       </button>
     </form>
   );
