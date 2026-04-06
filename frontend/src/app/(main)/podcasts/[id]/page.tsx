@@ -34,9 +34,10 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     throw err;
   }
 
-  // 認証状態の確認
+  // セッションの有無を確認（公開ページなので getSession で十分。JWT 検証はバックエンドが行う）
   const supabase = await createClient();
-  const { data: { user: authUser } } = await supabase.auth.getUser();
+  const { data: { session } } = await supabase.auth.getSession();
+  const hasSession = !!session;
 
   // エピソード・評価・お気に入りを並列で取得（失敗しても画面は表示する）
   const episodesPromise = serverGet<EpisodeListResult>(
@@ -47,9 +48,9 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     `/podcasts/${encodeURIComponent(id)}/rating`,
     { noAuth: true, revalidate: 60 },
   );
-  // 認証済みの場合のみプロフィールとお気に入りを取得
-  const profilePromise: Promise<User | null> = authUser
-    ? serverGet<User>("/users/me")
+  // セッションがある場合のみプロフィールを取得（401 なら未ログイン扱い）
+  const profilePromise: Promise<User | null> = hasSession
+    ? serverGet<User>("/users/me").catch(() => null)
     : Promise.resolve(null);
 
   const [episodesResult, ratingResult, profileResult] = await Promise.allSettled([
@@ -92,7 +93,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
       initialFavoriteCount={podcast.favorite_count}
       initialEpisodes={initialEpisodes}
       initialRating={initialRating}
-      isAuthenticated={!!authUser}
+      isAuthenticated={hasSession}
       initialIsFavorite={initialIsFavorite}
       initialFavorites={initialFavorites?.podcasts ?? []}
     />
