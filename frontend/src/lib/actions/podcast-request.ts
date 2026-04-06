@@ -19,10 +19,7 @@ export async function submitPodcastRequestAction(
   _prevState: PodcastRequestFormState,
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
-  const raw = {
-    title: formData.get("title") as string,
-    url: formData.get("url") as string,
-  };
+  const raw = Object.fromEntries(formData);
 
   const result = podcastRequestFormSchema.safeParse(raw);
   if (!result.success) {

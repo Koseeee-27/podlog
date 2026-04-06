@@ -17,10 +17,7 @@ export async function createReviewAction(
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
-  const raw = {
-    rating: Number(formData.get("rating")),
-    comment: (formData.get("comment") as string) || undefined,
-  };
+  const raw = Object.fromEntries(formData);
 
   const result = createReviewRequestSchema.safeParse(raw);
   if (!result.success) {
@@ -46,10 +43,7 @@ export async function updateReviewAction(
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
-  const raw = {
-    rating: Number(formData.get("rating")),
-    comment: (formData.get("comment") as string) || undefined,
-  };
+  const raw = Object.fromEntries(formData);
 
   const result = createReviewRequestSchema.safeParse(raw);
   if (!result.success) {
