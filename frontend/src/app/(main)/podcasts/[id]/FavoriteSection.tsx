@@ -1,4 +1,3 @@
-import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
 import FavoriteButtonClient from "./FavoriteButtonClient";
 import type { User } from "@/types/user";
@@ -10,16 +9,11 @@ interface FavoriteSectionProps {
 
 /**
  * お気に入りボタンの Server Component。
- * 認証確認 → お気に入り取得 → FavoriteButtonClient を描画する。
- * 未ログインまたは取得失敗時は何も表示しない。
+ * プロフィール取得 → お気に入り取得 → FavoriteButtonClient を描画する。
+ * 未ログイン（401）または取得失敗時は何も表示しない。
  */
 export default async function FavoriteSection({ podcastId }: FavoriteSectionProps) {
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-
-  if (!session) return null;
-
-  // プロフィール取得（username が必要）
+  // プロフィール取得（未ログインなら 401 で null）
   const profile = await serverGet<User>("/users/me").catch(() => null);
   if (!profile?.username) return null;
 
