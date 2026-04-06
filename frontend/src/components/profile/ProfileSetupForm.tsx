@@ -3,7 +3,7 @@
 import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ProfileFormState } from "@/lib/actions/profile";
-import { createProfileAction, profileFormInitialState } from "@/lib/actions/profile";
+import { createProfileAction } from "@/lib/actions/profile";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import ErrorMessage from "@/components/ui/ErrorMessage";
@@ -30,9 +30,9 @@ export default function ProfileSetupForm({ onComplete }: ProfileSetupFormProps) 
     return result;
   }
 
-  const [state, formAction, isPending] = useActionState(
+  const [state, formAction, isPending] = useActionState<ProfileFormState, FormData>(
     wrappedAction,
-    profileFormInitialState,
+    { success: false },
   );
 
   return (

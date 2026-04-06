@@ -5,10 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { useToast } from "@/components/ui/Toast";
 import type { PodcastRequestFormState } from "@/lib/actions/podcast-request";
-import {
-  submitPodcastRequestAction,
-  podcastRequestFormInitialState,
-} from "@/lib/actions/podcast-request";
+import { submitPodcastRequestAction } from "@/lib/actions/podcast-request";
 
 interface PodcastRequestDialogProps {
   open: boolean;
@@ -46,9 +43,9 @@ function PodcastRequestDialogContent({
     return result;
   }
 
-  const [state, formAction, isPending] = useActionState(
+  const [state, formAction, isPending] = useActionState<PodcastRequestFormState, FormData>(
     wrappedAction,
-    podcastRequestFormInitialState,
+    { success: false },
   );
 
   return (

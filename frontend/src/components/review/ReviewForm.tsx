@@ -2,7 +2,6 @@
 
 import { useActionState, useState } from "react";
 import type { ReviewFormState } from "@/lib/actions/review";
-import { reviewFormInitialState } from "@/lib/actions/review";
 import type { Review } from "@/types/review";
 
 interface ReviewFormProps {
@@ -31,9 +30,9 @@ export default function ReviewForm({
     return result;
   }
 
-  const [state, formAction, isPending] = useActionState(
+  const [state, formAction, isPending] = useActionState<ReviewFormState, FormData>(
     wrappedAction,
-    reviewFormInitialState,
+    { success: false },
   );
   const [rating, setRating] = useState(initialRating);
   const [hoveredRating, setHoveredRating] = useState(0);

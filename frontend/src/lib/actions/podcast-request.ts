@@ -14,10 +14,6 @@ export interface PodcastRequestFormState {
   };
 }
 
-export const podcastRequestFormInitialState: PodcastRequestFormState = {
-  success: false,
-};
-
 export async function submitPodcastRequestAction(
   _prevState: PodcastRequestFormState,
   formData: FormData,

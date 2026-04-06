@@ -15,8 +15,6 @@ export interface ProfileFormState {
   };
 }
 
-export const profileFormInitialState: ProfileFormState = { success: false };
-
 export async function createProfileAction(
   _prevState: ProfileFormState,
   formData: FormData,

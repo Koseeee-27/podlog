@@ -11,9 +11,6 @@ export interface ReviewFormState {
   review?: Review;
 }
 
-const initialState: ReviewFormState = { success: false };
-
-export { initialState as reviewFormInitialState };
 
 export async function createReviewAction(
   episodeId: string,
