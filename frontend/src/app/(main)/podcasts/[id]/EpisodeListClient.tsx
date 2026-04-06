@@ -11,41 +11,58 @@ const PAGE_SIZE = 20;
 interface EpisodeListClientProps {
   podcastId: string;
   initialEpisodes: EpisodeListItem[];
+  /** Server Component での初回取得が失敗したか */
+  fetchFailed?: boolean;
 }
 
 export default function EpisodeListClient({
   podcastId,
   initialEpisodes,
+  fetchFailed = false,
 }: EpisodeListClientProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(
+    fetchFailed ? "エピソードの読み込みに失敗しました" : null,
+  );
   const [hasMore, setHasMore] = useState(initialEpisodes.length >= PAGE_SIZE);
-  const [isLoadingMore, startLoadMore] = useTransition();
+  const [isLoading, startTransition] = useTransition();
 
-  function handleLoadMore() {
-    startLoadMore(async () => {
+  function handleFetch(offset: number) {
+    startTransition(async () => {
       try {
         const data = await getEpisodesByPodcast(podcastId, {
           limit: PAGE_SIZE,
-          offset: episodes.length,
+          offset,
         });
         const list = data.episodes ?? [];
-        setEpisodes(prev => [...prev, ...list]);
+        if (offset === 0) {
+          setEpisodes(list);
+        } else {
+          setEpisodes(prev => [...prev, ...list]);
+        }
         setHasMore(list.length >= PAGE_SIZE);
+        setError(null);
       } catch {
         setError("エピソードの読み込みに失敗しました");
       }
     });
   }
 
-  if (error) return <ErrorMessage message={error} />;
+  if (error) {
+    return (
+      <ErrorMessage
+        message={error}
+        onRetry={() => handleFetch(0)}
+      />
+    );
+  }
 
   return (
     <EpisodeList
       episodes={episodes}
-      loading={isLoadingMore}
+      loading={isLoading}
       hasMore={hasMore}
-      onLoadMore={handleLoadMore}
+      onLoadMore={() => handleFetch(episodes.length)}
     />
   );
 }

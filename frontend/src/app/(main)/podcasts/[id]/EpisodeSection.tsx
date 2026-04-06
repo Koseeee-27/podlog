@@ -22,6 +22,7 @@ export default async function EpisodeSection({ podcastId }: EpisodeSectionProps)
       <EpisodeListClient
         podcastId={podcastId}
         initialEpisodes={result?.episodes ?? []}
+        fetchFailed={result === null}
       />
     </div>
   );
