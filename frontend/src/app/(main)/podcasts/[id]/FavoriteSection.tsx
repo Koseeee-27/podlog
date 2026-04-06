@@ -25,13 +25,14 @@ export default async function FavoriteSection({ podcastId }: FavoriteSectionProp
 
   if (!favoritesResult) return null;
 
-  const isFavorite = favoritesResult.podcasts.some((p) => p.id === podcastId);
+  const favoriteIds = favoritesResult.podcasts.map((p) => p.id);
+  const isFavorite = favoriteIds.includes(podcastId);
 
   return (
     <FavoriteButtonClient
       podcastId={podcastId}
       initialIsFavorite={isFavorite}
-      initialFavorites={favoritesResult.podcasts}
+      initialFavoriteIds={favoriteIds}
     />
   );
 }

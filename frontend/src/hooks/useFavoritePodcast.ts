@@ -2,12 +2,11 @@
 
 import { useState, useCallback, useRef } from "react";
 import { updateMyFavoritePodcasts } from "@/lib/api/users";
-import type { FavoritePodcastItem } from "@/types/user";
 
 interface UseFavoritePodcastOptions {
   podcastId: string;
   initialIsFavorite: boolean;
-  initialFavorites: FavoritePodcastItem[];
+  initialFavoriteIds: string[];
 }
 
 /**
@@ -19,30 +18,27 @@ interface UseFavoritePodcastOptions {
 export function useFavoritePodcast({
   podcastId,
   initialIsFavorite,
-  initialFavorites,
+  initialFavoriteIds,
 }: UseFavoritePodcastOptions) {
   const [isFavorite, setIsFavorite] = useState(initialIsFavorite);
   const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const favoritesRef = useRef<FavoritePodcastItem[]>(initialFavorites);
+  const favoriteIdsRef = useRef<string[]>(initialFavoriteIds);
 
   const toggle = useCallback(async (): Promise<"added" | "removed" | null> => {
     setError(null);
     setIsPending(true);
-    const currentFavorites = favoritesRef.current;
-    const isCurrentlyFavorite = currentFavorites.some((p) => p.id === podcastId);
+    const currentIds = favoriteIdsRef.current;
+    const isCurrentlyFavorite = currentIds.includes(podcastId);
 
-    let newIds: string[];
-    if (isCurrentlyFavorite) {
-      newIds = currentFavorites.filter((p) => p.id !== podcastId).map((p) => p.id);
-    } else {
-      newIds = [...currentFavorites.map((p) => p.id), podcastId];
-    }
+    const newIds = isCurrentlyFavorite
+      ? currentIds.filter((id) => id !== podcastId)
+      : [...currentIds, podcastId];
 
     try {
       const result = await updateMyFavoritePodcasts(newIds);
-      favoritesRef.current = result.podcasts;
-      const newIsFavorite = result.podcasts.some((p) => p.id === podcastId);
+      favoriteIdsRef.current = result.podcasts.map((p) => p.id);
+      const newIsFavorite = favoriteIdsRef.current.includes(podcastId);
       setIsFavorite(newIsFavorite);
       return isCurrentlyFavorite ? "removed" : "added";
     } catch {

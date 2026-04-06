@@ -4,18 +4,17 @@ import { useCallback } from "react";
 import { useFavoritePodcast } from "@/hooks/useFavoritePodcast";
 import { useToast } from "@/components/ui/Toast";
 import FavoriteButton from "@/components/podcast/FavoriteButton";
-import type { FavoritePodcastItem } from "@/types/user";
 
 interface FavoriteButtonClientProps {
   podcastId: string;
   initialIsFavorite: boolean;
-  initialFavorites: FavoritePodcastItem[];
+  initialFavoriteIds: string[];
 }
 
 export default function FavoriteButtonClient({
   podcastId,
   initialIsFavorite,
-  initialFavorites,
+  initialFavoriteIds,
 }: FavoriteButtonClientProps) {
   const { showToast } = useToast();
 
@@ -26,7 +25,7 @@ export default function FavoriteButtonClient({
   } = useFavoritePodcast({
     podcastId,
     initialIsFavorite,
-    initialFavorites,
+    initialFavoriteIds,
   });
 
   const handleToggle = useCallback(async () => {

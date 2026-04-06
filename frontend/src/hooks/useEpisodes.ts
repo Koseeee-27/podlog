@@ -10,6 +10,7 @@ const PAGE_SIZE = 20;
 /**
  * エピソード一覧を管理するフック。
  * Server Component で取得した初期データを受け取り、ページネーション（loadMore）をクライアントで管理する。
+ * initialData が空配列の場合は refresh() で初回取得を行うことも可能。
  */
 export function useEpisodes(podcastId: string, initialData: EpisodeListItem[]) {
   const [episodes, setEpisodes] = useState<EpisodeListItem[]>(initialData);

@@ -40,7 +40,7 @@ export default function PodcastDetail({ podcast, favoriteCount, ratingSlot, acti
           </span>
         )}
         {(ratingSlot || (favoriteCount !== undefined && favoriteCount > 0)) && (
-          <div className="mt-3 flex items-center gap-4">
+          <div className="mt-3 flex items-center gap-4 empty:hidden">
             {ratingSlot}
             {favoriteCount !== undefined && favoriteCount > 0 && (
               <div className="flex items-center gap-1">
