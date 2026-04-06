@@ -1,14 +1,14 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
-import { createClient } from "@/lib/supabase/server";
 import { ApiRequestError } from "@/types/api";
-import PodcastPageClient from "./PodcastPageClient";
+import PodcastDetail from "@/components/podcast/PodcastDetail";
+import FavoriteSection from "./FavoriteSection";
+import EpisodeSection from "./EpisodeSection";
+import { EpisodeSkeleton } from "./skeletons";
 import type { PodcastDetailResult } from "@/types/podcast";
-import type { EpisodeListResult } from "@/types/episode";
 import type { PodcastRatingResult } from "@/types/review";
-import type { User } from "@/types/user";
-import type { FavoritePodcastListResult } from "@/types/user";
 
 interface PodcastPageProps {
   params: Promise<{ id: string }>;
@@ -21,6 +21,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     notFound();
   }
 
+  // podcast 詳細は必須データ — 取得できなければ 404
   let podcast: PodcastDetailResult;
   try {
     podcast = await serverGet<PodcastDetailResult>(`/podcasts/${encodeURIComponent(id)}`, {
@@ -34,68 +35,32 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     throw err;
   }
 
-  // セッションの有無を確認（公開ページなので getSession で十分。JWT 検証はバックエンドが行う）
-  const supabase = await createClient();
-  const { data: { session } } = await supabase.auth.getSession();
-  const hasSession = !!session;
-
-  // エピソード・評価・お気に入りを並列で取得（失敗しても画面は表示する）
-  const episodesPromise = serverGet<EpisodeListResult>(
-    `/podcasts/${encodeURIComponent(id)}/episodes?limit=20&offset=0`,
-    { noAuth: true, revalidate: 60 },
-  );
-  const ratingPromise = serverGet<PodcastRatingResult>(
+  // 評価は podcast と一緒に即表示したいので、ここで取得（失敗しても表示は続行）
+  const rating = await serverGet<PodcastRatingResult>(
     `/podcasts/${encodeURIComponent(id)}/rating`,
     { noAuth: true, revalidate: 60 },
-  );
-  // セッションがある場合のみプロフィールを取得（401 なら未ログイン扱い）
-  const profilePromise: Promise<User | null> = hasSession
-    ? serverGet<User>("/users/me").catch(() => null)
-    : Promise.resolve(null);
-
-  const [episodesResult, ratingResult, profileResult] = await Promise.allSettled([
-    episodesPromise,
-    ratingPromise,
-    profilePromise,
-  ]);
-
-  const initialEpisodes =
-    episodesResult.status === "fulfilled"
-      ? (episodesResult.value.episodes ?? [])
-      : [];
-  const initialRating =
-    ratingResult.status === "fulfilled" ? ratingResult.value : null;
-
-  const profile =
-    profileResult.status === "fulfilled" ? profileResult.value : null;
-
-  // プロフィール取得成功時のみお気に入りを取得
-  let initialFavorites: FavoritePodcastListResult | null = null;
-  if (profile?.username) {
-    try {
-      initialFavorites = await serverGet<FavoritePodcastListResult>(
-        `/users/${encodeURIComponent(profile.username)}/favorite-podcasts`,
-        { noAuth: true, revalidate: 0 },
-      );
-    } catch {
-      // お気に入り取得失敗は無視
-    }
-  }
-
-  const initialIsFavorite = initialFavorites
-    ? initialFavorites.podcasts.some((p) => p.id === id)
-    : false;
+  ).catch(() => null);
 
   return (
-    <PodcastPageClient
-      id={id}
-      initialPodcast={podcast}
-      initialFavoriteCount={podcast.favorite_count}
-      initialEpisodes={initialEpisodes}
-      initialRating={initialRating}
-      isAuthenticated={hasSession}
-      initialIsFavorite={initialIsFavorite}
-      initialFavorites={initialFavorites?.podcasts ?? []}
-    />
+    <div>
+      {/* podcast 詳細 — 即座に描画 */}
+      <PodcastDetail
+        podcast={podcast}
+        averageRating={rating?.average_rating}
+        totalReviews={rating?.total_reviews}
+        favoriteCount={podcast.favorite_count}
+        hasRatingError={!rating}
+        actions={
+          <Suspense fallback={null}>
+            <FavoriteSection podcastId={id} />
+          </Suspense>
+        }
+      />
+
+      {/* エピソード一覧 — ストリーミング */}
+      <Suspense fallback={<EpisodeSkeleton />}>
+        <EpisodeSection podcastId={id} feedUrl={podcast.feed_url ?? undefined} />
+      </Suspense>
+    </div>
   );
 }
