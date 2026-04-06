@@ -1,11 +1,14 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
-import PodcastPageClient from "./PodcastPageClient";
+import PodcastDetail from "@/components/podcast/PodcastDetail";
+import RatingSection from "./RatingSection";
+import FavoriteSection from "./FavoriteSection";
+import EpisodeSection from "./EpisodeSection";
+import { EpisodeSkeleton } from "./skeletons";
 import type { PodcastDetailResult } from "@/types/podcast";
-import type { EpisodeListResult } from "@/types/episode";
-import type { PodcastRatingResult } from "@/types/review";
 
 interface PodcastPageProps {
   params: Promise<{ id: string }>;
@@ -18,6 +21,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     notFound();
   }
 
+  // podcast 詳細は必須データ — 取得できなければ 404
   let podcast: PodcastDetailResult;
   try {
     podcast = await serverGet<PodcastDetailResult>(`/podcasts/${encodeURIComponent(id)}`, {
@@ -31,32 +35,28 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     throw err;
   }
 
-  // エピソードと評価は並列で取得（失敗しても画面は表示する）
-  const [episodesResult, ratingResult] = await Promise.allSettled([
-    serverGet<EpisodeListResult>(
-      `/podcasts/${encodeURIComponent(id)}/episodes?limit=20&offset=0`,
-      { noAuth: true, revalidate: 60 },
-    ),
-    serverGet<PodcastRatingResult>(
-      `/podcasts/${encodeURIComponent(id)}/rating`,
-      { noAuth: true, revalidate: 60 },
-    ),
-  ]);
-
-  const initialEpisodes =
-    episodesResult.status === "fulfilled"
-      ? (episodesResult.value.episodes ?? [])
-      : undefined;
-  const initialRating =
-    ratingResult.status === "fulfilled" ? ratingResult.value : null;
-
   return (
-    <PodcastPageClient
-      id={id}
-      initialPodcast={podcast}
-      initialFavoriteCount={podcast.favorite_count}
-      initialEpisodes={initialEpisodes}
-      initialRating={initialRating}
-    />
+    <div>
+      {/* podcast 詳細 — 即座に描画 */}
+      <PodcastDetail
+        podcast={podcast}
+        favoriteCount={podcast.favorite_count}
+        ratingSlot={
+          <Suspense fallback={null}>
+            <RatingSection podcastId={id} />
+          </Suspense>
+        }
+        actions={
+          <Suspense fallback={null}>
+            <FavoriteSection podcastId={id} />
+          </Suspense>
+        }
+      />
+
+      {/* エピソード一覧 — ストリーミング */}
+      <Suspense fallback={<EpisodeSkeleton />}>
+        <EpisodeSection podcastId={id} />
+      </Suspense>
+    </div>
   );
 }
