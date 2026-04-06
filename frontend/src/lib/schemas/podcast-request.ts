@@ -5,6 +5,7 @@ import { optionalHttpUrlSchema } from "./common";
 export const podcastRequestFormSchema = z.object({
   title: z
     .string()
+    .trim()
     .min(1, "番組名を入力してください")
     .max(500, "番組名は500文字以内で入力してください"),
   url: optionalHttpUrlSchema.optional().default(""),

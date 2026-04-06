@@ -1,5 +1,6 @@
 "use server";
 
+import { z } from "zod";
 import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
 import { serverPost } from "@/lib/api/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
@@ -19,14 +20,14 @@ export async function submitPodcastRequestAction(
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
   const raw = {
-    title: (formData.get("title") as string)?.trim(),
-    url: (formData.get("url") as string)?.trim(),
+    title: formData.get("title") as string,
+    url: formData.get("url") as string,
   };
 
   const result = podcastRequestFormSchema.safeParse(raw);
   if (!result.success) {
     const fieldErrors: PodcastRequestFormState["fieldErrors"] = {};
-    const flat = result.error.flatten().fieldErrors;
+    const flat = z.flattenError(result.error).fieldErrors;
     if (flat.title?.length) fieldErrors.title = flat.title[0];
     if (flat.url?.length) fieldErrors.url = flat.url[0];
     return { success: false, fieldErrors };

@@ -20,9 +20,9 @@ export async function createProfileAction(
   formData: FormData,
 ): Promise<ProfileFormState> {
   const raw = {
-    username: (formData.get("username") as string)?.trim(),
-    display_name: (formData.get("display_name") as string)?.trim(),
-    bio: (formData.get("bio") as string)?.trim() || undefined,
+    username: formData.get("username") as string,
+    display_name: formData.get("display_name") as string,
+    bio: (formData.get("bio") as string) || undefined,
   };
 
   const result = createProfileRequestSchema.safeParse(raw);
