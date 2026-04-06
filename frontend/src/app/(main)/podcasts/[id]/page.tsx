@@ -4,11 +4,11 @@ import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import PodcastDetail from "@/components/podcast/PodcastDetail";
+import RatingSection from "./RatingSection";
 import FavoriteSection from "./FavoriteSection";
 import EpisodeSection from "./EpisodeSection";
 import { EpisodeSkeleton } from "./skeletons";
 import type { PodcastDetailResult } from "@/types/podcast";
-import type { PodcastRatingResult } from "@/types/review";
 
 interface PodcastPageProps {
   params: Promise<{ id: string }>;
@@ -35,21 +35,17 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     throw err;
   }
 
-  // 評価は podcast と一緒に即表示したいので、ここで取得（失敗しても表示は続行）
-  const rating = await serverGet<PodcastRatingResult>(
-    `/podcasts/${encodeURIComponent(id)}/rating`,
-    { noAuth: true, revalidate: 60 },
-  ).catch(() => null);
-
   return (
     <div>
       {/* podcast 詳細 — 即座に描画 */}
       <PodcastDetail
         podcast={podcast}
-        averageRating={rating?.average_rating}
-        totalReviews={rating?.total_reviews}
         favoriteCount={podcast.favorite_count}
-        hasRatingError={!rating}
+        ratingSlot={
+          <Suspense fallback={null}>
+            <RatingSection podcastId={id} />
+          </Suspense>
+        }
         actions={
           <Suspense fallback={null}>
             <FavoriteSection podcastId={id} />
