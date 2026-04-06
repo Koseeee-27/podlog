@@ -39,7 +39,9 @@ export default function RatingDisplay({
   }
 
   if (error) {
-    return (
+    return isRetrying ? (
+      <span className="text-xs text-stone-400">読み込み中...</span>
+    ) : (
       <ErrorMessage
         message="評価の取得に失敗しました"
         onRetry={handleRetry}

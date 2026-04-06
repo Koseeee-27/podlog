@@ -39,19 +39,21 @@ export default function PodcastDetail({ podcast, favoriteCount, ratingSlot, acti
             {podcast.genre}
           </span>
         )}
-        <div className="mt-3 flex items-center gap-4">
-          {ratingSlot}
-          {favoriteCount !== undefined && favoriteCount > 0 && (
-            <div className="flex items-center gap-1">
-              <svg className="w-5 h-5 text-rose-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
-                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-              </svg>
-              <span className="text-sm text-stone-500">
-                {favoriteCount}人がお気に入り
-              </span>
-            </div>
-          )}
-        </div>
+        {(ratingSlot || (favoriteCount !== undefined && favoriteCount > 0)) && (
+          <div className="mt-3 flex items-center gap-4">
+            {ratingSlot}
+            {favoriteCount !== undefined && favoriteCount > 0 && (
+              <div className="flex items-center gap-1">
+                <svg className="w-5 h-5 text-rose-500" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                  <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm text-stone-500">
+                  {favoriteCount}人がお気に入り
+                </span>
+              </div>
+            )}
+          </div>
+        )}
         {podcast.description && (
           <p className="mt-4 text-sm text-stone-700 leading-relaxed whitespace-pre-wrap">
             {stripHtmlTags(podcast.description)}
