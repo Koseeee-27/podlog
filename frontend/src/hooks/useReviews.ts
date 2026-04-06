@@ -7,9 +7,6 @@ import {
   deleteReview,
   getEpisodeReviews,
   getMyReviewForEpisode,
-  getPodcastRating,
-  getMyReviews,
-  getTimeline,
 } from "@/lib/api/reviews";
 import { ApiRequestError } from "@/types/api";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
@@ -19,9 +16,6 @@ import type {
   CreateReviewRequest,
   UpdateReviewRequest,
   ReviewItem,
-  PodcastRatingResult,
-  UserReviewItem,
-  TimelineItem,
 } from "@/types/review";
 
 const PAGE_SIZE = 20;
@@ -199,152 +193,4 @@ export function useMyReviewForEpisode(episodeId: string, isLoggedIn: boolean) {
   }, []);
 
   return { myReview, loading, error, refresh, clearMyReview, updateMyReview };
-}
-
-/**
- * 自分のレビュー一覧を管理するフック。
- */
-export function useMyReviews() {
-  const [reviews, setReviews] = useState<UserReviewItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getMyReviews({ limit: PAGE_SIZE, offset: 0 });
-        if (controller.signal.aborted) return;
-        const list = data.reviews ?? [];
-        setReviews(list);
-        setTotal(data.total);
-        setHasMore(list.length < data.total);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setError(getUserFriendlyErrorMessage(err));
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { controller.abort(); };
-  }, []);
-
-  const reviewsLength = reviews.length;
-  const loadMore = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getMyReviews({
-        limit: PAGE_SIZE,
-        offset: reviewsLength,
-      });
-      const list = data.reviews ?? [];
-      setReviews((prev) => [...prev, ...list]);
-      setTotal(data.total);
-      setHasMore(reviewsLength + list.length < data.total);
-    } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [reviewsLength]);
-
-  return { reviews, total, loading, error, hasMore, loadMore };
-}
-
-/**
- * タイムラインを管理するフック。
- */
-export function useTimeline() {
-  const [reviews, setReviews] = useState<TimelineItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(true);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getTimeline({ limit: PAGE_SIZE, offset: 0 });
-        if (controller.signal.aborted) return;
-        const list = data.reviews ?? [];
-        setReviews(list);
-        setTotal(data.total);
-        setHasMore(list.length < data.total);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setError(getUserFriendlyErrorMessage(err));
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { controller.abort(); };
-  }, []);
-
-  const reviewsLength = reviews.length;
-  const loadMore = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await getTimeline({
-        limit: PAGE_SIZE,
-        offset: reviewsLength,
-      });
-      const list = data.reviews ?? [];
-      setReviews((prev) => [...prev, ...list]);
-      setTotal(data.total);
-      setHasMore(reviewsLength + list.length < data.total);
-    } catch (err) {
-      setError(getUserFriendlyErrorMessage(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [reviewsLength]);
-
-  return { reviews, total, loading, error, hasMore, loadMore };
-}
-
-/**
- * ポッドキャストの平均評価・レビュー件数を取得するフック。
- */
-export function usePodcastRating(podcastId: string) {
-  const [rating, setRating] = useState<PodcastRatingResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      setRating(null);
-      try {
-        const data = await getPodcastRating(podcastId);
-        if (controller.signal.aborted) return;
-        setRating(data);
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setError(getUserFriendlyErrorMessage(err, "評価の取得に失敗しました"));
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { controller.abort(); };
-  }, [podcastId]);
-
-  return { rating, loading, error };
 }

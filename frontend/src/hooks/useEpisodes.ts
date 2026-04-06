@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { getEpisodesByPodcast, getEpisode, createEpisode, fetchEpisodesFromFeed } from "@/lib/api/episodes";
-import type { Episode, EpisodeDetailResult, EpisodeListItem, CreateEpisodeRequest, FetchFromFeedResult } from "@/types/episode";
+import { getEpisodesByPodcast, fetchEpisodesFromFeed } from "@/lib/api/episodes";
+import type { EpisodeListItem, FetchFromFeedResult } from "@/types/episode";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
@@ -81,59 +81,6 @@ export function useEpisodes(podcastId: string, initialData?: EpisodeListItem[]) 
   }, [podcastId]);
 
   return { episodes, loading, error, hasMore, loadMore, refresh };
-}
-
-export function useEpisode(id: string) {
-  const [episode, setEpisode] = useState<EpisodeDetailResult | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getEpisode(id);
-        if (!cancelled) setEpisode(data);
-      } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { cancelled = true; };
-  }, [id]);
-
-  return { episode, loading, error };
-}
-
-export function useCreateEpisode(podcastId: string) {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const create = useCallback(
-    async (data: CreateEpisodeRequest): Promise<Episode | null> => {
-      setLoading(true);
-      setError(null);
-      try {
-        const episode = await createEpisode(podcastId, data);
-        return episode;
-      } catch (err) {
-        const message = getUserFriendlyErrorMessage(err, "エピソードの作成に失敗しました");
-        setError(message);
-        return null;
-      } finally {
-        setLoading(false);
-      }
-    },
-    [podcastId]
-  );
-
-  return { create, loading, error };
 }
 
 export function useFetchFromFeed(podcastId: string) {
