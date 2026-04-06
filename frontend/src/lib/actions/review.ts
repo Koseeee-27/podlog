@@ -1,6 +1,7 @@
 "use server";
 
 import { createReviewRequestSchema } from "@/lib/schemas/review";
+import { uuidSchema } from "@/lib/schemas/common";
 import { serverPost, serverPut } from "@/lib/api/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
@@ -17,6 +18,10 @@ export async function createReviewAction(
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
+  if (!uuidSchema.safeParse(episodeId).success) {
+    return { success: false, error: "無効なエピソードIDです" };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
@@ -49,6 +54,10 @@ export async function updateReviewAction(
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
+  if (!uuidSchema.safeParse(episodeId).success) {
+    return { success: false, error: "無効なエピソードIDです" };
+  }
+
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
