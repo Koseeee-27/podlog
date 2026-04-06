@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useTransition } from "react";
-import { searchPodcasts, getPopularPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
+import { searchPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
@@ -46,38 +46,6 @@ export function usePodcastSearch(options: UsePodcastSearchOptions = {}) {
   }, []);
 
   return { query, results, loading: isPending, error, search, clear };
-}
-
-export function usePopularPodcasts(enabled = true, limit = 10) {
-  const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
-  const [loading, setLoading] = useState(enabled);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!enabled) {
-      setLoading(false);
-      return;
-    }
-    let cancelled = false;
-
-    async function fetch() {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await getPopularPodcasts(limit);
-        if (!cancelled) setPodcasts(data);
-      } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetch();
-    return () => { cancelled = true; };
-  }, [enabled, limit]);
-
-  return { podcasts, loading, error };
 }
 
 const GENRE_PAGE_SIZE = 20;
