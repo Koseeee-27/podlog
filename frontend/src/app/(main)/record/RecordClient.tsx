@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { redirect } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useRecentEpisodes } from "@/hooks/useRecentEpisodes";
@@ -30,7 +30,12 @@ import type { PodcastSearchItem } from "@/types/podcast";
  * 別コンポーネントとして切り出している。
  */
 function PodcastEpisodeList({ podcast, onBack }: { podcast: PodcastSearchItem; onBack: () => void }) {
-  const { episodes, loading, error, hasMore, loadMore } = useEpisodes(podcast.id);
+  // TODO: #278 で Server Component 化する。現時点ではマウント時に refresh で初回フェッチを行う
+  const { episodes, loading, error, hasMore, loadMore, refresh } = useEpisodes(podcast.id, []);
+
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
   return (
     <div>
