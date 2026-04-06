@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useReviewActions, useEpisodeReviews, useMyReviewForEpisode } from "@/hooks/useReviews";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/components/ui/Toast";
@@ -39,19 +39,19 @@ export default function EpisodeReviewSection({ episodeId }: EpisodeReviewSection
   const boundCreateAction = createReviewAction.bind(null, episodeId);
   const boundUpdateAction = updateReviewAction.bind(null, episodeId);
 
-  const handleCreateSuccess = useCallback((review: Review) => {
+  function handleCreateSuccess(review: Review) {
     updateMyReview(toMyReviewResult(review));
     setSubmitted(true);
     refresh();
     showToast("レビューを投稿しました");
-  }, [updateMyReview, refresh, showToast]);
+  }
 
-  const handleUpdateSuccess = useCallback((review: Review) => {
+  function handleUpdateSuccess(review: Review) {
     updateMyReview(toMyReviewResult(review));
     setEditing(false);
     refresh();
     showToast("レビューを更新しました");
-  }, [updateMyReview, refresh, showToast]);
+  }
 
   const handleDelete = async () => {
     const reviewId = myReview?.id ?? null;

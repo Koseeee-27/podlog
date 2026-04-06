@@ -3,6 +3,7 @@
 import { createReviewRequestSchema } from "@/lib/schemas/review";
 import { serverPost, serverPut } from "@/lib/api/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
 import type { Review } from "@/types/review";
 
 export interface ReviewFormState {
@@ -11,12 +12,17 @@ export interface ReviewFormState {
   review?: Review;
 }
 
-
 export async function createReviewAction(
   episodeId: string,
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です" };
+  }
+
   const raw = Object.fromEntries(formData);
 
   const result = createReviewRequestSchema.safeParse(raw);
@@ -27,7 +33,7 @@ export async function createReviewAction(
   try {
     const review = await serverPost<Review>(
       `/episodes/${encodeURIComponent(episodeId)}/reviews`,
-      result.data,
+      { ...result.data, comment: result.data.comment || undefined },
     );
     return { success: true, review };
   } catch (err) {
@@ -43,6 +49,12 @@ export async function updateReviewAction(
   _prevState: ReviewFormState,
   formData: FormData,
 ): Promise<ReviewFormState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です" };
+  }
+
   const raw = Object.fromEntries(formData);
 
   const result = createReviewRequestSchema.safeParse(raw);
@@ -53,7 +65,7 @@ export async function updateReviewAction(
   try {
     const review = await serverPut<Review>(
       `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
-      result.data,
+      { ...result.data, comment: result.data.comment || undefined },
     );
     return { success: true, review };
   } catch (err) {

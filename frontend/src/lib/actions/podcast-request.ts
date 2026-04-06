@@ -4,6 +4,7 @@ import { z } from "zod";
 import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
 import { serverPost } from "@/lib/api/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
+import { createClient } from "@/lib/supabase/server";
 import type { PodcastRequestResult } from "@/types/podcast-request";
 
 export interface PodcastRequestFormState {
@@ -19,6 +20,12 @@ export async function submitPodcastRequestAction(
   _prevState: PodcastRequestFormState,
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です" };
+  }
+
   const raw = Object.fromEntries(formData);
 
   const result = podcastRequestFormSchema.safeParse(raw);
