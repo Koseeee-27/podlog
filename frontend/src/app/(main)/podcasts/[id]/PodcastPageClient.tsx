@@ -18,7 +18,7 @@ interface PodcastPageClientProps {
   id: string;
   initialPodcast: Podcast;
   initialFavoriteCount?: number;
-  initialEpisodes?: EpisodeListItem[];
+  initialEpisodes: EpisodeListItem[];
   initialRating: PodcastRatingResult | null;
   isAuthenticated: boolean;
   initialIsFavorite: boolean;
@@ -45,7 +45,7 @@ export default function PodcastPageClient({
     hasMore,
     loadMore,
     refresh,
-  } = useEpisodes(id, initialEpisodes ?? []);
+  } = useEpisodes(id, initialEpisodes);
 
   // お気に入り: 初期値は Server Component から渡される
   const {

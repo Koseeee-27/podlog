@@ -48,25 +48,25 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
     { noAuth: true, revalidate: 60 },
   );
   // 認証済みの場合のみプロフィールとお気に入りを取得
-  const profilePromise = authUser
+  const profilePromise: Promise<User | null> = authUser
     ? serverGet<User>("/users/me")
-    : null;
+    : Promise.resolve(null);
 
   const [episodesResult, ratingResult, profileResult] = await Promise.allSettled([
     episodesPromise,
     ratingPromise,
-    ...(profilePromise ? [profilePromise] : [Promise.resolve(null)]),
+    profilePromise,
   ]);
 
   const initialEpisodes =
     episodesResult.status === "fulfilled"
       ? (episodesResult.value.episodes ?? [])
-      : undefined;
+      : [];
   const initialRating =
     ratingResult.status === "fulfilled" ? ratingResult.value : null;
 
   const profile =
-    profileResult.status === "fulfilled" ? profileResult.value as User | null : null;
+    profileResult.status === "fulfilled" ? profileResult.value : null;
 
   // プロフィール取得成功時のみお気に入りを取得
   let initialFavorites: FavoritePodcastListResult | null = null;
