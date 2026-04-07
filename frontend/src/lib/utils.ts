@@ -20,6 +20,7 @@ export function formatDate(dateString: string | null): string {
     year: "numeric",
     month: "short",
     day: "numeric",
+    timeZone: "Asia/Tokyo",
   });
 }
 
