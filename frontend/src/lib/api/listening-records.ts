@@ -13,18 +13,6 @@ export function getListeningStatus(episodeId: string): Promise<ListeningStatus> 
   return apiGet<ListeningStatus>(`/episodes/${encodeURIComponent(episodeId)}/listen`);
 }
 
-export function getMyListeningRecords(
-  params?: { limit?: number; offset?: number }
-): Promise<ListeningRecordListResult> {
-  const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
-  const query = searchParams.toString();
-  return apiGet<ListeningRecordListResult>(
-    `/users/me/listening-records${query ? `?${query}` : ""}`
-  );
-}
-
 export function getUserListeningRecords(
   username: string,
   params?: { limit?: number; offset?: number }

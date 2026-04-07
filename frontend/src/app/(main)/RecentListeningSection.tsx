@@ -3,6 +3,8 @@ import Image from "next/image";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
 import { serverGet } from "@/lib/api/server";
 import { formatDate } from "@/lib/utils";
+import { ApiRequestError } from "@/types/api";
+import EmptyState from "@/components/ui/EmptyState";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import CtaSection from "@/components/home/CtaSection";
@@ -13,35 +15,49 @@ const DISPLAY_LIMIT = 5;
 
 /**
  * ログイン済みユーザー向けホーム画面。
- * Server Component でプロフィールと聴取履歴を取得する。
+ * Server Component でプロフィールと聴取履歴を並列取得する。
  * serverGet("/users/me") の成功/失敗で認証状態を判定する。
- * 未認証の場合はマーケティング UI にフォールバックする。
+ * - 401: 未認証 → マーケティング UI にフォールバック
+ * - 404: プロフィール未設定 → null（何も表示しない）
+ * - その他のエラー: throw して Error Boundary で捕捉
  */
 export default async function RecentListeningSection() {
-  let profile: User;
-  try {
-    profile = await serverGet<User>("/users/me");
-  } catch {
-    // 未認証（Cookie はあるがセッション期限切れ等）→ マーケティング UI を表示
-    return (
-      <>
-        <HeroSection />
-        <FeaturesSection />
-        <CtaSection />
-      </>
-    );
-  }
-
-  let records: ListeningRecordListResult | null = null;
-  try {
-    records = await serverGet<ListeningRecordListResult>(
+  // プロフィールと聴取履歴を並列取得
+  const [profileResult, recordsResult] = await Promise.allSettled([
+    serverGet<User>("/users/me"),
+    serverGet<ListeningRecordListResult>(
       `/users/me/listening-records?limit=${DISPLAY_LIMIT}`,
-    );
-  } catch {
-    // 聴取履歴の取得失敗は致命的ではない → 空として扱う
+    ),
+  ]);
+
+  // プロフィール取得の結果を判定
+  if (profileResult.status === "rejected") {
+    const err = profileResult.reason;
+    if (err instanceof ApiRequestError) {
+      if (err.status === 401) {
+        // 未認証（Cookie はあるがセッション期限切れ等）→ マーケティング UI
+        return (
+          <>
+            <HeroSection />
+            <FeaturesSection />
+            <CtaSection />
+          </>
+        );
+      }
+      if (err.status === 404) {
+        // プロフィール未設定（ログイン済みだが /users/me が 404）
+        return null;
+      }
+    }
+    // 500 等のサーバーエラー → throw して Error Boundary で捕捉
+    throw err;
   }
 
-  const displayRecords = records?.records ?? [];
+  const profile = profileResult.value;
+  const displayRecords =
+    recordsResult.status === "fulfilled"
+      ? recordsResult.value.records ?? []
+      : [];
 
   return (
     <>
@@ -65,7 +81,13 @@ export default async function RecentListeningSection() {
         </div>
 
         {displayRecords.length === 0 ? (
-          <EmptyListening />
+          <EmptyState
+            icon={<MusicalNoteIcon className="h-12 w-12" />}
+            message="まだ聴取記録がありません"
+            description="番組を探して聴取記録を付けてみましょう"
+            ctaLabel="番組を探す"
+            ctaHref="/discover"
+          />
         ) : (
           <div className="space-y-2">
             {displayRecords.map((record) => (
@@ -115,23 +137,5 @@ export default async function RecentListeningSection() {
         )}
       </section>
     </>
-  );
-}
-
-function EmptyListening() {
-  return (
-    <div className="flex flex-col items-center justify-center py-12 text-center">
-      <MusicalNoteIcon className="h-12 w-12 text-stone-300 mb-4" />
-      <p className="text-stone-600 font-medium">まだ聴取記録がありません</p>
-      <p className="text-sm text-stone-400 mt-1">
-        番組を探して聴取記録を付けてみましょう
-      </p>
-      <Link
-        href="/discover"
-        className="mt-4 inline-flex items-center rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600 transition-colors"
-      >
-        番組を探す
-      </Link>
-    </div>
   );
 }
