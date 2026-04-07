@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"golang.org/x/sync/singleflight"
+
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
@@ -139,6 +141,7 @@ type episodeUsecase struct {
 	episodeRepo repository.EpisodeRepository
 	podcastRepo repository.PodcastRepository
 	rssFetcher  rss.Fetcher
+	fetchGroup  singleflight.Group // 同一ポッドキャストへの重複バックグラウンドフェッチを防止
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
@@ -341,14 +344,20 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 
 	if u.isFeedStale(podcast.FeedLastFetchedAt) {
 		// 3b. キャッシュが古い → バックグラウンドで RSS を再取得（レスポンスは待たない）
+		// singleflight.Do により、同一ポッドキャスト ID に対するフェッチが既に実行中なら
+		// 新たな goroutine を起動せず、実行中の結果を共有する。
 		// リクエストの context はレスポンス送信後にキャンセルされるため、
 		// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
 		go func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
-			if _, err := u.FetchFromFeed(bgCtx, podcastID, feedURL); err != nil {
-				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
-			}
+			_, _, _ = u.fetchGroup.Do(podcastID.String(), func() (any, error) {
+				result, err := u.FetchFromFeed(bgCtx, podcastID, feedURL)
+				if err != nil {
+					log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
+				}
+				return result, err
+			})
 		}()
 	}
 
