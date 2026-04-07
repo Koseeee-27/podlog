@@ -27,6 +27,7 @@ erDiagram
         VARCHAR(100) genre
         VARCHAR(20) source_type
         TEXT source_url
+        TIMESTAMPTZ feed_last_fetched_at
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -126,6 +127,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | genre | VARCHAR(100) | YES | - | ジャンル |
 | source_type | VARCHAR(20) | NO | 'itunes' | ソース種別: 'itunes' / 'radiko' / 'manual' |
 | source_url | TEXT | YES | - | 元ソースの URL |
+| feed_last_fetched_at | TIMESTAMPTZ | YES | - | RSS フィードの最終取得日時。Stale-While-Revalidate のキャッシュ判定に使用 |
 | created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
 | updated_at | TIMESTAMPTZ | NO | NOW() | 更新日時 |
 
@@ -266,6 +268,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 
 | 日付 | 変更内容 |
 |---|---|
+| 2026-04-07 | podcasts テーブルに feed_last_fetched_at カラムを追加（マイグレーション 009） |
 | 2026-03-21 | マイグレーション 001〜008 との突き合わせを実施し、差分がないことを確認 |
 | 2026-03-11 | 機能要件書・API設計書に基づいて全面改訂。favorite_podcasts・podcast_requests テーブルの追加、インデックス・制約の整理、設計方針の補完 |
 

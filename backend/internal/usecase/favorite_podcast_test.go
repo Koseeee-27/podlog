@@ -88,6 +88,9 @@ func (m *mockPodcastRepo) ListWithoutGenre(_ context.Context) ([]model.Podcast, 
 func (m *mockPodcastRepo) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
 
 // ── テスト: GetByUsername ──
 

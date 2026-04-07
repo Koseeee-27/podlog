@@ -144,6 +144,7 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 
 // GetByPodcastID はポッドキャストのエピソード一覧を取得するハンドラーです。
 // API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+// Stale-While-Revalidate 方式で、必要に応じて RSS フィードからエピソードを自動取得します。
 // @Summary エピソード一覧取得
 // @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。
 // @Tags podcasts
@@ -162,7 +163,7 @@ func (h *EpisodeHandler) GetByPodcastID(c echo.Context) error {
 
 	limit, offset := parsePagination(c)
 
-	result, err := h.episodeUsecase.GetByPodcastIDWithStats(c.Request().Context(), podcastID, limit, offset)
+	result, err := h.episodeUsecase.GetByPodcastIDWithAutoFetch(c.Request().Context(), podcastID, limit, offset)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episodes")
 	}

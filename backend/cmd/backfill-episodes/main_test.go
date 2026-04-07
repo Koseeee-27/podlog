@@ -52,6 +52,9 @@ func (m *mockPodcastRepo) ListWithoutEpisodes(ctx context.Context) ([]model.Podc
 	}
 	return m.listWithoutEpisodesFn(ctx)
 }
+func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
 
 // ── モック: EpisodeUsecase ──
 
@@ -78,6 +81,9 @@ func (m *mockEpisodeUC) FetchFromFeed(ctx context.Context, podcastID uuid.UUID, 
 		return nil, fmt.Errorf("not implemented")
 	}
 	return m.fetchFromFeedFn(ctx, podcastID, feedURL)
+}
+func (m *mockEpisodeUC) GetByPodcastIDWithAutoFetch(_ context.Context, _ uuid.UUID, _, _ int) (*usecase.EpisodeListResult, error) {
+	return nil, fmt.Errorf("not implemented")
 }
 func (m *mockEpisodeUC) GetRecentForUser(_ context.Context, _ uuid.UUID) (*usecase.RecentEpisodeListResult, error) {
 	return nil, fmt.Errorf("not implemented")

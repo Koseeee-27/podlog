@@ -17,8 +17,9 @@ type Podcast struct {
 	ArtworkURL  *string   `db:"artwork_url" json:"artwork_url,omitempty"`
 	ItunesURL   *string   `db:"itunes_url" json:"itunes_url,omitempty"`
 	Genre       *string   `db:"genre" json:"genre,omitempty"`
-	SourceType  string    `db:"source_type" json:"source_type"`
-	SourceURL   *string   `db:"source_url" json:"source_url,omitempty"`
-	CreatedAt   time.Time `db:"created_at" json:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+	SourceType        string     `db:"source_type" json:"source_type"`
+	SourceURL         *string    `db:"source_url" json:"source_url,omitempty"`
+	FeedLastFetchedAt *time.Time `db:"feed_last_fetched_at" json:"feed_last_fetched_at,omitempty"`
+	CreatedAt         time.Time  `db:"created_at" json:"created_at"`
+	UpdatedAt         time.Time  `db:"updated_at" json:"updated_at"`
 }

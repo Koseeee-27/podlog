@@ -116,26 +116,38 @@ type RecentEpisodeItem struct {
 	PublishedAt *string   `json:"published_at,omitempty"`
 }
 
+// feedStaleDuration は RSS フィードのキャッシュ有効期間です。
+// feed_last_fetched_at からこの時間を超えた場合、バックグラウンドで RSS フィードを再取得します。
+const feedStaleDuration = 6 * time.Hour
+
 // EpisodeUsecase はエピソードに関するビジネスロジックです。
 type EpisodeUsecase interface {
 	Create(ctx context.Context, podcastID uuid.UUID, input CreateEpisodeInput) (*CreateEpisodeResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
 	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
+	// GetByPodcastIDWithAutoFetch はエピソード一覧を取得し、必要に応じて RSS フィードから自動取得します。
+	// Stale-While-Revalidate 方式:
+	//   - DB にエピソードが 0 件: 同期的に RSS フィードを取得してから返す
+	//   - feed_last_fetched_at から 6 時間経過: バックグラウンドで RSS を再取得
+	GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
 	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
 	GetRecentForUser(ctx context.Context, userID uuid.UUID) (*RecentEpisodeListResult, error)
 }
 
 type episodeUsecase struct {
 	episodeRepo repository.EpisodeRepository
+	podcastRepo repository.PodcastRepository
 	rssFetcher  rss.Fetcher
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
+// podcastRepo は FetchFromFeed 完了後に feed_last_fetched_at を更新するために使います。
 // rssFetcher には RSS フィード取得クライアントを渡します。
-func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
+func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, podcastRepo repository.PodcastRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
 	return &episodeUsecase{
 		episodeRepo: episodeRepo,
+		podcastRepo: podcastRepo,
 		rssFetcher:  rssFetcher,
 	}
 }
@@ -285,6 +297,73 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 	}, nil
 }
 
+// GetByPodcastIDWithAutoFetch はエピソード一覧を取得し、必要に応じて RSS フィードから自動取得します。
+//
+// Stale-While-Revalidate 方式:
+//  1. ポッドキャスト情報を取得して feed_url の有無を確認
+//  2. DB からエピソード一覧を取得
+//  3. feed_url がある場合:
+//     - エピソード 0 件 → 同期的に RSS フィードを取得してから返す（初回のみ待ちが発生）
+//     - feed_last_fetched_at から feedStaleDuration（6時間）経過 → バックグラウンドで RSS を再取得
+func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error) {
+	// 1. ポッドキャスト情報を取得して feed_url と feed_last_fetched_at を確認する
+	podcast, err := u.podcastRepo.GetByID(ctx, podcastID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get podcast: %w", err)
+	}
+
+	hasFeedURL := podcast != nil && podcast.FeedURL != nil && *podcast.FeedURL != ""
+
+	// 2. DB からエピソード一覧を取得
+	result, err := u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	if !hasFeedURL {
+		return result, nil
+	}
+
+	feedURL := *podcast.FeedURL
+
+	if result.Total == 0 && u.isFeedStale(podcast.FeedLastFetchedAt) {
+		// 3a. DB にエピソードが 0 件かつキャッシュが古い → 同期的に RSS フィードを取得してからエピソードを返す
+		// feed_last_fetched_at が新しい場合はスキップする（空フィードを何度も取りに行くのを防ぐ）
+		_, fetchErr := u.FetchFromFeed(ctx, podcastID, feedURL)
+		if fetchErr != nil {
+			log.Printf("[GetByPodcastIDWithAutoFetch] failed to fetch feed for podcast %s: %v", podcastID, fetchErr)
+			// フェッチ失敗でも空のレスポンスを返す（エラーにはしない）
+			return result, nil
+		}
+		// フェッチ成功 → DB から改めてエピソードを取得して返す
+		return u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	}
+
+	if u.isFeedStale(podcast.FeedLastFetchedAt) {
+		// 3b. キャッシュが古い → バックグラウンドで RSS を再取得（レスポンスは待たない）
+		// リクエストの context はレスポンス送信後にキャンセルされるため、
+		// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
+		go func() {
+			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+			if _, err := u.FetchFromFeed(bgCtx, podcastID, feedURL); err != nil {
+				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
+			}
+		}()
+	}
+
+	return result, nil
+}
+
+// isFeedStale は feed_last_fetched_at が feedStaleDuration を超えて古いかどうかを判定します。
+// feed_last_fetched_at が nil（未取得）の場合も古いと判定します。
+func (u *episodeUsecase) isFeedStale(lastFetchedAt *time.Time) bool {
+	if lastFetchedAt == nil {
+		return true
+	}
+	return time.Since(*lastFetchedAt) > feedStaleDuration
+}
+
 // FetchFromFeed は RSS フィードからエピソードを取得してDBに登録します。
 //
 // 処理の流れ:
@@ -405,6 +484,12 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		consecutiveFailures = 0
 		result.NewCount++
 		result.Episodes = append(result.Episodes, *episode)
+	}
+
+	// RSS フィード取得が完了したので、feed_last_fetched_at を更新する。
+	// エラーが起きてもエピソードの取得自体は成功しているのでログだけ出して無視する。
+	if err := u.podcastRepo.UpdateFeedLastFetchedAt(ctx, podcastID); err != nil {
+		log.Printf("[FetchFromFeed] failed to update feed_last_fetched_at for podcast %s: %v", podcastID, err)
 	}
 
 	return result, nil

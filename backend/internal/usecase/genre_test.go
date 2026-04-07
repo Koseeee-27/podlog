@@ -51,6 +51,9 @@ func (m *mockPodcastRepoForGenre) ListWithoutGenre(_ context.Context) ([]model.P
 func (m *mockPodcastRepoForGenre) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
 }
+func (m *mockPodcastRepoForGenre) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID) error {
+	return nil
+}
 
 // ── テスト: ListGenres ──
 

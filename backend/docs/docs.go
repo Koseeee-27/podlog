@@ -1978,6 +1978,9 @@ const docTemplate = `{
                 "description": {
                     "type": "string"
                 },
+                "feed_last_fetched_at": {
+                    "type": "string"
+                },
                 "feed_url": {
                     "type": "string"
                 },
