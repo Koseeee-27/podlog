@@ -6,6 +6,7 @@ import (
 	"log"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/google/uuid"
@@ -141,17 +142,21 @@ type episodeUsecase struct {
 	episodeRepo repository.EpisodeRepository
 	podcastRepo repository.PodcastRepository
 	rssFetcher  rss.Fetcher
-	fetchGroup  singleflight.Group // 同一ポッドキャストへの重複バックグラウンドフェッチを防止
+	fetchGroup  singleflight.Group  // 同一ポッドキャストへの重複バックグラウンドフェッチを防止
+	bgWg        *sync.WaitGroup     // バックグラウンド goroutine の追跡用（graceful shutdown）
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
 // podcastRepo は FetchFromFeed 完了後に feed_last_fetched_at を更新するために使います。
 // rssFetcher には RSS フィード取得クライアントを渡します。
-func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, podcastRepo repository.PodcastRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
+// bgWg はバックグラウンド goroutine を追跡するための WaitGroup です。
+// nil を渡すと goroutine の追跡なしで動作します（テスト用）。
+func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, podcastRepo repository.PodcastRepository, rssFetcher rss.Fetcher, bgWg *sync.WaitGroup) EpisodeUsecase {
 	return &episodeUsecase{
 		episodeRepo: episodeRepo,
 		podcastRepo: podcastRepo,
 		rssFetcher:  rssFetcher,
+		bgWg:        bgWg,
 	}
 }
 
@@ -348,7 +353,7 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 		// 新たな goroutine を起動せず、実行中の結果を共有する。
 		// リクエストの context はレスポンス送信後にキャンセルされるため、
 		// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
-		go func() {
+		bgTask := func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
 			_, _, _ = u.fetchGroup.Do(podcastID.String(), func() (any, error) {
@@ -358,7 +363,14 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 				}
 				return result, err
 			})
-		}()
+		}
+		// bgWg がある場合は wg.Go() で goroutine を起動し、シャットダウン時に待機可能にする。
+		// Go 1.25 の wg.Go() は wg.Add(1) + go func() { defer wg.Done(); ... }() を1行で行う。
+		if u.bgWg != nil {
+			u.bgWg.Go(bgTask)
+		} else {
+			go bgTask()
+		}
 	}
 
 	return result, nil
