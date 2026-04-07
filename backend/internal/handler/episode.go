@@ -1,11 +1,8 @@
 package handler
 
 import (
-	"context"
 	"errors"
-	"log"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
@@ -14,10 +11,6 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 	"github.com/labstack/echo/v4"
 )
-
-// feedStaleDuration は RSS フィードのキャッシュ有効期間です。
-// この時間を超えた場合、バックグラウンドで RSS フィードを再取得します。
-const feedStaleDuration = 6 * time.Hour
 
 // EpisodeHandler はエピソード関連のHTTPハンドラーです。
 // podcastUsecase は feed_url を持つポッドキャストの取得に使用します。
@@ -151,12 +144,7 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 
 // GetByPodcastID はポッドキャストのエピソード一覧を取得するハンドラーです。
 // API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
-//
-// Stale-While-Revalidate 方式:
-//   - DB にエピソードが 0 件の場合: RSS フィードを同期的に取得してから返す（初回のみ待ちが発生）
-//   - DB にエピソードがある場合: DB のデータを即座に返す
-//   - feed_last_fetched_at から feedStaleDuration（6時間）経過: バックグラウンドで RSS を再取得
-//
+// Stale-While-Revalidate 方式で、必要に応じて RSS フィードからエピソードを自動取得します。
 // @Summary エピソード一覧取得
 // @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。
 // @Tags podcasts
@@ -173,70 +161,14 @@ func (h *EpisodeHandler) GetByPodcastID(c echo.Context) error {
 		return response.Error(c, http.StatusBadRequest, "invalid podcast ID")
 	}
 
-	ctx := c.Request().Context()
 	limit, offset := parsePagination(c)
 
-	// ポッドキャスト情報を取得して feed_url と feed_last_fetched_at を確認する
-	podcast, err := h.podcastUsecase.GetByID(ctx, podcastID)
-	if err != nil {
-		var notFoundErr *usecase.NotFoundError
-		if errors.As(err, &notFoundErr) {
-			return response.Error(c, http.StatusNotFound, "podcast not found")
-		}
-		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
-	}
-
-	hasFeedURL := podcast.FeedURL != nil && *podcast.FeedURL != ""
-
-	// エピソード一覧を取得
-	result, err := h.episodeUsecase.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	result, err := h.episodeUsecase.GetByPodcastIDWithAutoFetch(c.Request().Context(), podcastID, limit, offset)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episodes")
 	}
 
-	if hasFeedURL {
-		if result.Total == 0 {
-			// DB にエピソードが 0 件 → 同期的に RSS フィードを取得してからエピソードを返す
-			_, fetchErr := h.episodeUsecase.FetchFromFeed(ctx, podcastID, *podcast.FeedURL)
-			if fetchErr != nil {
-				log.Printf("[GetByPodcastID] failed to fetch feed for podcast %s: %v", podcastID, fetchErr)
-				// フェッチ失敗でも空のレスポンスを返す（エラーにはしない）
-				return response.Success(c, http.StatusOK, result)
-			}
-			// フェッチ成功 → DB から改めてエピソードを取得して返す
-			result, err = h.episodeUsecase.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
-			if err != nil {
-				return response.Error(c, http.StatusInternalServerError, "failed to get episodes")
-			}
-		} else if h.isFeedStale(podcast.FeedLastFetchedAt) {
-			// キャッシュが古い → バックグラウンドで RSS を再取得（レスポンスは待たない）
-			go h.refreshFeedInBackground(podcastID, *podcast.FeedURL)
-		}
-	}
-
 	return response.Success(c, http.StatusOK, result)
-}
-
-// isFeedStale は feed_last_fetched_at が feedStaleDuration を超えて古いかどうかを判定します。
-// feed_last_fetched_at が nil（未取得）の場合も古いと判定します。
-func (h *EpisodeHandler) isFeedStale(lastFetchedAt *time.Time) bool {
-	if lastFetchedAt == nil {
-		return true
-	}
-	return time.Since(*lastFetchedAt) > feedStaleDuration
-}
-
-// refreshFeedInBackground は goroutine から呼ばれ、RSS フィードをバックグラウンドで再取得します。
-// リクエストの context はレスポンス送信後にキャンセルされるため、
-// バックグラウンドタスク用に新しい context を生成します（最大60秒のタイムアウト付き）。
-func (h *EpisodeHandler) refreshFeedInBackground(podcastID uuid.UUID, feedURL string) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	_, err := h.episodeUsecase.FetchFromFeed(ctx, podcastID, feedURL)
-	if err != nil {
-		log.Printf("[refreshFeedInBackground] failed to refresh feed for podcast %s: %v", podcastID, err)
-	}
 }
 
 // FetchFromFeed は RSS フィードからエピソードを自動取得するハンドラーです。

@@ -83,6 +83,9 @@ func (m *mockEpisodeUC) FetchFromFeed(ctx context.Context, podcastID uuid.UUID, 
 	}
 	return m.fetchFromFeedFn(ctx, podcastID, feedURL)
 }
+func (m *mockEpisodeUC) GetByPodcastIDWithAutoFetch(_ context.Context, _ uuid.UUID, _, _ int) (*usecase.EpisodeListResult, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 func (m *mockEpisodeUC) GetRecentForUser(_ context.Context, _ uuid.UUID) (*usecase.RecentEpisodeListResult, error) {
 	return nil, fmt.Errorf("not implemented")
 }
