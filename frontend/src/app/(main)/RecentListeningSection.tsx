@@ -54,10 +54,12 @@ export default async function RecentListeningSection() {
   }
 
   const profile = profileResult.value;
-  const displayRecords =
-    recordsResult.status === "fulfilled"
-      ? recordsResult.value.records ?? []
-      : [];
+
+  if (recordsResult.status === "rejected") {
+    throw recordsResult.reason;
+  }
+
+  const displayRecords = recordsResult.value.records ?? [];
 
   return (
     <>
