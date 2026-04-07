@@ -487,7 +487,7 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 
 	// RSS フィード取得が完了したので、feed_last_fetched_at を更新する。
 	// エラーが起きてもエピソードの取得自体は成功しているのでログだけ出して無視する。
-	if err := u.podcastRepo.UpdateFeedLastFetchedAt(ctx, podcastID, time.Now()); err != nil {
+	if err := u.podcastRepo.UpdateFeedLastFetchedAt(ctx, podcastID); err != nil {
 		log.Printf("[FetchFromFeed] failed to update feed_last_fetched_at for podcast %s: %v", podcastID, err)
 	}
 

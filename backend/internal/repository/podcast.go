@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -66,9 +65,10 @@ type PodcastRepository interface {
 	// バッチ処理でエピソードを一括取得する際に対象を特定するために使います。
 	ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error)
 
-	// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at を更新します。
+	// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at と updated_at を更新します。
 	// RSS フィードの取得が完了した後に呼び出し、次回のキャッシュ判定に使います。
-	UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID, fetchedAt time.Time) error
+	// 時刻は DB 側の NOW() を使い、Go 側の time.Now() との差異を防ぎます。
+	UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID) error
 }
 
 type podcastRepository struct {
@@ -314,11 +314,12 @@ func (r *podcastRepository) ListWithoutEpisodes(ctx context.Context) ([]model.Po
 	return podcasts, nil
 }
 
-// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at を更新します。
+// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at と updated_at を更新します。
 // RSS フィード取得完了後に呼び出し、Stale-While-Revalidate のキャッシュ判定に使います。
-func (r *podcastRepository) UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID, fetchedAt time.Time) error {
-	query := `UPDATE podcasts SET feed_last_fetched_at = $1 WHERE id = $2`
-	result, err := r.db.ExecContext(ctx, query, fetchedAt, id)
+// 時刻は DB 側の NOW() を使い、アプリケーションサーバーとの時刻差異を防ぎます。
+func (r *podcastRepository) UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID) error {
+	query := `UPDATE podcasts SET feed_last_fetched_at = NOW(), updated_at = NOW() WHERE id = $1`
+	result, err := r.db.ExecContext(ctx, query, id)
 	if err != nil {
 		return fmt.Errorf("failed to update feed_last_fetched_at: %w", err)
 	}

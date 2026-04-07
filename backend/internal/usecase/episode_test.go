@@ -76,14 +76,20 @@ func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUI
 }
 
 // mockPodcastRepoForEpisode は EpisodeUsecase テスト用の PodcastRepository モックです。
-// FetchFromFeed で feed_last_fetched_at を更新するために必要ですが、
-// エピソードのテストでは実際の動作を検証する必要がないため、全メソッドを空実装にしています。
-type mockPodcastRepoForEpisode struct{}
+// GetByID の戻り値を制御するための関数フィールドを持ちます。
+// updateFeedLastFetchedAtCalled で UpdateFeedLastFetchedAt の呼び出しを検証できます。
+type mockPodcastRepoForEpisode struct {
+	getByIDFunc                    func(ctx context.Context, id uuid.UUID) (*model.Podcast, error)
+	updateFeedLastFetchedAtCalled  bool
+}
 
 func (m *mockPodcastRepoForEpisode) Create(ctx context.Context, podcast *model.Podcast) error {
 	return nil
 }
 func (m *mockPodcastRepoForEpisode) GetByID(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, id)
+	}
 	return nil, nil
 }
 func (m *mockPodcastRepoForEpisode) GetByItunesID(ctx context.Context, itunesID int64) (*model.Podcast, error) {
@@ -110,7 +116,8 @@ func (m *mockPodcastRepoForEpisode) ListWithoutGenre(ctx context.Context) ([]mod
 func (m *mockPodcastRepoForEpisode) ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error) {
 	return nil, nil
 }
-func (m *mockPodcastRepoForEpisode) UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID, fetchedAt time.Time) error {
+func (m *mockPodcastRepoForEpisode) UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID) error {
+	m.updateFeedLastFetchedAtCalled = true
 	return nil
 }
 
@@ -1086,5 +1093,200 @@ func TestGetRecentForUser_RepoError(t *testing.T) {
 	_, err := uc.GetRecentForUser(context.Background(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+// ── GetByPodcastIDWithAutoFetch テスト ──
+
+func TestGetByPodcastIDWithAutoFetch_NoFeedURL(t *testing.T) {
+	// feed_url がない番組では FetchFromFeed が呼ばれないことを確認する
+	podcastID := uuid.New()
+	fetchCalled := false
+
+	episodeRepo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{}, 0, nil
+		},
+	}
+	podcastRepo := &mockPodcastRepoForEpisode{
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+			return &model.Podcast{ID: podcastID, Title: "テスト番組"}, nil // feed_url なし
+		},
+	}
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, feedURL string) ([]rss.FeedItem, error) {
+			fetchCalled = true
+			return nil, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 0 {
+		t.Errorf("expected 0 total, got %d", result.Total)
+	}
+	if fetchCalled {
+		t.Error("FetchFromFeed should not be called when feed_url is nil")
+	}
+}
+
+func TestGetByPodcastIDWithAutoFetch_ZeroEpisodes_SyncFetch(t *testing.T) {
+	// エピソード 0 件 + feed_url あり → 同期的に FetchFromFeed が呼ばれることを確認する
+	podcastID := uuid.New()
+	feedURL := "https://example.com/feed.xml"
+	fetchCalled := false
+	callCount := 0
+
+	episodeRepo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			callCount++
+			if callCount == 1 {
+				// 1回目: エピソード 0 件
+				return []repository.EpisodeWithStatsRow{}, 0, nil
+			}
+			// 2回目: フェッチ後にエピソードが入っている
+			return []repository.EpisodeWithStatsRow{
+				{ID: uuid.New(), Title: "エピソード1"},
+			}, 1, nil
+		},
+		getByGUIDFunc: func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil // 新規扱い
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+	podcastRepo := &mockPodcastRepoForEpisode{
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+			return &model.Podcast{ID: podcastID, Title: "テスト番組", FeedURL: &feedURL}, nil
+		},
+	}
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
+			fetchCalled = true
+			return []rss.FeedItem{
+				{Title: "エピソード1", GUID: "guid-1"},
+			}, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !fetchCalled {
+		t.Error("FetchFromFeed should be called when episodes are 0")
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 total after fetch, got %d", result.Total)
+	}
+	if !podcastRepo.updateFeedLastFetchedAtCalled {
+		t.Error("UpdateFeedLastFetchedAt should be called after FetchFromFeed")
+	}
+}
+
+func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
+	// エピソードあり + feed_last_fetched_at が新しい → FetchFromFeed が呼ばれないことを確認する
+	podcastID := uuid.New()
+	feedURL := "https://example.com/feed.xml"
+	recentTime := time.Now() // 今取得したばかり
+	fetchCalled := false
+
+	episodeRepo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{
+				{ID: uuid.New(), Title: "エピソード1"},
+			}, 1, nil
+		},
+	}
+	podcastRepo := &mockPodcastRepoForEpisode{
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+			return &model.Podcast{
+				ID:                podcastID,
+				Title:             "テスト番組",
+				FeedURL:           &feedURL,
+				FeedLastFetchedAt: &recentTime,
+			}, nil
+		},
+	}
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
+			fetchCalled = true
+			return nil, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected 1 total, got %d", result.Total)
+	}
+	// goroutine が起動されていないことを確認するために少し待つ
+	time.Sleep(50 * time.Millisecond)
+	if fetchCalled {
+		t.Error("FetchFromFeed should not be called when feed is fresh")
+	}
+}
+
+func TestGetByPodcastIDWithAutoFetch_Stale_BackgroundRefresh(t *testing.T) {
+	// エピソードあり + feed_last_fetched_at が古い → バックグラウンドで FetchFromFeed が呼ばれることを確認する
+	podcastID := uuid.New()
+	feedURL := "https://example.com/feed.xml"
+	staleTime := time.Now().Add(-7 * time.Hour) // 7時間前（6時間の閾値を超えている）
+	fetchCalled := make(chan bool, 1)
+
+	episodeRepo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{
+				{ID: uuid.New(), Title: "エピソード1"},
+			}, 1, nil
+		},
+		getByGUIDFunc: func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+	podcastRepo := &mockPodcastRepoForEpisode{
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+			return &model.Podcast{
+				ID:                podcastID,
+				Title:             "テスト番組",
+				FeedURL:           &feedURL,
+				FeedLastFetchedAt: &staleTime,
+			}, nil
+		},
+	}
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
+			fetchCalled <- true
+			return []rss.FeedItem{}, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	// レスポンスは即座に返る（既存データ）
+	if result.Total != 1 {
+		t.Errorf("expected 1 total, got %d", result.Total)
+	}
+
+	// バックグラウンドの goroutine が FetchFromFeed を呼ぶのを待つ
+	select {
+	case <-fetchCalled:
+		// OK: バックグラウンドでフェッチが実行された
+	case <-time.After(2 * time.Second):
+		t.Error("FetchFromFeed should be called in background when feed is stale")
 	}
 }
