@@ -326,8 +326,9 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 
 	feedURL := *podcast.FeedURL
 
-	if result.Total == 0 {
-		// 3a. DB にエピソードが 0 件 → 同期的に RSS フィードを取得してからエピソードを返す
+	if result.Total == 0 && u.isFeedStale(podcast.FeedLastFetchedAt) {
+		// 3a. DB にエピソードが 0 件かつキャッシュが古い → 同期的に RSS フィードを取得してからエピソードを返す
+		// feed_last_fetched_at が新しい場合はスキップする（空フィードを何度も取りに行くのを防ぐ）
 		_, fetchErr := u.FetchFromFeed(ctx, podcastID, feedURL)
 		if fetchErr != nil {
 			log.Printf("[GetByPodcastIDWithAutoFetch] failed to fetch feed for podcast %s: %v", podcastID, fetchErr)
