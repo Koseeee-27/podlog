@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"math"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -1334,5 +1336,83 @@ func TestGetByPodcastIDWithAutoFetch_Stale_BackgroundRefresh(t *testing.T) {
 		// OK: バックグラウンドでフェッチが実行された
 	case <-time.After(2 * time.Second):
 		t.Error("FetchFromFeed should be called in background when feed is stale")
+	}
+}
+
+func TestGetByPodcastIDWithAutoFetch_Stale_ConcurrentRequests_SingleFetch(t *testing.T) {
+	// 同一ポッドキャストに対する並行リクエストで、バックグラウンド RSS フェッチが1回だけ実行されることを確認する。
+	// sync.Map による進行中チェックにより、2つ目以降のリクエストは goroutine を起動しない。
+	podcastID := uuid.New()
+	feedURL := "https://example.com/feed.xml"
+	staleTime := time.Now().Add(-7 * time.Hour)
+
+	var fetchCount atomic.Int32
+	// フェッチに少し時間がかかるシミュレーション（重複リクエストが来る間に完了しないようにする）
+	fetchStarted := make(chan struct{})
+
+	episodeRepo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+			return []repository.EpisodeWithStatsRow{
+				{ID: uuid.New(), Title: "エピソード1"},
+			}, 1, nil
+		},
+		getByGUIDFunc: func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error) {
+			return nil, nil
+		},
+		createFunc: func(ctx context.Context, episode *model.Episode) error {
+			return nil
+		},
+	}
+	podcastRepo := &mockPodcastRepoForEpisode{
+		getByIDFunc: func(ctx context.Context, id uuid.UUID) (*model.Podcast, error) {
+			return &model.Podcast{
+				ID:                podcastID,
+				Title:             "テスト番組",
+				FeedURL:           &feedURL,
+				FeedLastFetchedAt: &staleTime,
+			}, nil
+		},
+	}
+	fetcher := &mockRSSFetcher{
+		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
+			fetchCount.Add(1)
+			close(fetchStarted)
+			// フェッチ処理をシミュレーション（100ms かかる）
+			time.Sleep(100 * time.Millisecond)
+			return []rss.FeedItem{}, nil
+		},
+	}
+
+	var bgWg sync.WaitGroup
+	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, &bgWg)
+
+	// 並行に3回呼び出す
+	const concurrency = 3
+	var callWg sync.WaitGroup
+	callWg.Add(concurrency)
+	for range concurrency {
+		go func() {
+			defer callWg.Done()
+			_, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+			if err != nil {
+				t.Errorf("expected no error, got %v", err)
+			}
+		}()
+	}
+	callWg.Wait()
+
+	// バックグラウンドタスクの完了を待つ
+	select {
+	case <-fetchStarted:
+		// フェッチが開始された
+	case <-time.After(2 * time.Second):
+		t.Fatal("FetchFromFeed was never called")
+	}
+	bgWg.Wait()
+
+	// FetchFromFeed は1回だけ呼ばれるべき（sync.Map で重複が防止される）
+	got := fetchCount.Load()
+	if got != 1 {
+		t.Errorf("expected FetchFromFeed to be called 1 time, got %d", got)
 	}
 }

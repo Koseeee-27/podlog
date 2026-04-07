@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"golang.org/x/sync/singleflight"
 
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
@@ -139,11 +138,11 @@ type EpisodeUsecase interface {
 }
 
 type episodeUsecase struct {
-	episodeRepo repository.EpisodeRepository
-	podcastRepo repository.PodcastRepository
-	rssFetcher  rss.Fetcher
-	fetchGroup  singleflight.Group  // 同一ポッドキャストへの重複バックグラウンドフェッチを防止
-	bgWg        *sync.WaitGroup     // バックグラウンド goroutine の追跡用（graceful shutdown）
+	episodeRepo    repository.EpisodeRepository
+	podcastRepo    repository.PodcastRepository
+	rssFetcher     rss.Fetcher
+	bgWg           *sync.WaitGroup // バックグラウンド goroutine の追跡用（graceful shutdown）
+	fetchInFlight  sync.Map        // 進行中のバックグラウンドフェッチを podcastID で追跡（重複防止）
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
@@ -349,30 +348,29 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 
 	if u.isFeedStale(podcast.FeedLastFetchedAt) {
 		// 3b. キャッシュが古い → バックグラウンドで RSS を再取得（レスポンスは待たない）
-		// singleflight.Do により、同一ポッドキャスト ID に対するフェッチが実行中なら
-		// 実際の RSS フェッチは1回に抑止され、結果を共有する。
-		// 注意: goroutine 自体は複数起動され得るが、Do 内の関数は1回しか実行されない。
-		// リクエストの context はレスポンス送信後にキャンセルされるため、
-		// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
-		bgTask := func() {
-			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-			defer cancel()
-			_, err, shared := u.fetchGroup.Do(podcastID.String(), func() (any, error) {
-				_, fetchErr := u.FetchFromFeed(bgCtx, podcastID, feedURL)
-				return nil, fetchErr
-			})
-			if err != nil {
-				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
-			} else if shared {
-				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh shared for podcast %s", podcastID)
-			}
-		}
-		// bgWg がある場合は wg.Go() で goroutine を起動し、シャットダウン時に待機可能にする。
-		// Go 1.25 の wg.Go() は wg.Add(1) + go func() { defer wg.Done(); ... }() を1行で行う。
-		if u.bgWg != nil {
-			u.bgWg.Go(bgTask)
+		// sync.Map の LoadOrStore で、同一ポッドキャスト ID に対するフェッチが既に進行中なら
+		// goroutine を起動せずスキップする。これにより 1 podcastID につき最大1つの goroutine のみ動く。
+		key := podcastID.String()
+		if _, alreadyRunning := u.fetchInFlight.LoadOrStore(key, struct{}{}); alreadyRunning {
+			log.Printf("[GetByPodcastIDWithAutoFetch] background refresh already in progress for podcast %s, skipping", podcastID)
 		} else {
-			go bgTask()
+			// リクエストの context はレスポンス送信後にキャンセルされるため、
+			// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
+			bgTask := func() {
+				defer u.fetchInFlight.Delete(key)
+				bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+				defer cancel()
+				if _, err := u.FetchFromFeed(bgCtx, podcastID, feedURL); err != nil {
+					log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
+				}
+			}
+			// bgWg がある場合は wg.Go() で goroutine を起動し、シャットダウン時に待機可能にする。
+			// Go 1.25 の wg.Go() は wg.Add(1) + go func() { defer wg.Done(); ... }() を1行で行う。
+			if u.bgWg != nil {
+				u.bgWg.Go(bgTask)
+			} else {
+				go bgTask()
+			}
 		}
 	}
 
