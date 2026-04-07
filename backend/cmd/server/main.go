@@ -15,6 +15,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -188,16 +189,25 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// サーバーを別 goroutine で起動
+	// サーバーを別 goroutine で起動し、エラーはチャネルで main goroutine に通知する。
+	// goroutine 内で log.Fatalf を使うと defer が実行されないため、チャネル経由にしている。
+	serverErr := make(chan error, 1)
 	go func() {
-		if err := e.Start(addr); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("failed to start server: %v", err)
+		if err := e.Start(addr); !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
 		}
+		close(serverErr)
 	}()
 
-	// シャットダウンシグナルを待機
-	<-ctx.Done()
-	log.Println("シャットダウンシグナルを受信しました")
+	// シャットダウンシグナル or サーバーエラーを待機
+	select {
+	case <-ctx.Done():
+		log.Println("シャットダウンシグナルを受信しました")
+	case err := <-serverErr:
+		if err != nil {
+			log.Fatalf("failed to start server: %v", err)
+		}
+	}
 
 	// Echo サーバーの graceful shutdown（新規リクエストの受付停止 + 処理中リクエストの完了待ち）
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
@@ -207,7 +217,17 @@ func main() {
 	}
 
 	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
+	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
 	log.Println("バックグラウンドタスクの完了を待機中...")
-	bgWg.Wait()
-	log.Println("全タスク完了。サーバーを終了します")
+	bgDone := make(chan struct{})
+	go func() {
+		bgWg.Wait()
+		close(bgDone)
+	}()
+	select {
+	case <-bgDone:
+		log.Println("全タスク完了。サーバーを終了します")
+	case <-time.After(65 * time.Second):
+		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました。サーバーを強制終了します")
+	}
 }

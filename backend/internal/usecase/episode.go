@@ -349,20 +349,23 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 
 	if u.isFeedStale(podcast.FeedLastFetchedAt) {
 		// 3b. キャッシュが古い → バックグラウンドで RSS を再取得（レスポンスは待たない）
-		// singleflight.Do により、同一ポッドキャスト ID に対するフェッチが既に実行中なら
-		// 新たな goroutine を起動せず、実行中の結果を共有する。
+		// singleflight.Do により、同一ポッドキャスト ID に対するフェッチが実行中なら
+		// 実際の RSS フェッチは1回に抑止され、結果を共有する。
+		// 注意: goroutine 自体は複数起動され得るが、Do 内の関数は1回しか実行されない。
 		// リクエストの context はレスポンス送信後にキャンセルされるため、
 		// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
 		bgTask := func() {
 			bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 			defer cancel()
-			_, _, _ = u.fetchGroup.Do(podcastID.String(), func() (any, error) {
-				result, err := u.FetchFromFeed(bgCtx, podcastID, feedURL)
-				if err != nil {
-					log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
-				}
-				return result, err
+			_, err, shared := u.fetchGroup.Do(podcastID.String(), func() (any, error) {
+				_, fetchErr := u.FetchFromFeed(bgCtx, podcastID, feedURL)
+				return nil, fetchErr
 			})
+			if err != nil {
+				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
+			} else if shared {
+				log.Printf("[GetByPodcastIDWithAutoFetch] background refresh shared for podcast %s", podcastID)
+			}
 		}
 		// bgWg がある場合は wg.Go() で goroutine を起動し、シャットダウン時に待機可能にする。
 		// Go 1.25 の wg.Go() は wg.Add(1) + go func() { defer wg.Done(); ... }() を1行で行う。
