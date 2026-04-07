@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/external/itunes"
@@ -58,6 +59,9 @@ func (m *mockPodcastRepo) ListWithoutGenre(ctx context.Context) ([]model.Podcast
 }
 func (m *mockPodcastRepo) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID, _ time.Time) error {
+	return nil
 }
 
 // TestRun_NoPodcastsToUpdate はジャンル未設定の番組がない場合のテストです。

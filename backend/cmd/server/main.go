@@ -138,7 +138,7 @@ func main() {
 
 	userUsecase := usecase.NewUserUsecase(userRepo, fileStorage)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
-	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, rssClient)
+	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssClient)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
@@ -50,6 +51,9 @@ func (m *mockPodcastRepoForGenre) ListWithoutGenre(_ context.Context) ([]model.P
 }
 func (m *mockPodcastRepoForGenre) ListWithoutEpisodes(_ context.Context) ([]model.Podcast, error) {
 	return nil, fmt.Errorf("not implemented")
+}
+func (m *mockPodcastRepoForGenre) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID, _ time.Time) error {
+	return nil
 }
 
 // ── テスト: ListGenres ──

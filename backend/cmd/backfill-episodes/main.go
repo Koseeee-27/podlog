@@ -53,7 +53,7 @@ func main() {
 	podcastRepo := repository.NewPodcastRepository(db)
 	episodeRepo := repository.NewEpisodeRepository(db)
 	rssFetcher := rss.NewClient()
-	episodeUC := usecase.NewEpisodeUsecase(episodeRepo, rssFetcher)
+	episodeUC := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssFetcher)
 
 	// 4. バッチ処理を実行
 	if err := run(podcastRepo, episodeUC); err != nil {

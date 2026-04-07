@@ -128,14 +128,17 @@ type EpisodeUsecase interface {
 
 type episodeUsecase struct {
 	episodeRepo repository.EpisodeRepository
+	podcastRepo repository.PodcastRepository
 	rssFetcher  rss.Fetcher
 }
 
 // NewEpisodeUsecase は EpisodeUsecase の新しいインスタンスを生成します。
+// podcastRepo は FetchFromFeed 完了後に feed_last_fetched_at を更新するために使います。
 // rssFetcher には RSS フィード取得クライアントを渡します。
-func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
+func NewEpisodeUsecase(episodeRepo repository.EpisodeRepository, podcastRepo repository.PodcastRepository, rssFetcher rss.Fetcher) EpisodeUsecase {
 	return &episodeUsecase{
 		episodeRepo: episodeRepo,
+		podcastRepo: podcastRepo,
 		rssFetcher:  rssFetcher,
 	}
 }
@@ -405,6 +408,12 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		consecutiveFailures = 0
 		result.NewCount++
 		result.Episodes = append(result.Episodes, *episode)
+	}
+
+	// RSS フィード取得が完了したので、feed_last_fetched_at を更新する。
+	// エラーが起きてもエピソードの取得自体は成功しているのでログだけ出して無視する。
+	if err := u.podcastRepo.UpdateFeedLastFetchedAt(ctx, podcastID, time.Now()); err != nil {
+		log.Printf("[FetchFromFeed] failed to update feed_last_fetched_at for podcast %s: %v", podcastID, err)
 	}
 
 	return result, nil

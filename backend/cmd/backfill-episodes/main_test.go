@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/model"
@@ -51,6 +52,9 @@ func (m *mockPodcastRepo) ListWithoutEpisodes(ctx context.Context) ([]model.Podc
 		return nil, fmt.Errorf("not implemented")
 	}
 	return m.listWithoutEpisodesFn(ctx)
+}
+func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID, _ time.Time) error {
+	return nil
 }
 
 // ── モック: EpisodeUsecase ──

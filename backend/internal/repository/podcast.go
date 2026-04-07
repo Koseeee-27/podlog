@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -64,6 +65,10 @@ type PodcastRepository interface {
 	// ListWithoutEpisodes は feed_url が NOT NULL かつエピソードが0件のポッドキャストを返します。
 	// バッチ処理でエピソードを一括取得する際に対象を特定するために使います。
 	ListWithoutEpisodes(ctx context.Context) ([]model.Podcast, error)
+
+	// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at を更新します。
+	// RSS フィードの取得が完了した後に呼び出し、次回のキャッシュ判定に使います。
+	UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID, fetchedAt time.Time) error
 }
 
 type podcastRepository struct {
@@ -307,6 +312,26 @@ func (r *podcastRepository) ListWithoutEpisodes(ctx context.Context) ([]model.Po
 		return nil, fmt.Errorf("failed to list podcasts without episodes: %w", err)
 	}
 	return podcasts, nil
+}
+
+// UpdateFeedLastFetchedAt は指定したポッドキャストの feed_last_fetched_at を更新します。
+// RSS フィード取得完了後に呼び出し、Stale-While-Revalidate のキャッシュ判定に使います。
+func (r *podcastRepository) UpdateFeedLastFetchedAt(ctx context.Context, id uuid.UUID, fetchedAt time.Time) error {
+	query := `UPDATE podcasts SET feed_last_fetched_at = $1 WHERE id = $2`
+	result, err := r.db.ExecContext(ctx, query, fetchedAt, id)
+	if err != nil {
+		return fmt.Errorf("failed to update feed_last_fetched_at: %w", err)
+	}
+
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rows == 0 {
+		return fmt.Errorf("podcast not found: %s", id)
+	}
+
+	return nil
 }
 
 // GetDistinctGenres は DB に登録されている番組のジャンル一覧を重複なしで取得します。
