@@ -1194,7 +1194,7 @@ func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
 	podcastID := uuid.New()
 	feedURL := "https://example.com/feed.xml"
 	recentTime := time.Now() // 今取得したばかり
-	fetchCalled := false
+	fetchCalled := make(chan bool, 1)
 
 	episodeRepo := &mockEpisodeRepo{
 		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
@@ -1215,7 +1215,7 @@ func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
 	}
 	fetcher := &mockRSSFetcher{
 		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
-			fetchCalled = true
+			fetchCalled <- true
 			return nil, nil
 		},
 	}
@@ -1228,10 +1228,13 @@ func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
 	if result.Total != 1 {
 		t.Errorf("expected 1 total, got %d", result.Total)
 	}
-	// goroutine が起動されていないことを確認するために少し待つ
-	time.Sleep(50 * time.Millisecond)
-	if fetchCalled {
+
+	// チャネルで「一定時間呼ばれないこと」を検証する（time.Sleep よりフレークしにくい）
+	select {
+	case <-fetchCalled:
 		t.Error("FetchFromFeed should not be called when feed is fresh")
+	case <-time.After(100 * time.Millisecond):
+		// OK: 呼ばれなかった
 	}
 }
 
