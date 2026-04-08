@@ -254,6 +254,7 @@ func run() error {
 
 	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
 	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
+	const bgWaitTimeout = 65 * time.Second
 	log.Println("バックグラウンドタスクの完了を待機中...")
 	bgDone := make(chan struct{})
 	go func() {
@@ -263,9 +264,9 @@ func run() error {
 	select {
 	case <-bgDone:
 		log.Println("全タスク完了。サーバーを終了します")
-	case <-time.After(65 * time.Second):
+	case <-time.After(bgWaitTimeout):
 		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました")
-		errs = append(errs, errors.New("バックグラウンドタスクの待機がタイムアウトしました（65秒経過）"))
+		errs = append(errs, fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（%v経過）", bgWaitTimeout))
 	}
 
 	// errors.Join はスライスが空（エラーなし）なら nil を返す。
