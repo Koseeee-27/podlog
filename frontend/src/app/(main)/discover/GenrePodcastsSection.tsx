@@ -1,26 +1,48 @@
 import Link from "next/link";
+import { serverGet } from "@/lib/api/server";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenrePodcastsLoadMore from "@/components/discover/GenrePodcastsLoadMore";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { MicrophoneIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
-import type { PodcastSearchItem } from "@/types/podcast";
+import type { PodcastSearchResult } from "@/types/podcast";
+import type { GenreListResponse } from "@/types/genre";
+
+const PAGE_SIZE = 20;
 
 interface GenrePodcastsSectionProps {
   genre: string;
-  genreName: string | undefined;
-  podcasts: PodcastSearchItem[];
-  total: number;
-  error: boolean;
 }
 
-export default function GenrePodcastsSection({
+export default async function GenrePodcastsSection({
   genre,
-  genreName,
-  podcasts,
-  total,
-  error,
 }: GenrePodcastsSectionProps) {
+  const genreParams = new URLSearchParams({
+    genre,
+    limit: String(PAGE_SIZE),
+    offset: "0",
+  });
+
+  const [genresResult, podcastsResult] = await Promise.allSettled([
+    serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
+    serverGet<PodcastSearchResult>(
+      `/podcasts/search?${genreParams.toString()}`,
+      { noAuth: true, revalidate: 60 },
+    ),
+  ]);
+
+  const genres =
+    genresResult.status === "fulfilled" ? genresResult.value.genres : [];
+  const genreName = genres.find((g) => g.id === genre)?.name_ja;
+
+  const podcasts =
+    podcastsResult.status === "fulfilled"
+      ? podcastsResult.value.podcasts
+      : [];
+  const total =
+    podcastsResult.status === "fulfilled" ? podcastsResult.value.total : 0;
+  const podcastsError = podcastsResult.status === "rejected";
+
   return (
     <>
       <Link
@@ -35,7 +57,7 @@ export default function GenrePodcastsSection({
         {genreName ?? genre}の番組
       </h2>
 
-      {error ? (
+      {podcastsError ? (
         <ErrorMessage message="番組の取得に失敗しました" />
       ) : podcasts.length === 0 ? (
         <EmptyState

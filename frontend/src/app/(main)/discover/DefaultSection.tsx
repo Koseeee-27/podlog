@@ -1,22 +1,29 @@
+import { serverGet } from "@/lib/api/server";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenreGrid from "@/components/discover/GenreGrid";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import type { PodcastSearchItem } from "@/types/podcast";
-import type { Genre } from "@/types/genre";
+import type { PodcastSearchResult } from "@/types/podcast";
+import type { GenreListResponse } from "@/types/genre";
 
-interface DefaultSectionProps {
-  genres: Genre[];
-  genresError: boolean;
-  popularPodcasts: PodcastSearchItem[];
-  popularError: boolean;
-}
+export default async function DefaultSection() {
+  const [genresResult, popularResult] = await Promise.allSettled([
+    serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
+    serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", {
+      noAuth: true,
+      revalidate: 300,
+    }),
+  ]);
 
-export default function DefaultSection({
-  genres,
-  genresError,
-  popularPodcasts,
-  popularError,
-}: DefaultSectionProps) {
+  const genres =
+    genresResult.status === "fulfilled" ? genresResult.value.genres : [];
+  const genresError = genresResult.status === "rejected";
+
+  const popularPodcasts =
+    popularResult.status === "fulfilled"
+      ? popularResult.value.podcasts
+      : [];
+  const popularError = popularResult.status === "rejected";
+
   return (
     <>
       <section>
