@@ -1373,10 +1373,11 @@ func TestGetByPodcastIDWithAutoFetch_Stale_ConcurrentRequests_SingleFetch(t *tes
 			}, nil
 		},
 	}
+	var closeOnce sync.Once
 	fetcher := &mockRSSFetcher{
 		fetchFunc: func(ctx context.Context, url string) ([]rss.FeedItem, error) {
 			fetchCount.Add(1)
-			close(fetchStarted)
+			closeOnce.Do(func() { close(fetchStarted) })
 			// フェッチ処理をシミュレーション（100ms かかる）
 			time.Sleep(100 * time.Millisecond)
 			return []rss.FeedItem{}, nil
