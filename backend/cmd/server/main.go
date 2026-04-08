@@ -14,8 +14,14 @@
 package main
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"log"
+	"net/http"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -138,7 +144,9 @@ func main() {
 
 	userUsecase := usecase.NewUserUsecase(userRepo, fileStorage)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
-	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssClient)
+	// バックグラウンド goroutine を追跡する WaitGroup（graceful shutdown 用）
+	var bgWg sync.WaitGroup
+	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssClient, &bgWg)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
 	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
@@ -169,10 +177,57 @@ func main() {
 	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
 	router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs)
 
-	// 11. サーバーを起動
+	// 11. Graceful Shutdown 付きでサーバーを起動
+	// SIGINT/SIGTERM を受信すると以下の順に処理する:
+	//   1. 新規リクエストの受付を停止（Echo の Shutdown）
+	//   2. バックグラウンド goroutine（RSS フェッチ等）の完了を待機（bgWg.Wait）
+	//   3. サーバーを終了
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
-	if err := e.Start(addr); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+
+	// シャットダウンシグナルを受信するための context を作成
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// サーバーを別 goroutine で起動し、エラーはチャネルで main goroutine に通知する。
+	// goroutine 内で log.Fatalf を使うと defer が実行されないため、チャネル経由にしている。
+	serverErr := make(chan error, 1)
+	go func() {
+		if err := e.Start(addr); !errors.Is(err, http.ErrServerClosed) {
+			serverErr <- err
+		}
+		close(serverErr)
+	}()
+
+	// シャットダウンシグナル or サーバーエラーを待機
+	select {
+	case <-ctx.Done():
+		log.Println("シャットダウンシグナルを受信しました")
+	case err := <-serverErr:
+		if err != nil {
+			log.Fatalf("failed to start server: %v", err)
+		}
+	}
+
+	// Echo サーバーの graceful shutdown（新規リクエストの受付停止 + 処理中リクエストの完了待ち）
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	if err := e.Shutdown(shutdownCtx); err != nil {
+		log.Printf("サーバーの graceful shutdown に失敗: %v", err)
+	}
+
+	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
+	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
+	log.Println("バックグラウンドタスクの完了を待機中...")
+	bgDone := make(chan struct{})
+	go func() {
+		bgWg.Wait()
+		close(bgDone)
+	}()
+	select {
+	case <-bgDone:
+		log.Println("全タスク完了。サーバーを終了します")
+	case <-time.After(65 * time.Second):
+		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました。サーバーを強制終了します")
 	}
 }
