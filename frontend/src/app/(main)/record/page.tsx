@@ -1,9 +1,23 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import RecordClient from "./RecordClient";
+import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
+import PodcastSearchSection from "./PodcastSearchSection";
+import RecentEpisodesSection from "./RecentEpisodesSection";
+import Loading from "@/components/ui/Loading";
+import type { User } from "@/types/user";
 
+/**
+ * /record ページ（保護ページ）。
+ *
+ * Server Component で認証・プロフィール確認を行い、
+ * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）を配置する。
+ * 新着エピソードの取得は重いため Suspense で分離し、
+ * ユーザーはページ遷移後すぐに検索バーを操作できる。
+ */
 export default async function RecordPage() {
-  // Middleware で未認証リダイレクト済みだが、防御的に二重チェック
+  // 認証チェック（getUser() で JWT 検証）
   const supabase = await createClient();
   const {
     data: { user },
@@ -13,12 +27,27 @@ export default async function RecordPage() {
     redirect("/login");
   }
 
-  // プロフィール未設定チェックは RecordClient 側の useAuth で行う
+  // プロフィール確認（未設定ならセットアップへ誘導）
+  try {
+    await serverGet<User>("/users/me");
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      redirect("/profile/setup");
+    }
+    throw err;
+  }
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
-      <RecordClient />
+
+      {/* 検索セクション: インタラクティブなので Client Component */}
+      <PodcastSearchSection />
+
+      {/* 新着エピソード: 重いデータ取得を Suspense で分離 */}
+      <Suspense fallback={<Loading message="新着エピソードを読み込み中..." />}>
+        <RecentEpisodesSection />
+      </Suspense>
     </div>
   );
 }
