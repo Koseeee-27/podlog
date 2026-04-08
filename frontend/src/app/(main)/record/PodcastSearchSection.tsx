@@ -1,8 +1,9 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 import { usePodcastSearch } from "@/hooks/usePodcastSearch";
 import { getEpisodesByPodcast } from "@/lib/api/episodes";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import SearchBar from "@/components/podcast/SearchBar";
 import PodcastSelectCard from "@/components/podcast/PodcastSelectCard";
 import Loading from "@/components/ui/Loading";
@@ -19,8 +20,13 @@ import type { EpisodeListResult } from "@/types/episode";
  * - 検索バー + 検索結果一覧 + 番組選択時のエピソード表示を管理
  * - 番組選択時に getEpisodesByPodcast の Promise を作成し、
  *   PodcastEpisodeList に渡して use() + Suspense でローディングを管理
+ * - children（新着エピソードセクション）は検索中でないときだけ表示する
  */
-export default function PodcastSearchSection() {
+export default function PodcastSearchSection({
+  children,
+}: {
+  children?: ReactNode;
+}) {
   const {
     query,
     results: searchResults,
@@ -69,50 +75,63 @@ export default function PodcastSearchSection() {
   };
 
   return (
-    <section>
-      <h2 className="text-lg font-semibold text-stone-900 mb-3">
-        番組を検索
-      </h2>
-      <SearchBar
-        value={inputValue}
-        onChange={handleInputChange}
-        onSubmit={handleSearchSubmit}
-        loading={searchLoading}
-      />
+    <>
+      <section>
+        <h2 className="text-lg font-semibold text-stone-900 mb-3">
+          番組を検索
+        </h2>
+        <SearchBar
+          value={inputValue}
+          onChange={handleInputChange}
+          onSubmit={handleSearchSubmit}
+          loading={searchLoading}
+        />
 
-      <div className="mt-4">
-        {selectedPodcast && episodesPromise ? (
-          /* 番組選択後: エピソード一覧（Suspense でローディング管理） */
-          <Suspense fallback={<Loading message="エピソードを読み込み中..." />}>
-            <PodcastEpisodeList
-              podcast={selectedPodcast}
-              initialDataPromise={episodesPromise}
-              onBack={handleBack}
-            />
-          </Suspense>
-        ) : isSearching ? (
-          /* 検索中: 番組一覧 */
-          <>
-            {searchError && <ErrorMessage message={searchError} />}
-            {!searchLoading && searchResults.length === 0 && !searchError && (
-              <EmptyState
-                icon={<MagnifyingGlassIcon className="h-12 w-12" />}
-                message={`"${query}" に一致する番組が見つかりませんでした`}
-                description="別のキーワードで試してみてください"
-              />
-            )}
-            <div className="space-y-2">
-              {searchResults.map((podcast) => (
-                <PodcastSelectCard
-                  key={podcast.id}
-                  podcast={podcast}
-                  onSelect={handleSelectPodcast}
+        <div className="mt-4">
+          {selectedPodcast && episodesPromise ? (
+            /* 番組選択後: エピソード一覧（ErrorBoundary + Suspense でローディング・エラー管理） */
+            <ErrorBoundary
+              fallback={
+                <ErrorMessage message="エピソードの読み込みに失敗しました" />
+              }
+            >
+              <Suspense
+                fallback={<Loading message="エピソードを読み込み中..." />}
+              >
+                <PodcastEpisodeList
+                  podcast={selectedPodcast}
+                  initialDataPromise={episodesPromise}
+                  onBack={handleBack}
                 />
-              ))}
-            </div>
-          </>
-        ) : null}
-      </div>
-    </section>
+              </Suspense>
+            </ErrorBoundary>
+          ) : isSearching ? (
+            /* 検索中: 番組一覧 */
+            <>
+              {searchError && <ErrorMessage message={searchError} />}
+              {!searchLoading && searchResults.length === 0 && !searchError && (
+                <EmptyState
+                  icon={<MagnifyingGlassIcon className="h-12 w-12" />}
+                  message={`"${query}" に一致する番組が見つかりませんでした`}
+                  description="別のキーワードで試してみてください"
+                />
+              )}
+              <div className="space-y-2">
+                {searchResults.map((podcast) => (
+                  <PodcastSelectCard
+                    key={podcast.id}
+                    podcast={podcast}
+                    onSelect={handleSelectPodcast}
+                  />
+                ))}
+              </div>
+            </>
+          ) : null}
+        </div>
+      </section>
+
+      {/* 新着エピソードセクション: 検索中でないときだけ表示 */}
+      {!isSearching && children}
+    </>
   );
 }
