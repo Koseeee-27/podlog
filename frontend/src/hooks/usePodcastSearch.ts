@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useTransition } from "react";
+import { useState, useCallback, useTransition } from "react";
 import { searchPodcasts, getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
@@ -50,47 +50,27 @@ export function usePodcastSearch(options: UsePodcastSearchOptions = {}) {
 
 const GENRE_PAGE_SIZE = 20;
 
+interface UseGenrePodcastsOptions {
+  /** Server Component で取得した初回データ */
+  initialData?: PodcastSearchItem[];
+  /** Server Component で取得した総件数 */
+  initialTotal?: number;
+}
+
 /**
- * 選択されたジャンルの番組一覧を取得するフック。
- * genre が null の場合はフェッチしない。
- * ページネーション対応: loadMore で追加読み込み、hasMore で残りがあるか判定。
+ * ジャンル別番組の追加読み込み（loadMore）を担当するフック。
+ * 初回データは Server Component から props 経由で受け取り、
+ * このフックは「もっと見る」による追加フェッチのみを行う。
  */
-export function useGenrePodcasts(genre: string | null) {
-  const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>([]);
-  const [total, setTotal] = useState(0);
-  const [loading, setLoading] = useState(false);
+export function useGenrePodcasts(
+  genre: string | null,
+  options: UseGenrePodcastsOptions = {},
+) {
+  const { initialData = [], initialTotal = 0 } = options;
+  const [podcasts, setPodcasts] = useState<PodcastSearchItem[]>(initialData);
+  const [total, setTotal] = useState(initialTotal);
   const [error, setError] = useState<string | null>(null);
   const [isLoadingMore, startLoadMore] = useTransition();
-
-  useEffect(() => {
-    if (!genre) {
-      setPodcasts([]);
-      setTotal(0);
-      setLoading(false);
-      return;
-    }
-
-    let cancelled = false;
-
-    async function fetchByGenre() {
-      setLoading(true);
-      setError(null);
-      try {
-        const result = await getPodcastsByGenre(genre!, { limit: GENRE_PAGE_SIZE, offset: 0 });
-        if (!cancelled) {
-          setPodcasts(result.podcasts);
-          setTotal(result.total);
-        }
-      } catch (err) {
-        if (!cancelled) setError(getUserFriendlyErrorMessage(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    fetchByGenre();
-    return () => { cancelled = true; };
-  }, [genre]);
 
   const hasMore = podcasts.length < total;
 
@@ -111,5 +91,5 @@ export function useGenrePodcasts(genre: string | null) {
     });
   }, [genre, hasMore, podcasts.length]);
 
-  return { podcasts, loading, error, hasMore, loadMore, isLoadingMore };
+  return { podcasts, loading: false, error, hasMore, loadMore, isLoadingMore };
 }

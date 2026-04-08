@@ -10,7 +10,6 @@ import GenreGrid from "@/components/discover/GenreGrid";
 import PodcastRequestDialog from "@/components/discover/PodcastRequestDialog";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import { MagnifyingGlassIcon, MicrophoneIcon, PlusCircleIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type { PodcastSearchItem } from "@/types/podcast";
@@ -18,25 +17,30 @@ import type { Genre } from "@/types/genre";
 
 interface DiscoverClientProps {
   initialQuery: string;
+  initialGenre: string | null;
   initialResults?: PodcastSearchItem[];
   initialGenres?: Genre[];
   initialPopularPodcasts?: PodcastSearchItem[];
+  initialGenrePodcasts?: PodcastSearchItem[];
+  initialGenreTotal?: number;
   genresError?: boolean;
   popularError?: boolean;
 }
 
 export default function DiscoverClient({
   initialQuery,
+  initialGenre,
   initialResults = [],
   initialGenres = [],
   initialPopularPodcasts = [],
+  initialGenrePodcasts = [],
+  initialGenreTotal = 0,
   genresError = false,
   popularError = false,
 }: DiscoverClientProps) {
   const { query, results, loading: searchLoading, error: searchError, search, clear } =
     usePodcastSearch({ initialQuery, initialResults });
   const [inputValue, setInputValue] = useState(initialQuery);
-  const [selectedGenre, setSelectedGenre] = useState<string | null>(null);
   const [requestDialogOpen, setRequestDialogOpen] = useState(false);
   const router = useRouter();
   const auth = useAuth();
@@ -63,32 +67,29 @@ export default function DiscoverClient({
     }
   };
 
-  // ジャンルが選択されていて、かつ検索中でない場合のみジャンル番組を取得
-  const activeGenre = !isSearching ? selectedGenre : null;
+  // ジャンル別番組: Server Component で取得した初回データを使い、loadMore のみ Client で行う
   const {
     podcasts: genrePodcasts,
-    loading: genreLoading,
     error: genreError,
     hasMore: genreHasMore,
     loadMore: genreLoadMore,
     isLoadingMore: genreIsLoadingMore,
-  } = useGenrePodcasts(activeGenre);
+  } = useGenrePodcasts(initialGenre, {
+    initialData: initialGenrePodcasts,
+    initialTotal: initialGenreTotal,
+  });
 
   const handleGenreSelect = (genreId: string) => {
-    setSelectedGenre(genreId);
-    // ジャンル選択時に検索をクリア
-    if (inputValue.trim()) {
-      setInputValue("");
-      clear();
-    }
+    // URL パラメータで genre を指定し、page.tsx（Server Component）を再実行
+    router.push(`/discover?genre=${encodeURIComponent(genreId)}`);
   };
 
   const handleBackToGenres = () => {
-    setSelectedGenre(null);
+    router.push("/discover");
   };
 
   // 選択中のジャンルの日本語名を取得
-  const selectedGenreName = genres.find((g) => g.id === selectedGenre)?.name_ja;
+  const selectedGenreName = genres.find((g) => g.id === initialGenre)?.name_ja;
 
   return (
     <div>
@@ -142,7 +143,7 @@ export default function DiscoverClient({
               ))}
             </div>
           </>
-        ) : selectedGenre !== null ? (
+        ) : initialGenre !== null ? (
           /* --- ジャンル選択中 --- */
           <>
             <button
@@ -155,13 +156,12 @@ export default function DiscoverClient({
             </button>
 
             <h2 className="text-lg font-bold text-stone-900 mb-4">
-              {selectedGenreName ?? selectedGenre}の番組
+              {selectedGenreName ?? initialGenre}の番組
             </h2>
 
-            {genreLoading && <Loading />}
             {genreError && <ErrorMessage message={genreError} />}
 
-            {!genreLoading && genrePodcasts.length === 0 && !genreError && (
+            {genrePodcasts.length === 0 && !genreError && (
               <EmptyState
                 icon={<MicrophoneIcon className="h-12 w-12" />}
                 message="このジャンルの番組はまだありません"
