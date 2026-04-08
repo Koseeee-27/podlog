@@ -240,15 +240,21 @@ func run() error {
 		}
 	}
 
+	// シャットダウン中に発生したエラーを蓄積するスライス。
+	// errors.Join() で結合し、1つでもエラーがあれば非ゼロ exit code で終了する。
+	var errs []error
+
 	// Echo サーバーの graceful shutdown（新規リクエストの受付停止 + 処理中リクエストの完了待ち）
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
 		log.Printf("サーバーの graceful shutdown に失敗: %v", err)
+		errs = append(errs, fmt.Errorf("サーバーの graceful shutdown に失敗: %w", err))
 	}
 
 	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
 	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
+	const bgWaitTimeout = 65 * time.Second
 	log.Println("バックグラウンドタスクの完了を待機中...")
 	bgDone := make(chan struct{})
 	go func() {
@@ -258,9 +264,12 @@ func run() error {
 	select {
 	case <-bgDone:
 		log.Println("全タスク完了。サーバーを終了します")
-	case <-time.After(65 * time.Second):
-		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました。サーバーを強制終了します")
+	case <-time.After(bgWaitTimeout):
+		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました")
+		errs = append(errs, fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（%v経過）", bgWaitTimeout))
 	}
 
-	return nil
+	// errors.Join はスライスが空（エラーなし）なら nil を返す。
+	// 1つ以上のエラーがあれば結合して返し、main() が os.Exit(1) で終了する。
+	return errors.Join(errs...)
 }
