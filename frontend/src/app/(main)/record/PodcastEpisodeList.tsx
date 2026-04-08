@@ -40,6 +40,7 @@ export default function PodcastEpisodeList({
   const [isPending, startTransition] = useTransition();
 
   const handleLoadMore = () => {
+    setError(null);
     startTransition(async () => {
       try {
         const data = await getEpisodesByPodcast(podcast.id, {

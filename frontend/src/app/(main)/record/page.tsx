@@ -1,6 +1,5 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -13,31 +12,21 @@ import type { User } from "@/types/user";
 /**
  * /record ページ（保護ページ）。
  *
- * Server Component で認証・プロフィール確認を行い、
- * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）を配置する。
- * 新着エピソードの取得は重いため Suspense で分離し、
- * ユーザーはページ遷移後すぐに検索バーを操作できる。
+ * 認証チェックは middleware で完了済み。
+ * ここではプロフィール確認のみ行い、未設定ならセットアップへ誘導する。
+ * serverGet("/users/me") が 401 を返した場合はセッション期限切れとして /login へ。
  *
- * 新着エピソードセクションは PodcastSearchSection の children として渡し、
- * 検索中は非表示にする（旧実装と同じ動作）。
+ * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）を配置し、
+ * 新着エピソードの取得は Suspense で分離してページ表示をブロックしない。
  */
 export default async function RecordPage() {
-  // 認証チェック（getUser() で JWT 検証）
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
-  }
-
-  // プロフィール確認（未設定ならセットアップへ誘導）
+  // プロフィール確認（認証チェックは middleware で完了済み）
   try {
     await serverGet<User>("/users/me");
   } catch (err) {
-    if (err instanceof ApiRequestError && err.status === 404) {
-      redirect("/profile/setup");
+    if (err instanceof ApiRequestError) {
+      if (err.status === 404) redirect("/profile/setup");
+      if (err.status === 401) redirect("/login");
     }
     throw err;
   }

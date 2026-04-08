@@ -88,8 +88,7 @@ export default async function RecentEpisodesSection() {
                   href={`/podcasts/${group.podcast.id}`}
                   className="inline-flex items-center gap-0.5 text-xs text-stone-500 hover:text-rose-600 transition-colors"
                 >
-                  もっと見る（残り{group.total_unlistened - group.episodes.length}
-                  件）
+                  {`もっと見る（残り${group.total_unlistened - group.episodes.length}件）`}
                   <ChevronRightIcon className="h-3 w-3" />
                 </Link>
               </div>
