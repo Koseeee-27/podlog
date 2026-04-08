@@ -138,14 +138,11 @@ func run() error {
 		LogURIPath:  true,
 		LogStatus:   true,
 		LogLatency:  true,
-		LogError:    true,
 		HandleError: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
-			if v.Error != nil {
-				log.Printf("%s %s %d %v error=%v", v.Method, v.URIPath, v.Status, v.Latency, v.Error)
-			} else {
-				log.Printf("%s %s %d %v", v.Method, v.URIPath, v.Status, v.Latency)
-			}
+			// エラー詳細は HTTPErrorHandler 側でログ出力するため、
+			// ここではリクエスト概要（メソッド・パス・ステータス・レイテンシ）のみ記録する。
+			log.Printf("%s %s %d %v", v.Method, v.URIPath, v.Status, v.Latency)
 			return nil
 		},
 	}))
