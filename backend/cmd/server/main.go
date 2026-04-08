@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"os/signal"
 	"sync"
 	"syscall"
@@ -46,7 +47,20 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+// main は run() を呼び出し、エラーがあればログ出力して終了するだけの薄い関数。
+// os.Exit() は main() でのみ呼ぶことで、run() 内の defer が確実に実行される。
+// （run() 内で log.Fatalf を使うと、defer をスキップして即座にプロセスが終了してしまう）
 func main() {
+	if err := run(); err != nil {
+		log.Printf("error: %v", err)
+		os.Exit(1)
+	}
+}
+
+// run はアプリケーションの実際の起動処理を行う。
+// エラーを返すことで、この関数内の defer（db.Close() 等）が
+// 確実に実行されてからプロセスが終了する。
+func run() error {
 	// 0. .env ファイルから環境変数を読み込み（存在しなくても OK）
 	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
 	// ファイルが存在しない場合（Docker 環境等）はエラーを無視する。
@@ -57,12 +71,12 @@ func main() {
 	// 1. 設定を環境変数から読み込み
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("failed to load config: %v", err)
+		return fmt.Errorf("failed to load config: %w", err)
 	}
 	// サーバー起動に必要な環境変数のバリデーション
 	// バッチ（backfill-genre 等）では不要なため、Load() とは分離している
 	if err := cfg.Validate(); err != nil {
-		log.Fatalf("config validation failed: %v", err)
+		return fmt.Errorf("config validation failed: %w", err)
 	}
 
 	// 2. データベースに接続（リトライあり）
@@ -78,7 +92,7 @@ func main() {
 			break
 		}
 		if i == maxRetries-1 {
-			log.Fatalf("failed to connect to database after %d attempts: %v", maxRetries, err)
+			return fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
 		}
 		log.Printf("database connection attempt %d/%d failed, retrying in %ds: %v", i+1, maxRetries, (i+1)*2, err)
 		time.Sleep(time.Duration((i+1)*2) * time.Second)
@@ -102,7 +116,7 @@ func main() {
 	// schema_migrations テーブルで適用済みバージョンを追跡するため、
 	// 既に適用済みのマイグレーションは再実行されない。
 	if err := dbmigrate.RunMigrations(cfg.DatabaseDSN()); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	// 3. Echo インスタンスを作成
@@ -189,8 +203,9 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	// サーバーを別 goroutine で起動し、エラーはチャネルで main goroutine に通知する。
-	// goroutine 内で log.Fatalf を使うと defer が実行されないため、チャネル経由にしている。
+	// サーバーを別 goroutine で起動し、エラーはチャネルで通知する。
+	// goroutine 内でプロセスを終了させず、チャネル経由で run() に返すことで
+	// defer が確実に実行される。
 	serverErr := make(chan error, 1)
 	go func() {
 		if err := e.Start(addr); !errors.Is(err, http.ErrServerClosed) {
@@ -205,7 +220,7 @@ func main() {
 		log.Println("シャットダウンシグナルを受信しました")
 	case err := <-serverErr:
 		if err != nil {
-			log.Fatalf("failed to start server: %v", err)
+			return fmt.Errorf("failed to start server: %w", err)
 		}
 	}
 
@@ -230,4 +245,6 @@ func main() {
 	case <-time.After(65 * time.Second):
 		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました。サーバーを強制終了します")
 	}
+
+	return nil
 }
