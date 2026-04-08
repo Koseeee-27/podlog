@@ -49,10 +49,14 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	// Podcasts (公開)
 	v1.GET("/podcasts/popular", h.Podcast.GetPopular)
 	v1.GET("/podcasts/:id", h.Podcast.GetByID)
-	v1.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
+
+	// ── オプショナル認証ルート ──
+	// 未認証でもアクセス可能だが、認証済みの場合は追加情報（聴取状態など）を返す
+	optionalAuth := v1.Group("", mw.OptionalJWTAuth(supabaseURL))
+	optionalAuth.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
+	optionalAuth.GET("/episodes/:id", h.Episode.GetByID)
 
 	// Episodes (公開)
-	v1.GET("/episodes/:id", h.Episode.GetByID)
 	v1.GET("/episodes/:id/reviews", h.Review.GetByEpisodeID)
 
 	// Podcasts 評価 (公開)

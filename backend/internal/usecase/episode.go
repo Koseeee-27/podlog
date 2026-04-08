@@ -23,6 +23,7 @@ const maxEpisodesPerFetch = 50
 
 // EpisodeDetailResult はエピソード詳細のレスポンスです。
 // API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_reviews を含みます。
+// Listened は認証ユーザーの聴取状態です。未認証の場合は omitempty により省略されます。
 type EpisodeDetailResult struct {
 	ID            uuid.UUID              `json:"id"`
 	Title         string                 `json:"title"`
@@ -34,6 +35,7 @@ type EpisodeDetailResult struct {
 	Podcast       EpisodePodcastInfo     `json:"podcast"`
 	AverageRating float64                `json:"average_rating"`
 	TotalReviews  int                    `json:"total_reviews"`
+	Listened      *bool                  `json:"listened,omitempty"`
 	CreatedAt     string                 `json:"created_at"`
 }
 
@@ -52,6 +54,7 @@ type EpisodeListResult struct {
 }
 
 // EpisodeListItem はエピソード一覧の各レコードです。
+// Listened は認証ユーザーの聴取状態です。未認証の場合は omitempty により省略されます。
 type EpisodeListItem struct {
 	ID            uuid.UUID `json:"id"`
 	Title         string    `json:"title"`
@@ -60,6 +63,7 @@ type EpisodeListItem struct {
 	PublishedAt   *string   `json:"published_at,omitempty"`
 	AverageRating float64   `json:"average_rating"`
 	TotalReviews  int       `json:"total_reviews"`
+	Listened      *bool     `json:"listened,omitempty"`
 }
 
 // CreateEpisodeInput はエピソード作成のリクエストを表します。
@@ -127,14 +131,20 @@ type EpisodeUsecase interface {
 	Create(ctx context.Context, podcastID uuid.UUID, input CreateEpisodeInput) (*CreateEpisodeResult, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
-	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
+	// GetByPodcastIDWithStats はエピソード一覧をレビュー統計付きで取得します。
+	// userID が nil でない場合、各エピソードの聴取状態（listened）も含めます。
+	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) (*EpisodeListResult, error)
 	// GetByPodcastIDWithAutoFetch はエピソード一覧を取得し、必要に応じて RSS フィードから自動取得します。
+	// userID が nil でない場合、各エピソードの聴取状態（listened）も含めます。
 	// Stale-While-Revalidate 方式:
 	//   - DB にエピソードが 0 件: 同期的に RSS フィードを取得してから返す
 	//   - feed_last_fetched_at から 6 時間経過: バックグラウンドで RSS を再取得
-	GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error)
+	GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) (*EpisodeListResult, error)
 	FetchFromFeed(ctx context.Context, podcastID uuid.UUID, feedURL string) (*FetchFromFeedResult, error)
 	GetRecentForUser(ctx context.Context, userID uuid.UUID) (*RecentEpisodeListResult, error)
+	// IsListened は指定ユーザーが指定エピソードを聴取済みかどうかを返します。
+	// エピソード詳細の listened フィールドに使用します。
+	IsListened(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error)
 }
 
 type episodeUsecase struct {
@@ -268,7 +278,8 @@ func (u *episodeUsecase) GetByPodcastID(ctx context.Context, podcastID uuid.UUID
 
 // GetByPodcastIDWithStats はポッドキャストのエピソード一覧をレビュー統計付きで取得します。
 // API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
-func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error) {
+// userID が nil でない場合、各エピソードの聴取状態（listened）も含めます。
+func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) (*EpisodeListResult, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
 	}
@@ -276,7 +287,7 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 		offset = 0
 	}
 
-	rows, total, err := u.episodeRepo.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	rows, total, err := u.episodeRepo.GetByPodcastIDWithStats(ctx, podcastID, limit, offset, userID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get episodes with stats: %w", err)
 	}
@@ -290,6 +301,7 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 			DurationMs:    row.DurationMs,
 			AverageRating: roundToOneDecimal(row.AverageRating),
 			TotalReviews:  row.TotalReviews,
+			Listened:      row.Listened,
 		}
 		if row.PublishedAt != nil {
 			formatted := row.PublishedAt.Format("2006-01-02T15:04:05Z07:00")
@@ -312,7 +324,7 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 //  3. feed_url がある場合:
 //     - エピソード 0 件 → 同期的に RSS フィードを取得してから返す（初回のみ待ちが発生）
 //     - feed_last_fetched_at から feedStaleDuration（6時間）経過 → バックグラウンドで RSS を再取得
-func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int) (*EpisodeListResult, error) {
+func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) (*EpisodeListResult, error) {
 	// 1. ポッドキャスト情報を取得して feed_url と feed_last_fetched_at を確認する
 	podcast, err := u.podcastRepo.GetByID(ctx, podcastID)
 	if err != nil {
@@ -322,7 +334,7 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 	hasFeedURL := podcast != nil && podcast.FeedURL != nil && *podcast.FeedURL != ""
 
 	// 2. DB からエピソード一覧を取得
-	result, err := u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+	result, err := u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -343,7 +355,7 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 			return result, nil
 		}
 		// フェッチ成功 → DB から改めてエピソードを取得して返す
-		return u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset)
+		return u.GetByPodcastIDWithStats(ctx, podcastID, limit, offset, userID)
 	}
 
 	if u.isFeedStale(podcast.FeedLastFetchedAt) {
@@ -605,4 +617,14 @@ func (u *episodeUsecase) GetRecentForUser(ctx context.Context, userID uuid.UUID)
 		Podcasts:             podcasts,
 		RecordedPodcastCount: recordedPodcastCount,
 	}, nil
+}
+
+// IsListened は指定ユーザーが指定エピソードを聴取済みかどうかを返します。
+// エピソード詳細 API で、認証ユーザーの聴取状態を返すために使用します。
+func (u *episodeUsecase) IsListened(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error) {
+	listened, err := u.episodeRepo.IsListened(ctx, userID, episodeID)
+	if err != nil {
+		return false, fmt.Errorf("failed to check listened status: %w", err)
+	}
+	return listened, nil
 }
