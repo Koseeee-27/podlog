@@ -1,7 +1,13 @@
+import { Suspense } from "react";
 import DiscoverSearchBar from "./DiscoverSearchBar";
 import SearchResultsSection from "./SearchResultsSection";
 import GenrePodcastsSection from "./GenrePodcastsSection";
 import DefaultSection from "./DefaultSection";
+import {
+  SearchResultsSkeleton,
+  GenrePodcastsSkeleton,
+  DefaultSectionSkeleton,
+} from "./skeletons";
 
 interface DiscoverPageProps {
   searchParams: Promise<{ q?: string | string[]; genre?: string | string[] }>;
@@ -24,11 +30,17 @@ export default async function DiscoverPage({
 
       <div className="mt-6">
         {query ? (
-          <SearchResultsSection query={query} />
+          <Suspense fallback={<SearchResultsSkeleton />}>
+            <SearchResultsSection query={query} />
+          </Suspense>
         ) : genre ? (
-          <GenrePodcastsSection genre={genre} />
+          <Suspense fallback={<GenrePodcastsSkeleton />}>
+            <GenrePodcastsSection genre={genre} />
+          </Suspense>
         ) : (
-          <DefaultSection />
+          <Suspense fallback={<DefaultSectionSkeleton />}>
+            <DefaultSection />
+          </Suspense>
         )}
       </div>
     </>
