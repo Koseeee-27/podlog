@@ -1,11 +1,11 @@
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
-import { checkLoggedIn } from "./check-logged-in";
 import type { ReviewListResult, MyReviewResult } from "@/types/review";
 
 /**
  * レビューセクション。認証依存データ（自分のレビュー）を Server で取得する。
+ * API の成否で認証状態を判定する（401: 未ログイン、404: 未投稿、200: レビューあり）。
  * Suspense 境界の中で使う async Server Component。
  */
 export default async function ReviewSectionWithAuth({
@@ -15,21 +15,24 @@ export default async function ReviewSectionWithAuth({
   episodeId: string;
   reviewsData: ReviewListResult;
 }) {
-  const isLoggedIn = await checkLoggedIn();
-
   let myReview: MyReviewResult | null = null;
-  if (isLoggedIn) {
-    try {
-      myReview = await serverGet<MyReviewResult>(
-        `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
-      );
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 404) {
+  let isLoggedIn = false;
+
+  try {
+    myReview = await serverGet<MyReviewResult>(
+      `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
+    );
+    isLoggedIn = true;
+  } catch (err) {
+    if (err instanceof ApiRequestError) {
+      if (err.status === 404) {
+        // 認証OK、レビュー未投稿
+        isLoggedIn = true;
         myReview = null;
-      } else {
-        console.warn("[ReviewSectionWithAuth] 自分のレビュー取得に失敗:", err);
       }
+      // 401: 未ログイン → isLoggedIn = false のまま
     }
+    // その他のエラー → 未ログイン扱い（安全側に倒す）
   }
 
   return (
