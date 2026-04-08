@@ -120,8 +120,9 @@ export default function EpisodeReviewSection({
         setTotal(data.total);
         setAverageRating(data.average_rating);
         setHasMore(list.length < data.total);
-      } catch {
-        // リフレッシュ失敗は静かに無視（既存データを表示し続ける）
+      } catch (err) {
+        console.warn("[refreshReviews] レビュー一覧の再取得に失敗:", err);
+        showToast("レビューの更新に失敗しました");
       }
     });
   }

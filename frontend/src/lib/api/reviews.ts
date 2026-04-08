@@ -36,8 +36,8 @@ export function getEpisodeReviews(
   params?: { limit?: number; offset?: number }
 ): Promise<ReviewListResult> {
   const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set("limit", String(params.limit));
+  if (params?.offset != null) searchParams.set("offset", String(params.offset));
   const query = searchParams.toString();
   return apiGet<ReviewListResult>(
     `/episodes/${encodeURIComponent(episodeId)}/reviews${query ? `?${query}` : ""}`
@@ -49,8 +49,8 @@ export function getUserReviews(
   params?: { limit?: number; offset?: number }
 ): Promise<UserReviewListResult> {
   const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set("limit", String(params.limit));
+  if (params?.offset != null) searchParams.set("offset", String(params.offset));
   const query = searchParams.toString();
   return apiGet<UserReviewListResult>(
     `/users/${encodeURIComponent(username)}/reviews${query ? `?${query}` : ""}`
@@ -61,8 +61,8 @@ export function getTimeline(
   params?: { limit?: number; offset?: number }
 ): Promise<TimelineResult> {
   const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set("limit", String(params.limit));
+  if (params?.offset != null) searchParams.set("offset", String(params.offset));
   const query = searchParams.toString();
   return apiGet<TimelineResult>(`/timeline${query ? `?${query}` : ""}`);
 }

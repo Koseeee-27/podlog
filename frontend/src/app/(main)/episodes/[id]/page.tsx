@@ -1,4 +1,4 @@
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { serverGet } from "@/lib/api/server";
@@ -17,6 +17,19 @@ interface EpisodePageProps {
 }
 
 const PAGE_SIZE = 20;
+
+/**
+ * serverGet("/users/me") の成否でログイン判定。
+ * cache() で同一レンダリングサイクル内の重複呼び出しをメモ化する。
+ */
+const checkLoggedIn = cache(async (): Promise<boolean> => {
+  try {
+    await serverGet<unknown>("/users/me");
+    return true;
+  } catch {
+    return false;
+  }
+});
 
 export default async function EpisodePage({ params }: EpisodePageProps) {
   const { id } = await params;
@@ -94,15 +107,9 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
+      {/* レビューセクション: 認証データ取得中はスケルトンを表示 */}
       <div id="review-section">
-        <Suspense fallback={
-          <EpisodeReviewSection
-            episodeId={episode.id}
-            initialReviews={reviewsData}
-            initialMyReview={null}
-            isLoggedIn={false}
-          />
-        }>
+        <Suspense fallback={<ReviewSectionSkeleton reviewsData={reviewsData} />}>
           <ReviewSectionWithAuth
             episodeId={episode.id}
             reviewsData={reviewsData}
@@ -114,11 +121,25 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 }
 
 /**
+ * レビューセクションのスケルトン表示。
+ * レビュー一覧（公開データ）は表示し、認証依存部分（レビューフォーム等）はスケルトンにする。
+ */
+function ReviewSectionSkeleton({ reviewsData }: { reviewsData: ReviewListResult }) {
+  return (
+    <EpisodeReviewSection
+      episodeId=""
+      initialReviews={reviewsData}
+      initialMyReview={null}
+      isLoggedIn={false}
+    />
+  );
+}
+
+/**
  * 聴取ボタン。認証状態を Server で取得して表示を分岐する。
  * Suspense 境界の中で使う async Server Component。
  */
 async function ListenButtonSection({ episodeId }: { episodeId: string }) {
-  // serverGet("/users/me") の成否で認証判定（フロントルールに準拠）
   const isLoggedIn = await checkLoggedIn();
 
   if (!isLoggedIn) {
@@ -131,8 +152,8 @@ async function ListenButtonSection({ episodeId }: { episodeId: string }) {
       `/episodes/${encodeURIComponent(episodeId)}/listen`,
     );
     listened = status.listened;
-  } catch {
-    // 聴取状態が取れなくても未聴として続行
+  } catch (err) {
+    console.warn("[ListenButtonSection] 聴取状態の取得に失敗:", err);
   }
 
   return (
@@ -164,8 +185,9 @@ async function ReviewSectionWithAuth({
     } catch (err) {
       if (err instanceof ApiRequestError && err.status === 404) {
         myReview = null;
+      } else {
+        console.warn("[ReviewSectionWithAuth] 自分のレビュー取得に失敗:", err);
       }
-      // その他のエラーも未レビューとして扱う
     }
   }
 
@@ -177,17 +199,4 @@ async function ReviewSectionWithAuth({
       isLoggedIn={isLoggedIn}
     />
   );
-}
-
-/**
- * serverGet("/users/me") の成否でログイン判定。
- * フロントルール: 公開ページでのパーソナライズは serverGet("/users/me") で判定。
- */
-async function checkLoggedIn(): Promise<boolean> {
-  try {
-    await serverGet<unknown>("/users/me");
-    return true;
-  } catch {
-    return false;
-  }
 }
