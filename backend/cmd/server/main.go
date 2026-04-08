@@ -135,16 +135,16 @@ func run() error {
 	// 適切なステータスコードを決定させる（カスタム HTTPErrorHandler と連携）。
 	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogMethod:   true,
-		LogURI:      true,
+		LogURIPath:  true,
 		LogStatus:   true,
 		LogLatency:  true,
 		LogError:    true,
 		HandleError: true,
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			if v.Error != nil {
-				log.Printf("%s %s %d %v error=%v", v.Method, v.URI, v.Status, v.Latency, v.Error)
+				log.Printf("%s %s %d %v error=%v", v.Method, v.URIPath, v.Status, v.Latency, v.Error)
 			} else {
-				log.Printf("%s %s %d %v", v.Method, v.URI, v.Status, v.Latency)
+				log.Printf("%s %s %d %v", v.Method, v.URIPath, v.Status, v.Latency)
 			}
 			return nil
 		},
