@@ -82,11 +82,7 @@ export default async function RecentEpisodesSection() {
             {/* エピソード一覧（最大3件） */}
             <div className="space-y-1.5 ml-[52px]">
               {group.episodes.map((episode) => (
-                <RecentEpisodeCard
-                  key={episode.id}
-                  episode={episode}
-                  showListenButton
-                />
+                <RecentEpisodeCard key={episode.id} episode={episode} />
               ))}
             </div>
 
