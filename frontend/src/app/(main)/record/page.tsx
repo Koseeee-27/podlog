@@ -16,8 +16,9 @@ import type { User } from "@/types/user";
  * ここではプロフィール確認のみ行い、未設定ならセットアップへ誘導する。
  * serverGet("/users/me") が 401 を返した場合はセッション期限切れとして /login へ。
  *
- * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）を配置し、
- * 新着エピソードの取得は Suspense で分離してページ表示をブロックしない。
+ * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）は
+ * 対等な兄弟として配置する。新着エピソードの取得は Suspense で分離し、
+ * ユーザーはページ遷移後すぐに検索バーを操作できる。
  */
 export default async function RecordPage() {
   // プロフィール確認（認証チェックは middleware で完了済み）
@@ -35,26 +36,24 @@ export default async function RecordPage() {
     <div>
       <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
 
-      {/*
-        PodcastSearchSection に新着エピソードを children で渡す。
-        検索中は children を非表示にする（旧実装と同じ動作）。
-      */}
-      <PodcastSearchSection>
-        {/* ErrorBoundary でエラーをセクション単位に閉じ込め、ページ全体のクラッシュを防止 */}
-        <ErrorBoundary
-          fallback={
-            <section className="mt-8">
-              <ErrorMessage message="新着エピソードの読み込みに失敗しました" />
-            </section>
-          }
+      {/* 検索セクション: インタラクティブなので Client Component */}
+      <PodcastSearchSection />
+
+      {/* 新着エピソード: 重いデータ取得を Suspense で分離 */}
+      {/* ErrorBoundary でエラーをセクション単位に閉じ込め、ページ全体のクラッシュを防止 */}
+      <ErrorBoundary
+        fallback={
+          <section className="mt-8">
+            <ErrorMessage message="新着エピソードの読み込みに失敗しました" />
+          </section>
+        }
+      >
+        <Suspense
+          fallback={<Loading message="新着エピソードを読み込み中..." />}
         >
-          <Suspense
-            fallback={<Loading message="新着エピソードを読み込み中..." />}
-          >
-            <RecentEpisodesSection />
-          </Suspense>
-        </ErrorBoundary>
-      </PodcastSearchSection>
+          <RecentEpisodesSection />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }

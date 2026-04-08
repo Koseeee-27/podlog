@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, type ReactNode } from "react";
+import { Suspense, useState } from "react";
 import { usePodcastSearch } from "@/hooks/usePodcastSearch";
 import { getEpisodesByPodcast } from "@/lib/api/episodes";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -20,13 +20,8 @@ import type { EpisodeListResult } from "@/types/episode";
  * - 検索バー + 検索結果一覧 + 番組選択時のエピソード表示を管理
  * - 番組選択時に getEpisodesByPodcast の Promise を作成し、
  *   PodcastEpisodeList に渡して use() + Suspense でローディングを管理
- * - children（新着エピソードセクション）は検索中でないときだけ表示する
  */
-export default function PodcastSearchSection({
-  children,
-}: {
-  children?: ReactNode;
-}) {
+export default function PodcastSearchSection() {
   const {
     query,
     results: searchResults,
@@ -75,8 +70,7 @@ export default function PodcastSearchSection({
   };
 
   return (
-    <>
-      <section>
+    <section>
         <h2 className="text-lg font-semibold text-stone-900 mb-3">
           番組を検索
         </h2>
@@ -128,10 +122,6 @@ export default function PodcastSearchSection({
             </>
           ) : null}
         </div>
-      </section>
-
-      {/* 新着エピソードセクション: 検索中でないときだけ表示 */}
-      {!isSearching && children}
-    </>
+    </section>
   );
 }
