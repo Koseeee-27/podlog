@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import type { EpisodeDetailResult } from "@/types/episode";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
@@ -19,9 +19,10 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
   const isLoggedIn = auth.status === "authenticated" || auth.status === "no_profile";
   const [showReviewPrompt, setShowReviewPrompt] = useState(false);
 
-  const handleJustMarked = useCallback(() => {
+  function handleJustMarked() {
     setShowReviewPrompt(true);
-  }, []);
+  }
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-stone-900">{episode.title}</h1>
@@ -40,6 +41,7 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
         {isLoggedIn ? (
           <ListenButton
             episodeId={episode.id}
+            initialListened={false}
             onJustMarked={handleJustMarked}
             onUnmarked={() => setShowReviewPrompt(false)}
           />

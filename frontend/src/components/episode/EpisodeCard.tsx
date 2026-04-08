@@ -38,7 +38,7 @@ export default function EpisodeCard({ episode, showListenButton }: EpisodeCardPr
           {content}
         </Link>
         <div className="flex-shrink-0 self-center">
-          <ListenButton episodeId={episode.id} compact />
+          <ListenButton episodeId={episode.id} initialListened={false} compact />
         </div>
       </div>
     );

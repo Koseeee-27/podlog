@@ -6,8 +6,8 @@ export function getEpisodesByPodcast(
   params?: { limit?: number; offset?: number }
 ): Promise<EpisodeListResult> {
   const searchParams = new URLSearchParams();
-  if (params?.limit) searchParams.set("limit", String(params.limit));
-  if (params?.offset) searchParams.set("offset", String(params.offset));
+  if (params?.limit != null) searchParams.set("limit", String(params.limit));
+  if (params?.offset != null) searchParams.set("offset", String(params.offset));
   const query = searchParams.toString();
   return apiGet<EpisodeListResult>(
     `/podcasts/${encodeURIComponent(podcastId)}/episodes${query ? `?${query}` : ""}`

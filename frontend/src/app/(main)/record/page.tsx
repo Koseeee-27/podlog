@@ -1,24 +1,53 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
-import RecordClient from "./RecordClient";
+import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import PodcastSearchSection from "./PodcastSearchSection";
+import RecentEpisodesSection from "./RecentEpisodesSection";
+import { RecentEpisodesSkeleton } from "./skeletons";
+import type { User } from "@/types/user";
 
+// 認証ユーザーごとにデータが異なるため、静的生成をスキップする
+export const dynamic = "force-dynamic";
+
+/**
+ * /record ページ（保護ページ）。
+ *
+ * 認証チェックは middleware で完了済み。
+ * ここではプロフィール確認のみ行い、未設定ならセットアップへ誘導する。
+ * serverGet("/users/me") が 401 を返した場合はセッション期限切れとして /login へ。
+ *
+ * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）は
+ * 対等な兄弟として配置する。新着エピソードの取得は Suspense で分離し、
+ * ユーザーはページ遷移後すぐに検索バーを操作できる。
+ */
 export default async function RecordPage() {
-  // Middleware で未認証リダイレクト済みだが、防御的に二重チェック
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    redirect("/login");
+  // プロフィール確認（認証チェックは middleware で完了済み）
+  try {
+    await serverGet<User>("/users/me");
+  } catch (err) {
+    if (err instanceof ApiRequestError) {
+      if (err.status === 404) redirect("/profile/setup");
+      if (err.status === 401) redirect("/login");
+    }
+    throw err;
   }
-
-  // プロフィール未設定チェックは RecordClient 側の useAuth で行う
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-stone-900 mb-6">記録する</h1>
-      <RecordClient />
+
+      {/* 検索セクション: インタラクティブなので Client Component */}
+      <PodcastSearchSection />
+
+      {/* 新着エピソード: 重いデータ取得を Suspense で分離 */}
+      {/* ErrorBoundary でエラーをセクション単位に閉じ込め、ページ全体のクラッシュを防止 */}
+      <ErrorBoundary>
+        <Suspense fallback={<RecentEpisodesSkeleton />}>
+          <RecentEpisodesSection />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }
