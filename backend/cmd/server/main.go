@@ -248,6 +248,7 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
+		log.Printf("サーバーの graceful shutdown に失敗: %v", err)
 		errs = append(errs, fmt.Errorf("サーバーの graceful shutdown に失敗: %w", err))
 	}
 
@@ -263,7 +264,8 @@ func run() error {
 	case <-bgDone:
 		log.Println("全タスク完了。サーバーを終了します")
 	case <-time.After(65 * time.Second):
-		errs = append(errs, fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（65秒経過）"))
+		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました")
+		errs = append(errs, errors.New("バックグラウンドタスクの待機がタイムアウトしました（65秒経過）"))
 	}
 
 	// errors.Join はスライスが空（エラーなし）なら nil を返す。
