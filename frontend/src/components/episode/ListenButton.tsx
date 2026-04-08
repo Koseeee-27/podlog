@@ -1,6 +1,6 @@
 "use client";
 
-import { useOptimistic, useTransition } from "react";
+import { useState, useOptimistic, useTransition } from "react";
 import {
   addListeningRecord,
   removeListeningRecord,
@@ -23,9 +23,13 @@ interface ListenButtonProps {
 /**
  * 聴取記録のトグルボタン。
  *
- * - useOptimistic でボタン押下時に即座に UI を切り替える
- * - useTransition でトグル操作を管理し、失敗時はロールバック
- * - 初期値は必ず親から受け取る（コンポーネント内でのデータフェッチは行わない）
+ * 状態管理の仕組み:
+ * - confirmed: サーバーと同期済みの確定状態（useState）
+ * - optimisticListened: ユーザーに見せる楽観的な状態（useOptimistic）
+ *
+ * ボタン押下 → optimistic を即座に反転 → API 呼び出し
+ *   成功 → confirmed を更新（新しいベース値になる）
+ *   失敗 → startTransition 終了で confirmed に自動ロールバック
  */
 export default function ListenButton({
   episodeId,
@@ -34,14 +38,17 @@ export default function ListenButton({
   onUnmarked,
   compact,
 }: ListenButtonProps) {
-  const [optimisticListened, setOptimisticListened] =
-    useOptimistic(initialListened);
+  const [confirmed, setConfirmed] = useState(initialListened);
+  const [optimisticListened, toggleOptimistic] = useOptimistic(
+    confirmed,
+    (current: boolean) => !current,
+  );
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
 
   function handleToggle() {
     const next = !optimisticListened;
-    setOptimisticListened(next);
+    toggleOptimistic(undefined);
 
     startTransition(async () => {
       try {
@@ -52,11 +59,12 @@ export default function ListenButton({
           await removeListeningRecord(episodeId);
           onUnmarked?.();
         }
+        setConfirmed(next);
         showToast(
           next ? "聴取記録を追加しました" : "聴取記録を削除しました",
         );
       } catch {
-        // 楽観的更新をロールバック（initialListened に戻る）
+        // confirmed は変更しない → startTransition 終了時に confirmed に自動ロールバック
         showToast("操作に失敗しました");
       }
     });
