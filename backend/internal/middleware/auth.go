@@ -137,9 +137,12 @@ func OptionalJWTAuth(supabaseURL string) echo.MiddlewareFunc {
 
 			// JWT トークンを検証
 			token, err := jwt.Parse(tokenString, k.KeyfuncCtx(context.Background()))
-			if err != nil || !token.Valid {
-				// トークンが無効でもエラーにはせずスキップ（ログは残す）
+			if err != nil {
+				// 検証エラー時のみログを残す（不正トークンの大量送信でログ爆発しないよう分離）
 				log.Printf("[OPTIONAL_AUTH] Token validation failed for %s %s: %v", c.Request().Method, c.Request().URL.Path, err)
+				return next(c)
+			}
+			if !token.Valid {
 				return next(c)
 			}
 

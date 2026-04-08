@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -144,12 +145,14 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 	}
 
 	// 認証済みの場合、聴取状態を取得して設定
+	// listened は付加情報のため、取得失敗時もメインの詳細レスポンスは返す（Graceful Degradation）
 	if userID != nil {
 		listened, err := h.episodeUsecase.IsListened(ctx, *userID, id)
 		if err != nil {
-			return response.Error(c, http.StatusInternalServerError, "failed to check listened status")
+			log.Printf("[GetByID] failed to check listened status: episode_id=%s user_id=%s err=%v", id.String(), userID.String(), err)
+		} else {
+			result.Listened = &listened
 		}
-		result.Listened = &listened
 	}
 
 	return response.Success(c, http.StatusOK, result)
