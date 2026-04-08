@@ -9,6 +9,9 @@ import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { User } from "@/types/user";
 
+// 認証ユーザーごとにデータが異なるため、静的生成をスキップする
+export const dynamic = "force-dynamic";
+
 /**
  * /record ページ（保護ページ）。
  *
