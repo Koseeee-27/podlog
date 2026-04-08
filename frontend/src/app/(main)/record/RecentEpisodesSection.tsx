@@ -7,6 +7,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { serverGet } from "@/lib/api/server";
 import RecentEpisodeCard from "@/components/episode/RecentEpisodeCard";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { RecentEpisodesResult } from "@/types/episode";
 
 /**
@@ -20,7 +21,15 @@ import type { RecentEpisodesResult } from "@/types/episode";
 export default async function RecentEpisodesSection() {
   const result = await serverGet<RecentEpisodesResult>(
     "/users/me/recent-episodes",
-  );
+  ).catch(() => null);
+
+  if (!result) {
+    return (
+      <section className="mt-8">
+        <ErrorMessage message="新着エピソードの取得に失敗しました" />
+      </section>
+    );
+  }
 
   const podcastGroups = result.podcasts ?? [];
   const recordedPodcastCount = result.recorded_podcast_count ?? 0;
