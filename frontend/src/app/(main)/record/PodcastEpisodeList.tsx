@@ -14,7 +14,7 @@ import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { PodcastSearchItem } from "@/types/podcast";
 import type { EpisodeListItem, EpisodeListResult } from "@/types/episode";
 
-const PAGE_SIZE = 20;
+export const PAGE_SIZE = 20;
 
 /**
  * 番組選択後のエピソード一覧。

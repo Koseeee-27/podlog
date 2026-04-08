@@ -5,7 +5,6 @@ import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import { RecentEpisodesSkeleton } from "./skeletons";
 import type { User } from "@/types/user";
 
@@ -44,13 +43,7 @@ export default async function RecordPage() {
 
       {/* 新着エピソード: 重いデータ取得を Suspense で分離 */}
       {/* ErrorBoundary でエラーをセクション単位に閉じ込め、ページ全体のクラッシュを防止 */}
-      <ErrorBoundary
-        fallback={
-          <section className="mt-8">
-            <ErrorMessage message="新着エピソードの読み込みに失敗しました" />
-          </section>
-        }
-      >
+      <ErrorBoundary>
         <Suspense fallback={<RecentEpisodesSkeleton />}>
           <RecentEpisodesSection />
         </Suspense>

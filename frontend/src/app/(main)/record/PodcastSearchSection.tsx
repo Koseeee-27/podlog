@@ -8,7 +8,7 @@ import SearchBar from "@/components/podcast/SearchBar";
 import PodcastSelectCard from "@/components/podcast/PodcastSelectCard";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
-import PodcastEpisodeList from "./PodcastEpisodeList";
+import PodcastEpisodeList, { PAGE_SIZE } from "./PodcastEpisodeList";
 import { EpisodeListSkeleton } from "./skeletons";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
@@ -74,7 +74,7 @@ export default function PodcastSearchSection() {
     setSelectedPodcast(podcast);
     // イベントハンドラ内で Promise を作成（レンダリング中ではない）→ use() ルール準拠
     setEpisodesPromise(
-      getEpisodesByPodcast(podcast.id, { limit: 20, offset: 0 }),
+      getEpisodesByPodcast(podcast.id, { limit: PAGE_SIZE, offset: 0 }),
     );
   };
 
@@ -98,13 +98,10 @@ export default function PodcastSearchSection() {
       <div className="mt-4">
         {selectedPodcast && episodesPromise ? (
           /* 番組選択後: エピソード一覧（ErrorBoundary + Suspense でローディング・エラー管理） */
-          <ErrorBoundary
-            fallback={
-              <ErrorMessage message="エピソードの読み込みに失敗しました" />
-            }
-          >
+          <ErrorBoundary>
             <Suspense fallback={<EpisodeListSkeleton />}>
               <PodcastEpisodeList
+                key={selectedPodcast.id}
                 podcast={selectedPodcast}
                 initialDataPromise={episodesPromise}
                 onBack={handleBack}
