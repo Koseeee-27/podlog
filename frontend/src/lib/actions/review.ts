@@ -2,7 +2,7 @@
 
 import { createReviewRequestSchema } from "@/lib/schemas/review";
 import { uuidSchema } from "@/lib/schemas/common";
-import { serverPost, serverPut } from "@/lib/api/server";
+import { serverPost, serverPut, serverDelete } from "@/lib/api/server";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 import type { Review } from "@/types/review";
@@ -11,6 +11,11 @@ export interface ReviewFormState {
   success: boolean;
   error?: string;
   review?: Review;
+}
+
+export interface DeleteReviewState {
+  success: boolean;
+  error?: string;
 }
 
 export async function createReviewAction(
@@ -81,6 +86,32 @@ export async function updateReviewAction(
     return {
       success: false,
       error: getUserFriendlyErrorMessage(err, "レビューの更新に失敗しました"),
+    };
+  }
+}
+
+export async function deleteReviewAction(
+  episodeId: string,
+): Promise<DeleteReviewState> {
+  if (!uuidSchema.safeParse(episodeId).success) {
+    return { success: false, error: "無効なエピソードIDです" };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { success: false, error: "ログインが必要です" };
+  }
+
+  try {
+    await serverDelete(
+      `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
+    );
+    return { success: true };
+  } catch (err) {
+    return {
+      success: false,
+      error: getUserFriendlyErrorMessage(err, "レビューの削除に失敗しました"),
     };
   }
 }

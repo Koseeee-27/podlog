@@ -21,7 +21,7 @@ const defaultHandlers = {
   updateAction: noopAction,
   onCreateSuccess: () => {},
   onUpdateSuccess: () => {},
-  onDelete: async () => {},
+  onDelete: () => {},
   onStartEdit: () => {},
   onCancelEdit: () => {},
   onStartDelete: () => {},
