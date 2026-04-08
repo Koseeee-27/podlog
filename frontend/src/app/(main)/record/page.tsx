@@ -5,8 +5,8 @@ import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
-import Loading from "@/components/ui/Loading";
 import ErrorMessage from "@/components/ui/ErrorMessage";
+import { RecentEpisodesSkeleton } from "./skeletons";
 import type { User } from "@/types/user";
 
 // 認証ユーザーごとにデータが異なるため、静的生成をスキップする
@@ -51,9 +51,7 @@ export default async function RecordPage() {
           </section>
         }
       >
-        <Suspense
-          fallback={<Loading message="新着エピソードを読み込み中..." />}
-        >
+        <Suspense fallback={<RecentEpisodesSkeleton />}>
           <RecentEpisodesSection />
         </Suspense>
       </ErrorBoundary>

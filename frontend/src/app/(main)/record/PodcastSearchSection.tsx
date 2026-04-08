@@ -6,10 +6,10 @@ import { getEpisodesByPodcast } from "@/lib/api/episodes";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import SearchBar from "@/components/podcast/SearchBar";
 import PodcastSelectCard from "@/components/podcast/PodcastSelectCard";
-import Loading from "@/components/ui/Loading";
 import EmptyState from "@/components/ui/EmptyState";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import PodcastEpisodeList from "./PodcastEpisodeList";
+import { EpisodeListSkeleton } from "./skeletons";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { PodcastSearchItem } from "@/types/podcast";
@@ -103,9 +103,7 @@ export default function PodcastSearchSection() {
               <ErrorMessage message="エピソードの読み込みに失敗しました" />
             }
           >
-            <Suspense
-              fallback={<Loading message="エピソードを読み込み中..." />}
-            >
+            <Suspense fallback={<EpisodeListSkeleton />}>
               <PodcastEpisodeList
                 podcast={selectedPodcast}
                 initialDataPromise={episodesPromise}
