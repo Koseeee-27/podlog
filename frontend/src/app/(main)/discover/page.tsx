@@ -22,7 +22,7 @@ export default async function DiscoverPage({
     : (params.genre ?? "");
 
   return (
-    <div>
+    <>
       <h1 className="sr-only">探す</h1>
 
       <DiscoverSearchBar initialQuery={query} />
@@ -36,7 +36,7 @@ export default async function DiscoverPage({
           <DefaultView />
         )}
       </div>
-    </div>
+    </>
   );
 }
 
