@@ -129,7 +129,26 @@ func run() error {
 
 	// 5. 基本ミドルウェアを登録
 	e.Use(middleware.Recover())
-	e.Use(middleware.Logger())
+	// RequestLoggerWithConfig は非推奨の middleware.Logger() の代替。
+	// リクエストごとにメソッド・URI・ステータスコード・レイテンシ・エラーをログ出力する。
+	// HandleError: true にすると、エラーをグローバルエラーハンドラーに転送して
+	// 適切なステータスコードを決定させる（カスタム HTTPErrorHandler と連携）。
+	e.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
+		LogMethod:   true,
+		LogURI:      true,
+		LogStatus:   true,
+		LogLatency:  true,
+		LogError:    true,
+		HandleError: true,
+		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
+			if v.Error != nil {
+				log.Printf("%s %s %d %v error=%v", v.Method, v.URI, v.Status, v.Latency, v.Error)
+			} else {
+				log.Printf("%s %s %d %v", v.Method, v.URI, v.Status, v.Latency)
+			}
+			return nil
+		},
+	}))
 	e.Use(mw.CORS(cfg.CORSAllowOrigins))
 
 	// 6. Swagger UIを登録（開発環境のみ）
