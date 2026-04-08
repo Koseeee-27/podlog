@@ -141,9 +141,8 @@ func (r *episodeRepository) GetByGUID(ctx context.Context, podcastID uuid.UUID, 
 // LEFT JOIN でレビューテーブルを結合し、N+1 問題を回避しています。
 // 削除済みユーザーのレビューは集計から除外します。
 //
-// userID が nil でない場合、listening_records テーブルも LEFT JOIN して
-// 各エピソードの聴取状態（listened）を 1 クエリで取得します（N+1 回避）。
-// userID が nil の場合、listened は NULL になります。
+// userID が nil でない場合、EXISTS サブクエリで各エピソードの聴取状態（listened）も
+// 1 クエリで取得します（N+1 回避）。userID が nil の場合、listened は NULL になります。
 func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) ([]EpisodeWithStatsRow, int, error) {
 	// 1. 総件数を取得
 	var total int
@@ -153,12 +152,16 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 	}
 
 	// 2. データ取得（レビュー統計 + 聴取状態付き）
+	// 聴取状態は EXISTS サブクエリで判定します。
+	// LEFT JOIN だと reviews との Cartesian Product（行の掛け算）が発生し、
+	// average_rating / total_reviews の集計値がズレるリスクがあるため、
+	// サブクエリで分離しています。
+	//
 	// userID が指定されている場合:
-	//   - listening_records を LEFT JOIN して、そのユーザーの聴取記録があるかを判定
+	//   - EXISTS サブクエリで listening_records にレコードがあるかを判定
 	//   - CASE 式で listened フィールドを true/false にマッピング
 	// userID が nil の場合:
-	//   - JOIN 条件で必ず不一致（$4 = NULL）になるため lr.id は常に NULL
-	//   - listened も NULL になる（CASE 式の ELSE NULL）
+	//   - $4::uuid IS NOT NULL が false になるため listened は NULL
 	dataQuery := `
 		SELECT
 			e.id,
@@ -169,15 +172,17 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
 			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
 			CASE
-				WHEN $4::uuid IS NOT NULL THEN (lr.id IS NOT NULL)
+				WHEN $4::uuid IS NOT NULL THEN EXISTS(
+					SELECT 1 FROM listening_records lr
+					WHERE lr.episode_id = e.id AND lr.user_id = $4
+				)
 				ELSE NULL
 			END AS listened
 		FROM episodes e
 		LEFT JOIN reviews r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
-		LEFT JOIN listening_records lr ON e.id = lr.episode_id AND lr.user_id = $4
 		WHERE e.podcast_id = $1
-		GROUP BY e.id, e.title, e.description, e.duration_ms, e.published_at, lr.id
+		GROUP BY e.id, e.title, e.description, e.duration_ms, e.published_at
 		ORDER BY e.published_at DESC NULLS LAST, e.id DESC
 		LIMIT $2 OFFSET $3
 	`
