@@ -1,4 +1,4 @@
-import { cache, Suspense } from "react";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { serverGet } from "@/lib/api/server";
@@ -6,30 +6,16 @@ import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
-import LoginPromptButton from "@/components/ui/LoginPromptButton";
-import ListenButtonWithPrompt from "@/components/episode/ListenButtonWithPrompt";
+import ListenButtonSection from "./ListenButtonSection";
+import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
 import type { EpisodeDetailResult } from "@/types/episode";
-import type { ReviewListResult, MyReviewResult } from "@/types/review";
-import type { ListeningStatus } from "@/types/listening-record";
+import type { ReviewListResult } from "@/types/review";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
 }
 
 const PAGE_SIZE = 20;
-
-/**
- * serverGet("/users/me") の成否でログイン判定。
- * cache() で同一レンダリングサイクル内の重複呼び出しをメモ化する。
- */
-const checkLoggedIn = cache(async (): Promise<boolean> => {
-  try {
-    await serverGet<unknown>("/users/me");
-    return true;
-  } catch {
-    return false;
-  }
-});
 
 export default async function EpisodePage({ params }: EpisodePageProps) {
   const { id } = await params;
@@ -109,7 +95,14 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       {/* レビューセクション: 認証データ取得中はスケルトンを表示 */}
       <div id="review-section">
-        <Suspense fallback={<ReviewSectionSkeleton reviewsData={reviewsData} />}>
+        <Suspense fallback={
+          <EpisodeReviewSection
+            episodeId=""
+            initialReviews={reviewsData}
+            initialMyReview={null}
+            isLoggedIn={false}
+          />
+        }>
           <ReviewSectionWithAuth
             episodeId={episode.id}
             reviewsData={reviewsData}
@@ -117,86 +110,5 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
         </Suspense>
       </div>
     </div>
-  );
-}
-
-/**
- * レビューセクションのスケルトン表示。
- * レビュー一覧（公開データ）は表示し、認証依存部分（レビューフォーム等）はスケルトンにする。
- */
-function ReviewSectionSkeleton({ reviewsData }: { reviewsData: ReviewListResult }) {
-  return (
-    <EpisodeReviewSection
-      episodeId=""
-      initialReviews={reviewsData}
-      initialMyReview={null}
-      isLoggedIn={false}
-    />
-  );
-}
-
-/**
- * 聴取ボタン。認証状態を Server で取得して表示を分岐する。
- * Suspense 境界の中で使う async Server Component。
- */
-async function ListenButtonSection({ episodeId }: { episodeId: string }) {
-  const isLoggedIn = await checkLoggedIn();
-
-  if (!isLoggedIn) {
-    return <LoginPromptButton label="ログインして記録する" />;
-  }
-
-  let listened = false;
-  try {
-    const status = await serverGet<ListeningStatus>(
-      `/episodes/${encodeURIComponent(episodeId)}/listen`,
-    );
-    listened = status.listened;
-  } catch (err) {
-    console.warn("[ListenButtonSection] 聴取状態の取得に失敗:", err);
-  }
-
-  return (
-    <ListenButtonWithPrompt
-      episodeId={episodeId}
-      initialListened={listened}
-    />
-  );
-}
-
-/**
- * レビューセクション。認証依存データ（自分のレビュー）を Server で取得する。
- */
-async function ReviewSectionWithAuth({
-  episodeId,
-  reviewsData,
-}: {
-  episodeId: string;
-  reviewsData: ReviewListResult;
-}) {
-  const isLoggedIn = await checkLoggedIn();
-
-  let myReview: MyReviewResult | null = null;
-  if (isLoggedIn) {
-    try {
-      myReview = await serverGet<MyReviewResult>(
-        `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
-      );
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 404) {
-        myReview = null;
-      } else {
-        console.warn("[ReviewSectionWithAuth] 自分のレビュー取得に失敗:", err);
-      }
-    }
-  }
-
-  return (
-    <EpisodeReviewSection
-      episodeId={episodeId}
-      initialReviews={reviewsData}
-      initialMyReview={myReview}
-      isLoggedIn={isLoggedIn}
-    />
   );
 }
