@@ -58,7 +58,10 @@ export default async function GenrePodcastsSection({
       </h2>
 
       {podcastsError ? (
-        <ErrorMessage message="番組の取得に失敗しました" />
+        <ErrorMessage
+          message="番組の取得に失敗しました"
+          retryHref={`/discover?genre=${encodeURIComponent(genre)}`}
+        />
       ) : podcasts.length === 0 ? (
         <EmptyState
           icon={<MicrophoneIcon className="h-12 w-12" />}

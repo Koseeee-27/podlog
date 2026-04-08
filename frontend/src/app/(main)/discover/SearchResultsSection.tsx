@@ -27,7 +27,12 @@ export default async function SearchResultsSection({
   }
 
   if (fetchError) {
-    return <ErrorMessage message="検索に失敗しました。時間をおいて再度お試しください" />;
+    return (
+      <ErrorMessage
+        message="検索に失敗しました。時間をおいて再度お試しください"
+        retryHref={`/discover?q=${encodeURIComponent(query)}`}
+      />
+    );
   }
 
   if (podcasts.length === 0) {

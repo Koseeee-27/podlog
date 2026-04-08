@@ -31,7 +31,7 @@ export default async function DefaultSection() {
           ジャンルから探す
         </h2>
         {genresError ? (
-          <ErrorMessage message="ジャンルの取得に失敗しました" />
+          <ErrorMessage message="ジャンルの取得に失敗しました" retryHref="/discover" />
         ) : (
           <GenreGrid genres={genres} />
         )}
@@ -41,7 +41,7 @@ export default async function DefaultSection() {
         <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
 
         {popularError ? (
-          <ErrorMessage message="人気の番組の取得に失敗しました" />
+          <ErrorMessage message="人気の番組の取得に失敗しました" retryHref="/discover" />
         ) : popularPodcasts.length === 0 ? (
           <p className="text-sm text-stone-500">
             まだレビューのある番組がありません
