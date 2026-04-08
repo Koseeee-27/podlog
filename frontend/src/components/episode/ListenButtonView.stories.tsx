@@ -46,16 +46,6 @@ export const Toggling: Story = {
   },
 };
 
-export const WithError: Story = {
-  args: {
-    listened: false,
-    loading: false,
-    toggling: false,
-    error: "操作に失敗しました",
-    onToggle: () => {},
-  },
-};
-
 export const CompactNotListened: Story = {
   args: {
     listened: false,

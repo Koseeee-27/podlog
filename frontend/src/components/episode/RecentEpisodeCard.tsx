@@ -28,7 +28,7 @@ export default function RecentEpisodeCard({ episode, showListenButton }: RecentE
               {formatDate(episode.published_at)}
             </span>
           )}
-          <ListenButton episodeId={episode.id} compact />
+          <ListenButton episodeId={episode.id} initialListened={false} compact />
         </div>
       </div>
     );
