@@ -41,7 +41,7 @@ export default function ListenButton({
   const [confirmed, setConfirmed] = useState(initialListened);
   const [optimisticListened, toggleOptimistic] = useOptimistic(
     confirmed,
-    (current: boolean) => !current,
+    (current) => !current,
   );
   const [isPending, startTransition] = useTransition();
   const { showToast } = useToast();
