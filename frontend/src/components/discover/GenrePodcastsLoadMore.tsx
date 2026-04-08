@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useTransition } from "react";
+import { useState, useTransition } from "react";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import { getPodcastsByGenre } from "@/lib/api/podcasts";
 import type { PodcastSearchItem } from "@/types/podcast";
@@ -26,7 +26,7 @@ export default function GenrePodcastsLoadMore({
   const loadedCount = initialCount + additional.length;
   const hasMore = loadedCount < total;
 
-  const loadMore = useCallback(() => {
+  const loadMore = () => {
     startLoadMore(async () => {
       try {
         setError(null);
@@ -41,7 +41,7 @@ export default function GenrePodcastsLoadMore({
         );
       }
     });
-  }, [genre, loadedCount]);
+  };
 
   return (
     <>

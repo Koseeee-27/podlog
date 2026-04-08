@@ -1,6 +1,7 @@
 import { serverGet } from "@/lib/api/server";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import EmptyState from "@/components/ui/EmptyState";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import PodcastRequestPrompt from "./PodcastRequestPrompt";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import type { PodcastSearchResult } from "@/types/podcast";
@@ -12,12 +13,22 @@ interface SearchResultsSectionProps {
 export default async function SearchResultsSection({
   query,
 }: SearchResultsSectionProps) {
-  const result = await serverGet<PodcastSearchResult>(
-    `/podcasts/search?q=${encodeURIComponent(query)}`,
-    { noAuth: true, revalidate: 0 },
-  ).catch(() => null);
+  let podcasts: PodcastSearchResult["podcasts"] = [];
+  let fetchError = false;
 
-  const podcasts = result?.podcasts ?? [];
+  try {
+    const result = await serverGet<PodcastSearchResult>(
+      `/podcasts/search?q=${encodeURIComponent(query)}`,
+      { noAuth: true, revalidate: 0 },
+    );
+    podcasts = result.podcasts;
+  } catch {
+    fetchError = true;
+  }
+
+  if (fetchError) {
+    return <ErrorMessage message="検索に失敗しました。時間をおいて再度お試しください" />;
+  }
 
   if (podcasts.length === 0) {
     return (
