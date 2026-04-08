@@ -48,9 +48,9 @@ export default function ListenButton({
 
   function handleToggle() {
     const next = !optimisticListened;
-    toggleOptimistic(undefined);
 
     startTransition(async () => {
+      toggleOptimistic(undefined);
       try {
         if (next) {
           await addListeningRecord(episodeId);
