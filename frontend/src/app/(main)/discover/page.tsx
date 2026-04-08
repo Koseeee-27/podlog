@@ -1,59 +1,48 @@
-import { serverGet } from "@/lib/api/server";
-import DiscoverClient from "./DiscoverClient";
-import type { PodcastSearchResult } from "@/types/podcast";
-import type { GenreListResponse } from "@/types/genre";
+import { Suspense } from "react";
+import DiscoverSearchBar from "./DiscoverSearchBar";
+import SearchResultsSection from "./SearchResultsSection";
+import GenrePodcastsSection from "./GenrePodcastsSection";
+import DefaultSection from "./DefaultSection";
+import {
+  SearchResultsSkeleton,
+  GenrePodcastsSkeleton,
+  DefaultSectionSkeleton,
+} from "./skeletons";
 
 interface DiscoverPageProps {
-  searchParams: Promise<{ q?: string | string[] }>;
+  searchParams: Promise<{ q?: string | string[]; genre?: string | string[] }>;
 }
 
-export default async function DiscoverPage({ searchParams }: DiscoverPageProps) {
-  const { q } = await searchParams;
-  const query = Array.isArray(q) ? q[0] ?? "" : q ?? "";
-
-  let genres: GenreListResponse["genres"] = [];
-  let popularPodcasts: PodcastSearchResult["podcasts"] = [];
-  let initialResults: PodcastSearchResult["podcasts"] = [];
-  let genresError = false;
-  let popularError = false;
-
-  if (query) {
-    // 検索時は検索結果のみ取得（ジャンル・人気番組は初期表示に不要）
-    const searchResult = await serverGet<PodcastSearchResult>(
-      `/podcasts/search?q=${encodeURIComponent(query)}`,
-      { noAuth: true, revalidate: 0 },
-    ).catch(() => null);
-
-    initialResults = searchResult?.podcasts ?? [];
-  } else {
-    // 初期表示: ジャンル・人気番組を並列フェッチ
-    const [genresResult, popularResult] = await Promise.allSettled([
-      serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
-      serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", { noAuth: true, revalidate: 300 }),
-    ]);
-
-    if (genresResult.status === "fulfilled") {
-      genres = genresResult.value.genres;
-    } else {
-      genresError = true;
-    }
-
-    if (popularResult.status === "fulfilled") {
-      popularPodcasts = popularResult.value.podcasts;
-    } else {
-      popularError = true;
-    }
-  }
+export default async function DiscoverPage({
+  searchParams,
+}: DiscoverPageProps) {
+  const params = await searchParams;
+  const query = Array.isArray(params.q) ? (params.q[0] ?? "") : (params.q ?? "");
+  const genre = Array.isArray(params.genre)
+    ? (params.genre[0] ?? "")
+    : (params.genre ?? "");
 
   return (
-    <DiscoverClient
-      key={query}
-      initialQuery={query}
-      initialResults={initialResults}
-      initialGenres={genres}
-      initialPopularPodcasts={popularPodcasts}
-      genresError={genresError}
-      popularError={popularError}
-    />
+    <>
+      <h1 className="sr-only">探す</h1>
+
+      <DiscoverSearchBar initialQuery={query} />
+
+      <div className="mt-6">
+        {query ? (
+          <Suspense fallback={<SearchResultsSkeleton />}>
+            <SearchResultsSection query={query} />
+          </Suspense>
+        ) : genre ? (
+          <Suspense fallback={<GenrePodcastsSkeleton />}>
+            <GenrePodcastsSection genre={genre} />
+          </Suspense>
+        ) : (
+          <Suspense fallback={<DefaultSectionSkeleton />}>
+            <DefaultSection />
+          </Suspense>
+        )}
+      </div>
+    </>
   );
 }
