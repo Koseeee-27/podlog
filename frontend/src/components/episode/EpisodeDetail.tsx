@@ -40,6 +40,7 @@ export default function EpisodeDetail({ episode }: EpisodeDetailProps) {
         {isLoggedIn ? (
           <ListenButton
             episodeId={episode.id}
+            initialListened={false}
             onJustMarked={handleJustMarked}
             onUnmarked={() => setShowReviewPrompt(false)}
           />
