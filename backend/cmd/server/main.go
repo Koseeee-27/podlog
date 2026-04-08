@@ -259,7 +259,10 @@ func run() error {
 	case <-bgDone:
 		log.Println("全タスク完了。サーバーを終了します")
 	case <-time.After(65 * time.Second):
-		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました。サーバーを強制終了します")
+		// タイムアウト時は非ゼロ exit code で終了する。
+		// main() が error を受け取り os.Exit(1) するため、
+		// 監視やデプロイ判定でシャットダウン失敗を検知できる。
+		return fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（65秒経過）")
 	}
 
 	return nil
