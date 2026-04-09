@@ -29,12 +29,7 @@ export default function ListenButtonWithPrompt({
       />
       {showReviewPrompt && (
         <div className="mt-4">
-          <ReviewPrompt
-            onClickReview={() => {
-              setShowReviewPrompt(false);
-              document.getElementById("review-section")?.scrollIntoView({ behavior: "smooth" });
-            }}
-          />
+          <ReviewPrompt />
         </div>
       )}
     </>
