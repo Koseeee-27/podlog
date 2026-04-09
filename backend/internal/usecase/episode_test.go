@@ -22,10 +22,11 @@ type mockEpisodeRepo struct {
 	createFunc                  func(ctx context.Context, episode *model.Episode) error
 	getByIDFunc                 func(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	getByPodcastIDFunc          func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
-	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error)
+	getByPodcastIDWithStatsFunc func(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error)
 	getByItunesTrackIDFunc      func(ctx context.Context, trackID int64) (*model.Episode, error)
 	getByGUIDFunc               func(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 	getRecentByUserIDFunc       func(ctx context.Context, userID uuid.UUID) ([]repository.RecentEpisodeRow, int, error)
+	isListenedFunc              func(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error)
 }
 
 func (m *mockEpisodeRepo) Create(ctx context.Context, episode *model.Episode) error {
@@ -63,11 +64,11 @@ func (m *mockEpisodeRepo) GetByGUID(ctx context.Context, podcastID uuid.UUID, gu
 	return m.getByGUIDFunc(ctx, podcastID, guid)
 }
 
-func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+func (m *mockEpisodeRepo) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 	if m.getByPodcastIDWithStatsFunc == nil {
 		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetByPodcastIDWithStats: not implemented")
 	}
-	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset)
+	return m.getByPodcastIDWithStatsFunc(ctx, podcastID, limit, offset, userID)
 }
 
 func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUID) ([]repository.RecentEpisodeRow, int, error) {
@@ -75,6 +76,13 @@ func (m *mockEpisodeRepo) GetRecentByUserID(ctx context.Context, userID uuid.UUI
 		return nil, 0, fmt.Errorf("mockEpisodeRepo.GetRecentByUserID: not implemented")
 	}
 	return m.getRecentByUserIDFunc(ctx, userID)
+}
+
+func (m *mockEpisodeRepo) IsListened(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error) {
+	if m.isListenedFunc == nil {
+		return false, fmt.Errorf("mockEpisodeRepo.IsListened: not implemented")
+	}
+	return m.isListenedFunc(ctx, userID, episodeID)
 }
 
 // mockPodcastRepoForEpisode は EpisodeUsecase テスト用の PodcastRepository モックです。
@@ -839,7 +847,7 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 	now := time.Now()
 
 	repo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{
 				{
 					ID:            ep1ID,
@@ -859,7 +867,7 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
-	result, err := uc.GetByPodcastIDWithStats(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -884,13 +892,13 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 
 func TestGetByPodcastIDWithStats_Empty(t *testing.T) {
 	repo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{}, 0, nil
 		},
 	}
 
 	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
-	result, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -905,7 +913,7 @@ func TestGetByPodcastIDWithStats_Empty(t *testing.T) {
 func TestGetByPodcastIDWithStats_LimitOffset(t *testing.T) {
 	// limit が 0 以下の場合にデフォルト値 20 に補正されることを確認
 	repo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			if limit != 20 {
 				t.Errorf("expected limit to be corrected to 20, got %d", limit)
 			}
@@ -917,7 +925,7 @@ func TestGetByPodcastIDWithStats_LimitOffset(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
-	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), -1, -5)
+	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), -1, -5, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -925,13 +933,162 @@ func TestGetByPodcastIDWithStats_LimitOffset(t *testing.T) {
 
 func TestGetByPodcastIDWithStats_RepoError(t *testing.T) {
 	repo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return nil, 0, fmt.Errorf("database error")
 		},
 	}
 
 	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
-	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0)
+	_, err := uc.GetByPodcastIDWithStats(context.Background(), uuid.New(), 20, 0, nil)
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestGetByPodcastIDWithStats_WithUserID_Listened(t *testing.T) {
+	// userID を指定した場合、listened フィールドが返ること
+	podcastID := uuid.New()
+	userID := uuid.New()
+	ep1ID := uuid.New()
+	ep2ID := uuid.New()
+	now := time.Now()
+
+	listenedTrue := true
+	listenedFalse := false
+
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, uid *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
+			// userID が渡されていることを確認
+			if uid == nil {
+				t.Fatal("expected userID to be non-nil")
+			}
+			if *uid != userID {
+				t.Errorf("expected userID %s, got %s", userID, *uid)
+			}
+			return []repository.EpisodeWithStatsRow{
+				{
+					ID:            ep1ID,
+					Title:         "聴取済みエピソード",
+					PublishedAt:   &now,
+					AverageRating: 4.0,
+					TotalReviews:  2,
+					Listened:      &listenedTrue,
+				},
+				{
+					ID:            ep2ID,
+					Title:         "未聴取エピソード",
+					AverageRating: 0,
+					TotalReviews:  0,
+					Listened:      &listenedFalse,
+				},
+			}, 2, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), podcastID, 20, 0, &userID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(result.Episodes) != 2 {
+		t.Fatalf("expected 2 episodes, got %d", len(result.Episodes))
+	}
+	// 1件目: listened = true
+	if result.Episodes[0].Listened == nil || !*result.Episodes[0].Listened {
+		t.Errorf("expected listened=true for ep1, got %v", result.Episodes[0].Listened)
+	}
+	// 2件目: listened = false
+	if result.Episodes[1].Listened == nil || *result.Episodes[1].Listened {
+		t.Errorf("expected listened=false for ep2, got %v", result.Episodes[1].Listened)
+	}
+}
+
+func TestGetByPodcastIDWithStats_WithoutUserID_ListenedNil(t *testing.T) {
+	// userID が nil の場合、listened フィールドも nil であること
+	podcastID := uuid.New()
+	ep1ID := uuid.New()
+	now := time.Now()
+
+	repo := &mockEpisodeRepo{
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, uid *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
+			if uid != nil {
+				t.Fatal("expected userID to be nil")
+			}
+			return []repository.EpisodeWithStatsRow{
+				{
+					ID:            ep1ID,
+					Title:         "エピソード",
+					PublishedAt:   &now,
+					AverageRating: 3.5,
+					TotalReviews:  1,
+					Listened:      nil, // 未認証のため nil
+				},
+			}, 1, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
+	result, err := uc.GetByPodcastIDWithStats(context.Background(), podcastID, 20, 0, nil)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if len(result.Episodes) != 1 {
+		t.Fatalf("expected 1 episode, got %d", len(result.Episodes))
+	}
+	if result.Episodes[0].Listened != nil {
+		t.Errorf("expected listened=nil for unauthenticated request, got %v", result.Episodes[0].Listened)
+	}
+}
+
+func TestIsListened_True(t *testing.T) {
+	userID := uuid.New()
+	episodeID := uuid.New()
+
+	repo := &mockEpisodeRepo{
+		isListenedFunc: func(ctx context.Context, uid uuid.UUID, eid uuid.UUID) (bool, error) {
+			return true, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
+	listened, err := uc.IsListened(context.Background(), userID, episodeID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if !listened {
+		t.Error("expected listened=true, got false")
+	}
+}
+
+func TestIsListened_False(t *testing.T) {
+	userID := uuid.New()
+	episodeID := uuid.New()
+
+	repo := &mockEpisodeRepo{
+		isListenedFunc: func(ctx context.Context, uid uuid.UUID, eid uuid.UUID) (bool, error) {
+			return false, nil
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
+	listened, err := uc.IsListened(context.Background(), userID, episodeID)
+	if err != nil {
+		t.Fatalf("expected no error, got %v", err)
+	}
+	if listened {
+		t.Error("expected listened=false, got true")
+	}
+}
+
+func TestIsListened_RepoError(t *testing.T) {
+	repo := &mockEpisodeRepo{
+		isListenedFunc: func(ctx context.Context, uid uuid.UUID, eid uuid.UUID) (bool, error) {
+			return false, fmt.Errorf("database error")
+		},
+	}
+
+	uc := NewEpisodeUsecase(repo, &mockPodcastRepoForEpisode{}, nil, nil)
+	_, err := uc.IsListened(context.Background(), uuid.New(), uuid.New())
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
@@ -1106,7 +1263,7 @@ func TestGetByPodcastIDWithAutoFetch_NoFeedURL(t *testing.T) {
 	fetchCalled := false
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{}, 0, nil
 		},
 	}
@@ -1123,7 +1280,7 @@ func TestGetByPodcastIDWithAutoFetch_NoFeedURL(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, nil)
-	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1143,7 +1300,7 @@ func TestGetByPodcastIDWithAutoFetch_ZeroEpisodes_SyncFetch(t *testing.T) {
 	callCount := 0
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			callCount++
 			if callCount == 1 {
 				// 1回目: エピソード 0 件
@@ -1176,7 +1333,7 @@ func TestGetByPodcastIDWithAutoFetch_ZeroEpisodes_SyncFetch(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, nil)
-	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1200,7 +1357,7 @@ func TestGetByPodcastIDWithAutoFetch_ZeroEpisodes_FreshSkip(t *testing.T) {
 	fetchCalled := false
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{}, 0, nil
 		},
 	}
@@ -1222,7 +1379,7 @@ func TestGetByPodcastIDWithAutoFetch_ZeroEpisodes_FreshSkip(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, nil)
-	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1242,7 +1399,7 @@ func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
 	fetchCalled := make(chan bool, 1)
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{
 				{ID: uuid.New(), Title: "エピソード1"},
 			}, 1, nil
@@ -1266,7 +1423,7 @@ func TestGetByPodcastIDWithAutoFetch_Fresh_NoRefresh(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, nil)
-	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1291,7 +1448,7 @@ func TestGetByPodcastIDWithAutoFetch_Stale_BackgroundRefresh(t *testing.T) {
 	fetchCalled := make(chan bool, 1)
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{
 				{ID: uuid.New(), Title: "エピソード1"},
 			}, 1, nil
@@ -1321,7 +1478,7 @@ func TestGetByPodcastIDWithAutoFetch_Stale_BackgroundRefresh(t *testing.T) {
 	}
 
 	uc := NewEpisodeUsecase(episodeRepo, podcastRepo, fetcher, nil)
-	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+	result, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 	if err != nil {
 		t.Fatalf("expected no error, got %v", err)
 	}
@@ -1351,7 +1508,7 @@ func TestGetByPodcastIDWithAutoFetch_Stale_ConcurrentRequests_SingleFetch(t *tes
 	fetchStarted := make(chan struct{})
 
 	episodeRepo := &mockEpisodeRepo{
-		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int) ([]repository.EpisodeWithStatsRow, int, error) {
+		getByPodcastIDWithStatsFunc: func(ctx context.Context, pid uuid.UUID, limit, offset int, userID *uuid.UUID) ([]repository.EpisodeWithStatsRow, int, error) {
 			return []repository.EpisodeWithStatsRow{
 				{ID: uuid.New(), Title: "エピソード1"},
 			}, 1, nil
@@ -1394,7 +1551,7 @@ func TestGetByPodcastIDWithAutoFetch_Stale_ConcurrentRequests_SingleFetch(t *tes
 	for range concurrency {
 		go func() {
 			defer callWg.Done()
-			_, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0)
+			_, err := uc.GetByPodcastIDWithAutoFetch(context.Background(), podcastID, 20, 0, nil)
 			if err != nil {
 				t.Errorf("expected no error, got %v", err)
 			}

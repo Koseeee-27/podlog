@@ -13,6 +13,7 @@ import (
 )
 
 // EpisodeWithStatsRow はエピソード一覧でレビュー統計を含む行です。
+// Listened は認証ユーザーの聴取状態です。未認証（userID が nil）の場合は NULL になります。
 type EpisodeWithStatsRow struct {
 	ID            uuid.UUID  `db:"id"`
 	Title         string     `db:"title"`
@@ -21,6 +22,7 @@ type EpisodeWithStatsRow struct {
 	PublishedAt   *time.Time `db:"published_at"`
 	AverageRating float64    `db:"average_rating"`
 	TotalReviews  int        `db:"total_reviews"`
+	Listened      *bool      `db:"listened"`
 }
 
 // RecentEpisodeRow はユーザーがまだ聴いていないエピソード（番組情報付き）の行です。
@@ -42,10 +44,14 @@ type EpisodeRepository interface {
 	Create(ctx context.Context, episode *model.Episode) error
 	GetByID(ctx context.Context, id uuid.UUID) (*model.Episode, error)
 	GetByPodcastID(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]model.Episode, error)
-	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error)
+	// GetByPodcastIDWithStats はエピソード一覧をレビュー統計付きで取得します。
+	// userID が nil でない場合、各エピソードの聴取状態（listened）も含めます。
+	GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) ([]EpisodeWithStatsRow, int, error)
 	GetByItunesTrackID(ctx context.Context, trackID int64) (*model.Episode, error)
 	GetByGUID(ctx context.Context, podcastID uuid.UUID, guid string) (*model.Episode, error)
 	GetRecentByUserID(ctx context.Context, userID uuid.UUID) ([]RecentEpisodeRow, int, error)
+	// IsListened は指定ユーザーが指定エピソードを聴取済みかどうかを返します。
+	IsListened(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error)
 }
 
 type episodeRepository struct {
@@ -134,7 +140,10 @@ func (r *episodeRepository) GetByGUID(ctx context.Context, podcastID uuid.UUID, 
 // 各エピソードに平均評価とレビュー件数を含み、総件数（total）も返します。
 // LEFT JOIN でレビューテーブルを結合し、N+1 問題を回避しています。
 // 削除済みユーザーのレビューは集計から除外します。
-func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int) ([]EpisodeWithStatsRow, int, error) {
+//
+// userID が nil でない場合、EXISTS サブクエリで各エピソードの聴取状態（listened）も
+// 1 クエリで取得します（N+1 回避）。userID が nil の場合、listened は NULL になります。
+func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) ([]EpisodeWithStatsRow, int, error) {
 	// 1. 総件数を取得
 	var total int
 	countQuery := `SELECT COUNT(*) FROM episodes WHERE podcast_id = $1`
@@ -142,7 +151,17 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 		return nil, 0, fmt.Errorf("failed to count episodes: %w", err)
 	}
 
-	// 2. データ取得（レビュー統計付き）
+	// 2. データ取得（レビュー統計 + 聴取状態付き）
+	// 聴取状態は EXISTS サブクエリで判定します。
+	// LEFT JOIN だと reviews との Cartesian Product（行の掛け算）が発生し、
+	// average_rating / total_reviews の集計値がズレるリスクがあるため、
+	// サブクエリで分離しています。
+	//
+	// userID が指定されている場合:
+	//   - EXISTS サブクエリで listening_records にレコードがあるかを判定
+	//   - CASE 式で listened フィールドを true/false にマッピング
+	// userID が nil の場合:
+	//   - $4::uuid IS NOT NULL が false になるため listened は NULL
 	dataQuery := `
 		SELECT
 			e.id,
@@ -151,7 +170,14 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 			e.duration_ms,
 			e.published_at,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			CASE
+				WHEN $4::uuid IS NOT NULL THEN EXISTS(
+					SELECT 1 FROM listening_records lr
+					WHERE lr.episode_id = e.id AND lr.user_id = $4
+				)
+				ELSE NULL
+			END AS listened
 		FROM episodes e
 		LEFT JOIN reviews r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
@@ -161,11 +187,22 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 		LIMIT $2 OFFSET $3
 	`
 	var rows []EpisodeWithStatsRow
-	if err := r.db.SelectContext(ctx, &rows, dataQuery, podcastID, limit, offset); err != nil {
+	if err := r.db.SelectContext(ctx, &rows, dataQuery, podcastID, limit, offset, userID); err != nil {
 		return nil, 0, fmt.Errorf("failed to get episodes with stats: %w", err)
 	}
 
 	return rows, total, nil
+}
+
+// IsListened は指定ユーザーが指定エピソードを聴取済みかどうかを返します。
+// listening_records テーブルに該当レコードが存在するかを EXISTS で判定します。
+func (r *episodeRepository) IsListened(ctx context.Context, userID uuid.UUID, episodeID uuid.UUID) (bool, error) {
+	var listened bool
+	query := `SELECT EXISTS(SELECT 1 FROM listening_records WHERE user_id = $1 AND episode_id = $2)`
+	if err := r.db.GetContext(ctx, &listened, query, userID, episodeID); err != nil {
+		return false, fmt.Errorf("failed to check listened status: %w", err)
+	}
+	return listened, nil
 }
 
 // GetRecentByUserID はユーザーが記録をつけた番組のうち、まだ聴いていないエピソードを

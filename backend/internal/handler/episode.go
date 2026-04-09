@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -75,8 +76,9 @@ func (h *EpisodeHandler) Create(c echo.Context) error {
 
 // GetByID はエピソード詳細を取得するハンドラーです。
 // API 設計書に従い、podcast 情報と average_rating / total_reviews を含むレスポンスを返します。
+// OptionalJWTAuth ミドルウェアの後に実行され、認証済みの場合は聴取状態（listened）も含みます。
 // @Summary エピソード詳細取得
-// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。
+// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
 // @Tags episodes
 // @Produce json
 // @Param id path string true "エピソードID (UUID)"
@@ -90,6 +92,9 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 	}
 
 	ctx := c.Request().Context()
+
+	// OptionalJWTAuth で設定されたユーザーID（未認証なら nil）
+	userID := mw.GetOptionalUserID(c)
 
 	// エピソード情報を取得
 	episode, err := h.episodeUsecase.GetByID(ctx, id)
@@ -139,14 +144,26 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		result.PublishedAt = &formatted
 	}
 
+	// 認証済みの場合、聴取状態を取得して設定
+	// listened は付加情報のため、取得失敗時もメインの詳細レスポンスは返す（Graceful Degradation）
+	if userID != nil {
+		listened, err := h.episodeUsecase.IsListened(ctx, *userID, id)
+		if err != nil {
+			log.Printf("[GetByID] failed to check listened status: episode_id=%s user_id=%s err=%v", id.String(), userID.String(), err)
+		} else {
+			result.Listened = &listened
+		}
+	}
+
 	return response.Success(c, http.StatusOK, result)
 }
 
 // GetByPodcastID はポッドキャストのエピソード一覧を取得するハンドラーです。
 // API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+// OptionalJWTAuth ミドルウェアの後に実行され、認証済みの場合は各エピソードの聴取状態（listened）も含みます。
 // Stale-While-Revalidate 方式で、必要に応じて RSS フィードからエピソードを自動取得します。
 // @Summary エピソード一覧取得
-// @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。
+// @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
 // @Tags podcasts
 // @Produce json
 // @Param id path string true "ポッドキャストID (UUID)"
@@ -163,7 +180,10 @@ func (h *EpisodeHandler) GetByPodcastID(c echo.Context) error {
 
 	limit, offset := parsePagination(c)
 
-	result, err := h.episodeUsecase.GetByPodcastIDWithAutoFetch(c.Request().Context(), podcastID, limit, offset)
+	// OptionalJWTAuth で設定されたユーザーID（未認証なら nil）
+	userID := mw.GetOptionalUserID(c)
+
+	result, err := h.episodeUsecase.GetByPodcastIDWithAutoFetch(c.Request().Context(), podcastID, limit, offset, userID)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episodes")
 	}

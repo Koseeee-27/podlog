@@ -153,7 +153,7 @@ const docTemplate = `{
         },
         "/episodes/{id}": {
             "get": {
-                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。",
+                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -963,7 +963,7 @@ const docTemplate = `{
         },
         "/podcasts/{id}/episodes": {
             "get": {
-                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。",
+                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -2190,6 +2190,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "listened": {
+                    "type": "boolean"
+                },
                 "podcast": {
                     "$ref": "#/definitions/usecase.EpisodePodcastInfo"
                 },
@@ -2218,6 +2221,9 @@ const docTemplate = `{
                 },
                 "id": {
                     "type": "string"
+                },
+                "listened": {
+                    "type": "boolean"
                 },
                 "published_at": {
                     "type": "string"
