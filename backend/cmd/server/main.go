@@ -206,7 +206,7 @@ func run() error {
 	// 10. ルーティングを設定
 	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
 	if err := router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs); err != nil {
-		log.Fatalf("Failed to setup router: %v", err)
+		return fmt.Errorf("failed to setup router: %w", err)
 	}
 
 	// 11. Graceful Shutdown 付きでサーバーを起動

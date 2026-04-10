@@ -30,7 +30,9 @@ const contextKeyUserID = "user_id"
 //   - JWT の署名検証に必要な公開鍵を管理するオブジェクト
 //   - JWKS URL から鍵を自動取得・キャッシュし、定期的に更新してくれる
 func NewJWKSKeyfunc(supabaseURL string) (keyfunc.Keyfunc, error) {
-	jwksURL := supabaseURL + "/auth/v1/.well-known/jwks.json"
+	// 環境変数の手入力で末尾に "/" が付いている場合に備えて正規化する
+	// 例: "https://xxx.supabase.co/" → "https://xxx.supabase.co"
+	jwksURL := strings.TrimRight(supabaseURL, "/") + "/auth/v1/.well-known/jwks.json"
 
 	k, err := keyfunc.NewDefault([]string{jwksURL})
 	if err != nil {
@@ -118,7 +120,8 @@ func extractBearerToken(c echo.Context) (string, bearerTokenResult) {
 		return "", tokenInvalidFormat
 	}
 
-	return parts[1], tokenOK
+	// 複数空白（"Bearer  <token>"）への防御として TrimSpace する
+	return strings.TrimSpace(parts[1]), tokenOK
 }
 
 // JWTAuth は Supabase が発行した JWT トークンを検証するミドルウェアです。
