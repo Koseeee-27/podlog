@@ -121,7 +121,12 @@ func extractBearerToken(c echo.Context) (string, bearerTokenResult) {
 	}
 
 	// 複数空白（"Bearer  <token>"）への防御として TrimSpace する
-	return strings.TrimSpace(parts[1]), tokenOK
+	token := strings.TrimSpace(parts[1])
+	if token == "" {
+		return "", tokenInvalidFormat
+	}
+
+	return token, tokenOK
 }
 
 // JWTAuth は Supabase が発行した JWT トークンを検証するミドルウェアです。

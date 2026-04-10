@@ -63,6 +63,18 @@ func TestExtractBearerToken(t *testing.T) {
 			wantToken:  "",
 			wantResult: tokenInvalidFormat,
 		},
+		{
+			name:       "Bearerの後にトークンなし（末尾スペース）",
+			authHeader: "Bearer ",
+			wantToken:  "",
+			wantResult: tokenInvalidFormat,
+		},
+		{
+			name:       "Bearerの後に空白のみ",
+			authHeader: "Bearer   ",
+			wantToken:  "",
+			wantResult: tokenInvalidFormat,
+		},
 	}
 
 	for _, tt := range tests {
