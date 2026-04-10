@@ -100,14 +100,24 @@ func run() error {
 	defer db.Close()
 
 	// Neon（サーバーレス PostgreSQL）向けの接続プール設定:
-	// - MaxOpenConns: 同時接続数の上限（Neon 無料枠のコネクション数に合わせて控えめに）
-	// - MaxIdleConns: アイドル接続を少なく保ち、古い接続を早めに解放
-	// - ConnMaxLifetime: 長時間の接続を防ぎ、Neon 側のタイムアウトに対応
-	// - ConnMaxIdleTime: アイドル接続を早めに閉じ、切断された接続の再利用を防止
+	//
+	// MaxOpenConns(10): 同時接続数の上限。Neon 無料枠のコネクション制限に合わせて控えめに。
+	//
+	// MaxIdleConns(5): アイドル（待機中）接続の数。
+	//   以前は 2 だったが、リクエストのたびに新しい接続を作り直すコストが高かった。
+	//   5 にすることで、一般的なリクエストパターン（同時 3-5 リクエスト）を
+	//   既存の接続で処理でき、Neon への再接続によるレイテンシを削減する。
+	//
+	// ConnMaxLifetime(10分): 接続の最大生存時間。Neon 側のタイムアウトに対応。
+	//
+	// ConnMaxIdleTime(5分): アイドル接続を閉じるまでの時間。
+	//   以前は 1 分だったが、Cloud Run のコールドスタート後すぐに接続が閉じられ、
+	//   次のリクエストで再接続が必要になっていた。5 分に伸ばすことで、
+	//   断続的なトラフィックでも接続を再利用できるようにする。
 	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(2)
+	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(10 * time.Minute)
-	db.SetConnMaxIdleTime(1 * time.Minute)
+	db.SetConnMaxIdleTime(5 * time.Minute)
 
 	log.Println("Connected to database successfully")
 
@@ -191,7 +201,7 @@ func run() error {
 	}
 
 	handlers := router.Handlers{
-		Health:          handler.NewHealthHandler(),
+		Health:          handler.NewHealthHandler(db),
 		User:            handler.NewUserHandler(userUsecase, adminUserIDs),
 		Podcast:         handler.NewPodcastHandler(podcastUsecase, reviewUsecase, favoritePodcastRepo, ogpScraper),
 		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, reviewUsecase),
