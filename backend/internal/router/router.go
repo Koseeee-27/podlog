@@ -3,6 +3,8 @@
 package router
 
 import (
+	"fmt"
+
 	"github.com/Koseeee-27/podlog/backend/internal/handler"
 	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/labstack/echo/v4"
@@ -27,10 +29,13 @@ type Handlers struct {
 // supabaseURL は Supabase プロジェクトの URL（例: https://xxx.supabase.co）です。
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
 // adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
-func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) {
+func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) error {
 	// JWKS keyfunc を 1 回だけ初期化し、全ミドルウェアで共有する。
 	// これにより JWKS のキャッシュ・バックグラウンドリフレッシュ goroutine が 1 つだけになる。
-	jwksKeyfunc := mw.NewJWKSKeyfunc(supabaseURL)
+	jwksKeyfunc, err := mw.NewJWKSKeyfunc(supabaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to initialize JWKS keyfunc: %w", err)
+	}
 
 	// タイムアウトが異なるため、同じプレフィックスで2つのグループを作成する。
 	// context.WithTimeout は親コンテキストのデッドラインを超えられないため、
@@ -122,4 +127,6 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	admin := auth.Group("/admin", mw.AdminAuth(adminUserIDs))
 	admin.POST("/podcasts", h.Admin.CreatePodcast)
 	admin.POST("/podcasts/:id/episodes", h.Admin.CreateEpisode)
+
+	return nil
 }

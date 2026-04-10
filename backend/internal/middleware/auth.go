@@ -29,15 +29,15 @@ const contextKeyUserID = "user_id"
 // keyfunc.Keyfunc とは:
 //   - JWT の署名検証に必要な公開鍵を管理するオブジェクト
 //   - JWKS URL から鍵を自動取得・キャッシュし、定期的に更新してくれる
-func NewJWKSKeyfunc(supabaseURL string) keyfunc.Keyfunc {
+func NewJWKSKeyfunc(supabaseURL string) (keyfunc.Keyfunc, error) {
 	jwksURL := supabaseURL + "/auth/v1/.well-known/jwks.json"
 
 	k, err := keyfunc.NewDefault([]string{jwksURL})
 	if err != nil {
-		log.Fatalf("Failed to create JWKS keyfunc from URL %s: %v", jwksURL, err)
+		return nil, fmt.Errorf("failed to create JWKS keyfunc from URL %s: %w", jwksURL, err)
 	}
 
-	return k
+	return k, nil
 }
 
 // parseAndValidateToken はJWTトークンの検証・クレーム取得・UUID変換を行う共通関数です。
@@ -86,23 +86,39 @@ func parseAndValidateToken(ctx context.Context, tokenString string, k keyfunc.Ke
 	return userID, nil
 }
 
+// bearerTokenResult は extractBearerToken の結果を表す列挙型です。
+//
+// Go には enum がないため、定数で代替しています。
+// bool だけでは「ヘッダーがない」と「フォーマット不正」を区別できないため、
+// デバッグしやすいように 3 状態にしています。
+type bearerTokenResult int
+
+const (
+	// tokenOK はトークンが正常に取得できた状態
+	tokenOK bearerTokenResult = iota
+	// tokenMissing は Authorization ヘッダー自体がない状態
+	tokenMissing
+	// tokenInvalidFormat は Authorization ヘッダーはあるが "Bearer <token>" 形式でない状態
+	tokenInvalidFormat
+)
+
 // extractBearerToken は Authorization ヘッダーから "Bearer <token>" のトークン部分を取り出します。
 //
 // 戻り値:
-//   - string: トークン文字列（ヘッダーがない or フォーマット不正の場合は空文字）
-//   - bool: トークンが正常に取得できたかどうか
-func extractBearerToken(c echo.Context) (string, bool) {
+//   - string: トークン文字列（取得できなかった場合は空文字）
+//   - bearerTokenResult: 取得結果（tokenOK / tokenMissing / tokenInvalidFormat）
+func extractBearerToken(c echo.Context) (string, bearerTokenResult) {
 	authHeader := c.Request().Header.Get("Authorization")
 	if authHeader == "" {
-		return "", false
+		return "", tokenMissing
 	}
 
 	parts := strings.SplitN(authHeader, " ", 2)
 	if len(parts) != 2 || parts[0] != "Bearer" {
-		return "", false
+		return "", tokenInvalidFormat
 	}
 
-	return parts[1], true
+	return parts[1], tokenOK
 }
 
 // JWTAuth は Supabase が発行した JWT トークンを検証するミドルウェアです。
@@ -127,10 +143,14 @@ func JWTAuth(k keyfunc.Keyfunc) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// 1. Authorization ヘッダーからトークンを取得
-			tokenString, ok := extractBearerToken(c)
-			if !ok {
-				log.Printf("[AUTH] No or invalid Authorization header for %s %s", c.Request().Method, c.Request().URL.Path)
-				return response.Error(c, http.StatusUnauthorized, "missing authorization header")
+			tokenString, result := extractBearerToken(c)
+			if result != tokenOK {
+				if result == tokenMissing {
+					log.Printf("[AUTH] No Authorization header for %s %s", c.Request().Method, c.Request().URL.Path)
+					return response.Error(c, http.StatusUnauthorized, "missing authorization header")
+				}
+				log.Printf("[AUTH] Invalid header format for %s %s", c.Request().Method, c.Request().URL.Path)
+				return response.Error(c, http.StatusUnauthorized, "invalid authorization header format")
 			}
 
 			// 2. JWT トークンを検証し、ユーザーIDを取得
@@ -170,8 +190,8 @@ func OptionalJWTAuth(k keyfunc.Keyfunc) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			// Authorization ヘッダーがなければそのまま通過（認証なしでもOK）
-			tokenString, ok := extractBearerToken(c)
-			if !ok {
+			tokenString, result := extractBearerToken(c)
+			if result != tokenOK {
 				return next(c)
 			}
 
