@@ -9,13 +9,12 @@ import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import ListenButtonSection from "./ListenButtonSection";
 import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
 import type { EpisodeDetailResult } from "@/types/episode";
+import { REVIEW_PAGE_SIZE } from "@/lib/constants";
 import type { ReviewListResult } from "@/types/review";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
 }
-
-const PAGE_SIZE = 20;
 
 export default async function EpisodePage({ params }: EpisodePageProps) {
   const { id } = await params;
@@ -39,7 +38,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
       throw err;
     }),
     serverGet<ReviewListResult>(
-      `/episodes/${encodedId}/reviews?limit=${PAGE_SIZE}&offset=0`,
+      `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
       { noAuth: true, revalidate: 0 },
     ),
   ]);

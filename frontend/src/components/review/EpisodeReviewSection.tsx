@@ -5,6 +5,7 @@ import { getEpisodeReviews } from "@/lib/api/reviews";
 import { useToast } from "@/components/ui/Toast";
 import { createReviewAction, updateReviewAction, deleteReviewAction } from "@/lib/actions/review";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
+import { REVIEW_PAGE_SIZE } from "@/lib/constants";
 import EpisodeReviewSectionView from "./EpisodeReviewSectionView";
 import type { Review, MyReviewResult, ReviewListResult, ReviewItem } from "@/types/review";
 
@@ -17,8 +18,6 @@ function toMyReviewResult(review: Review): MyReviewResult {
     updated_at: review.updated_at,
   };
 }
-
-const PAGE_SIZE = 20;
 
 interface EpisodeReviewSectionProps {
   episodeId: string;
@@ -96,13 +95,16 @@ export default function EpisodeReviewSection({
       try {
         setListError(null);
         const data = await getEpisodeReviews(episodeId, {
-          limit: PAGE_SIZE,
+          limit: REVIEW_PAGE_SIZE,
           offset: reviews.length,
         });
         const list = data.reviews ?? [];
-        setReviews((prev) => [...prev, ...list]);
+        setReviews((prev) => {
+          const next = [...prev, ...list];
+          setHasMore(next.length < data.total);
+          return next;
+        });
         setTotal(data.total);
-        setHasMore(reviews.length + list.length < data.total);
       } catch (err) {
         const message = getUserFriendlyErrorMessage(err, "レビュー一覧の取得に失敗しました");
         setListError(message);
@@ -116,7 +118,7 @@ export default function EpisodeReviewSection({
     startLoadMore(async () => {
       try {
         const data = await getEpisodeReviews(episodeId, {
-          limit: PAGE_SIZE,
+          limit: REVIEW_PAGE_SIZE,
           offset: 0,
         });
         const list = data.reviews ?? [];
