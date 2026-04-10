@@ -117,6 +117,7 @@ export default function EpisodeReviewSection({
   function refreshReviews() {
     startLoadMore(async () => {
       try {
+        setListError(null);
         const data = await getEpisodeReviews(episodeId, {
           limit: REVIEW_PAGE_SIZE,
           offset: 0,
@@ -127,8 +128,9 @@ export default function EpisodeReviewSection({
         setAverageRating(data.average_rating);
         setHasMore(list.length < data.total);
       } catch (err) {
-        console.warn("[refreshReviews] レビュー一覧の再取得に失敗:", err);
-        showToast("レビュー一覧の取得に失敗しました");
+        const message = getUserFriendlyErrorMessage(err, "レビュー一覧の取得に失敗しました");
+        setListError(message);
+        showToast(message);
       }
     });
   }
