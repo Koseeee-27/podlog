@@ -3,6 +3,8 @@
 package router
 
 import (
+	"fmt"
+
 	"github.com/Koseeee-27/podlog/backend/internal/handler"
 	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/labstack/echo/v4"
@@ -27,7 +29,14 @@ type Handlers struct {
 // supabaseURL は Supabase プロジェクトの URL（例: https://xxx.supabase.co）です。
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
 // adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
-func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) {
+func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) error {
+	// JWKS keyfunc を 1 回だけ初期化し、全ミドルウェアで共有する。
+	// これにより JWKS のキャッシュ・バックグラウンドリフレッシュ goroutine が 1 つだけになる。
+	jwksKeyfunc, err := mw.NewJWKSKeyfunc(supabaseURL)
+	if err != nil {
+		return fmt.Errorf("failed to initialize JWKS keyfunc: %w", err)
+	}
+
 	// タイムアウトが異なるため、同じプレフィックスで2つのグループを作成する。
 	// context.WithTimeout は親コンテキストのデッドラインを超えられないため、
 	// 外部通信を含むエンドポイントは別グループに分離する必要がある。
@@ -52,7 +61,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 
 	// ── オプショナル認証ルート ──
 	// 未認証でもアクセス可能だが、認証済みの場合は追加情報（聴取状態など）を返す
-	optionalAuth := v1.Group("", mw.OptionalJWTAuth(supabaseURL))
+	optionalAuth := v1.Group("", mw.OptionalJWTAuth(jwksKeyfunc))
 	optionalAuth.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
 	optionalAuth.GET("/episodes/:id", h.Episode.GetByID)
 
@@ -70,7 +79,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	v1Ext.GET("/podcasts/search", h.Podcast.Search)
 
 	// ── 認証が必要なルート（デフォルトタイムアウト: 30秒） ──
-	auth := v1.Group("", mw.JWTAuth(supabaseURL))
+	auth := v1.Group("", mw.JWTAuth(jwksKeyfunc))
 
 	// Users (認証必要)
 	auth.POST("/users/profile", h.User.CreateProfile)
@@ -106,7 +115,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	auth.POST("/podcasts/request", h.PodcastRequest.Create)
 
 	// ── 認証が必要 + 外部通信を含むルート（タイムアウト: 60秒） ──
-	authExt := v1Ext.Group("", mw.JWTAuth(supabaseURL))
+	authExt := v1Ext.Group("", mw.JWTAuth(jwksKeyfunc))
 	// OGP 取得のため外部通信を含む
 	authExt.POST("/podcasts/fetch-url", h.Podcast.FetchURL)
 	// RSS フィード取得のため外部通信を含む
@@ -118,4 +127,6 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	admin := auth.Group("/admin", mw.AdminAuth(adminUserIDs))
 	admin.POST("/podcasts", h.Admin.CreatePodcast)
 	admin.POST("/podcasts/:id/episodes", h.Admin.CreateEpisode)
+
+	return nil
 }
