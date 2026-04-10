@@ -47,6 +47,7 @@ export default function ListenButton({
   const { showToast } = useToast();
 
   function handleToggle() {
+    if (isPending) return;
     const next = !optimisticListened;
 
     startTransition(async () => {
@@ -73,7 +74,6 @@ export default function ListenButton({
   return (
     <ListenButtonView
       listened={optimisticListened}
-      toggling={isPending}
       onToggle={handleToggle}
       compact={compact}
     />

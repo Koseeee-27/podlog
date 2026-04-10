@@ -156,3 +156,21 @@ export async function serverPut<T>(
   });
   return handleResponse<T>(response);
 }
+
+/**
+ * Server Action 用の DELETE リクエスト。
+ */
+export async function serverDelete(path: string): Promise<void> {
+  const headers = await getServerAuthHeaders();
+  const baseUrl = getApiBaseUrl();
+  const response = await fetch(`${baseUrl}${path}`, {
+    method: "DELETE",
+    headers,
+  });
+  if (!response.ok) {
+    const body = await response
+      .json()
+      .catch(() => ({ error: "Unknown error" }));
+    throw new ApiRequestError(response.status, body.error || "Request failed");
+  }
+}

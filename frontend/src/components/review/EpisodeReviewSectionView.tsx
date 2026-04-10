@@ -25,7 +25,7 @@ export interface EpisodeReviewSectionViewProps {
   ) => Promise<ReviewFormState>;
   onCreateSuccess: (review: Review) => void;
   onUpdateSuccess: (review: Review) => void;
-  onDelete: () => Promise<void>;
+  onDelete: () => void;
   deleteLoading: boolean;
   deleteError?: string | null;
   listError?: string | null;

@@ -6,7 +6,7 @@ interface MyReviewCardProps {
   onEdit: () => void;
   onStartDelete: () => void;
   confirmDelete: boolean;
-  onConfirmDelete: () => Promise<void>;
+  onConfirmDelete: () => void;
   onCancelDelete: () => void;
   actionLoading: boolean;
 }
