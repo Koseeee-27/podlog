@@ -42,7 +42,7 @@ func TestHealthCheck(t *testing.T) {
 			},
 			wantStatus:    http.StatusServiceUnavailable,
 			wantBodyKey:   "error",
-			wantBodyValue: "database connection failed",
+			wantBodyValue: "service unavailable",
 		},
 	}
 

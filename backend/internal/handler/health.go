@@ -56,7 +56,7 @@ func (h *HealthHandler) Check(c echo.Context) error {
 
 	if err := h.db.PingContext(ctx); err != nil {
 		log.Printf("[HEALTH] DB ping failed: %v", err)
-		return response.Error(c, http.StatusServiceUnavailable, "database connection failed")
+		return response.Error(c, http.StatusServiceUnavailable, "service unavailable")
 	}
 
 	return response.Success(c, http.StatusOK, map[string]string{

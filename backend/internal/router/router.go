@@ -43,8 +43,14 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	v1 := e.Group("/api/v1", mw.Timeout(mw.DefaultTimeout))
 	v1Ext := e.Group("/api/v1", mw.Timeout(mw.ExternalTimeout))
 
+	// ── ヘルスチェック（ルート直下） ──
+	// /api/v1 プレフィックスの外に配置する理由:
+	// - ヘルスチェックは API バージョニングの対象ではない
+	// - Cloud Run のデフォルト HTTP probe パスは "/" に近いシンプルなパスが推奨される
+	// - タイムアウトミドルウェア（30秒）を適用せず、ハンドラー内の専用タイムアウト（3秒）で制御する
+	e.GET("/health", h.Health.Check)
+
 	// ── 認証不要のルート（デフォルトタイムアウト: 30秒） ──
-	v1.GET("/health", h.Health.Check)
 
 	// Users (公開)
 	v1.GET("/users/:username", h.User.GetPublicProfile)
