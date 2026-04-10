@@ -29,8 +29,7 @@ export default async function ReviewSectionWithAuth({
         // 認証OK、レビュー未投稿
         isLoggedIn = true;
         myReview = null;
-      }
-      if (err.status === 401) {
+      } else if (err.status === 401) {
         // 未ログイン → isLoggedIn = false のまま
       } else {
         console.warn("[ReviewSectionWithAuth] 自分のレビュー取得に失敗:", err);
