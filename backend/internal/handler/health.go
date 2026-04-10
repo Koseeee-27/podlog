@@ -4,14 +4,24 @@
 package handler
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/jmoiron/sqlx"
 
 	"github.com/Koseeee-27/podlog/backend/internal/response"
 	"github.com/labstack/echo/v4"
 )
+
+// healthCheckTimeout はヘルスチェックの DB ping に適用する専用タイムアウトです。
+//
+// Cloud Run のヘルスチェックはデフォルトで数秒のタイムアウトを設定しますが、
+// リクエストコンテキストのタイムアウト（30秒）がそのまま PingContext に適用されると、
+// DB がハングした場合にゴルーチンが長時間ブロックされてしまいます。
+// 3 秒の専用タイムアウトを設けることで、DB 応答がない場合にも素早く 503 を返せます。
+const healthCheckTimeout = 3 * time.Second
 
 // HealthHandler はヘルスチェック用のハンドラーです。
 // DB への接続状態も確認するため、*sqlx.DB を保持します。
@@ -40,8 +50,11 @@ func NewHealthHandler(db *sqlx.DB) *HealthHandler {
 // @Router /health [get]
 func (h *HealthHandler) Check(c echo.Context) error {
 	// DB への疎通確認（PingContext はコネクションプールから接続を取得して ping を送る）
-	// リクエストコンテキストを渡すことで、リクエストのタイムアウトが適用される
-	if err := h.db.PingContext(c.Request().Context()); err != nil {
+	// 専用の短いタイムアウトを設定し、DB がハングしても早期に 503 を返せるようにする
+	ctx, cancel := context.WithTimeout(c.Request().Context(), healthCheckTimeout)
+	defer cancel()
+
+	if err := h.db.PingContext(ctx); err != nil {
 		log.Printf("[HEALTH] DB ping failed: %v", err)
 		return response.Error(c, http.StatusServiceUnavailable, "database connection failed")
 	}
