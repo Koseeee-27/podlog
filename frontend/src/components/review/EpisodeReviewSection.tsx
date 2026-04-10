@@ -49,6 +49,7 @@ export default function EpisodeReviewSection({
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletedReviewId, setDeletedReviewId] = useState<string | null>(null);
+  const [listError, setListError] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
 
@@ -93,6 +94,7 @@ export default function EpisodeReviewSection({
   function loadMore() {
     startLoadMore(async () => {
       try {
+        setListError(null);
         const data = await getEpisodeReviews(episodeId, {
           limit: PAGE_SIZE,
           offset: reviews.length,
@@ -102,7 +104,9 @@ export default function EpisodeReviewSection({
         setTotal(data.total);
         setHasMore(reviews.length + list.length < data.total);
       } catch (err) {
-        showToast(getUserFriendlyErrorMessage(err));
+        const message = getUserFriendlyErrorMessage(err, "レビュー一覧の取得に失敗しました");
+        setListError(message);
+        showToast(message);
       }
     });
   }
@@ -122,7 +126,7 @@ export default function EpisodeReviewSection({
         setHasMore(list.length < data.total);
       } catch (err) {
         console.warn("[refreshReviews] レビュー一覧の再取得に失敗:", err);
-        showToast("レビューの更新に失敗しました");
+        showToast("レビュー一覧の取得に失敗しました");
       }
     });
   }
@@ -142,7 +146,7 @@ export default function EpisodeReviewSection({
       onDelete={handleDelete}
       deleteLoading={isDeleting}
       deleteError={deleteError}
-      listError={null}
+      listError={listError}
       submitted={submitted}
       isLoggedIn={isLoggedIn}
       myReview={myReview}

@@ -25,24 +25,30 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     notFound();
   }
 
-  let episode: EpisodeDetailResult;
-  try {
-    episode = await serverGet<EpisodeDetailResult>(
-      `/episodes/${encodeURIComponent(id)}`,
+  const encodedId = encodeURIComponent(id);
+
+  // エピソード詳細とレビュー一覧を並列取得（両者は独立したデータ）
+  const [episodeResult, reviewsData] = await Promise.all([
+    serverGet<EpisodeDetailResult>(
+      `/episodes/${encodedId}`,
       { noAuth: true, revalidate: 60 },
-    );
-  } catch (err) {
-    if (err instanceof ApiRequestError && err.status === 404) {
-      notFound();
-    }
-    throw err;
+    ).catch((err) => {
+      if (err instanceof ApiRequestError && err.status === 404) {
+        return null;
+      }
+      throw err;
+    }),
+    serverGet<ReviewListResult>(
+      `/episodes/${encodedId}/reviews?limit=${PAGE_SIZE}&offset=0`,
+      { noAuth: true, revalidate: 0 },
+    ),
+  ]);
+
+  if (!episodeResult) {
+    notFound();
   }
 
-  // レビュー一覧（公開データなので認証不要）
-  const reviewsData = await serverGet<ReviewListResult>(
-    `/episodes/${encodeURIComponent(id)}/reviews?limit=${PAGE_SIZE}&offset=0`,
-    { noAuth: true, revalidate: 0 },
-  );
+  const episode = episodeResult;
 
   return (
     <div>
@@ -93,11 +99,11 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
-      {/* レビューセクション: 認証データ取得中はスケルトンを表示 */}
+      {/* レビューセクション: 認証データ取得中はレビュー一覧のみ表示 */}
       <div id="review-section">
         <Suspense fallback={
           <EpisodeReviewSection
-            episodeId=""
+            episodeId={episode.id}
             initialReviews={reviewsData}
             initialMyReview={null}
             isLoggedIn={false}
