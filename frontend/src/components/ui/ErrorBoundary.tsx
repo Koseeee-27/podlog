@@ -19,8 +19,9 @@ interface ErrorBoundaryProps {
  * 関数コンポーネント（ErrorBoundary）で router.refresh() を注入する。
  *
  * リトライ時は startTransition 内で router.refresh() + key 変更を行う。
- * startTransition によって React はサーバーの応答を待ってから UI を更新するため、
- * 古い（エラーの）RSC ペイロードが再利用される問題を防止する。
+ * startTransition で更新を遷移として扱い、isPending で再試行中の状態を
+ * 表示できるようにする。router.refresh() が RSC ペイロードを再取得し、
+ * key 変更で ErrorBoundaryInner を再マウントしてエラー状態をリセットする。
  */
 export default function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   const router = useRouter();

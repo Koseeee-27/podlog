@@ -24,35 +24,41 @@ export default async function DefaultSection() {
     throw genresSettled.reason;
   }
 
-  const genres =
-    genresSettled.status === "fulfilled" ? genresSettled.value.genres : [];
-  const popularPodcasts =
-    popularSettled.status === "fulfilled" ? popularSettled.value.podcasts : [];
+  // 失敗したセクションは非表示にする（空配列でフォールバックすると
+  // 「データがない」と「API エラー」が区別できず誤った表示になるため）
+  const genresFailed = genresSettled.status === "rejected";
+  const popularFailed = popularSettled.status === "rejected";
+  const genres = genresFailed ? [] : genresSettled.value.genres;
+  const popularPodcasts = popularFailed ? [] : popularSettled.value.podcasts;
 
   return (
     <>
-      <section>
-        <h2 className="text-lg font-bold text-stone-900 mb-4">
-          ジャンルから探す
-        </h2>
-        <GenreGrid genres={genres} />
-      </section>
+      {!genresFailed && (
+        <section>
+          <h2 className="text-lg font-bold text-stone-900 mb-4">
+            ジャンルから探す
+          </h2>
+          <GenreGrid genres={genres} />
+        </section>
+      )}
 
-      <section className="mt-8">
-        <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
+      {!popularFailed && (
+        <section className={genresFailed ? "" : "mt-8"}>
+          <h2 className="text-lg font-bold text-stone-900 mb-4">人気の番組</h2>
 
-        {popularPodcasts.length === 0 ? (
-          <p className="text-sm text-stone-500">
-            まだレビューのある番組がありません
-          </p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {popularPodcasts.map((podcast) => (
-              <PodcastCard key={podcast.id} podcast={podcast} />
-            ))}
-          </div>
-        )}
-      </section>
+          {popularPodcasts.length === 0 ? (
+            <p className="text-sm text-stone-500">
+              まだレビューのある番組がありません
+            </p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {popularPodcasts.map((podcast) => (
+                <PodcastCard key={podcast.id} podcast={podcast} />
+              ))}
+            </div>
+          )}
+        </section>
+      )}
     </>
   );
 }
