@@ -1,25 +1,20 @@
 import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
 import { serverGet } from "@/lib/api/server";
-import type { PodcastSearchItem, PodcastSearchResult } from "@/types/podcast";
+import type { PodcastSearchResult } from "@/types/podcast";
 
 const DISPLAY_COUNT = 6;
 
+/**
+ * 人気の番組セクション。
+ * 取得失敗時は throw して ErrorBoundary に委譲する。
+ */
 export default async function PopularPodcastsSection() {
-  let podcasts: PodcastSearchItem[] = [];
-  try {
-    const result = await serverGet<PodcastSearchResult>(
-      `/podcasts/popular?limit=${DISPLAY_COUNT}`,
-      { revalidate: 300, tags: ["popular-podcasts"], noAuth: true }
-    );
-    podcasts = result.podcasts;
-  } catch (error) {
-    console.error(
-      "PopularPodcastsSection: 人気番組の取得に失敗しました",
-      error
-    );
-    return null;
-  }
+  const result = await serverGet<PodcastSearchResult>(
+    `/podcasts/popular?limit=${DISPLAY_COUNT}`,
+    { revalidate: 300, tags: ["popular-podcasts"], noAuth: true }
+  );
+  const podcasts = result.podcasts;
 
   if (podcasts.length === 0) {
     return null;

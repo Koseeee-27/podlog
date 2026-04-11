@@ -16,25 +16,11 @@ export default async function TimelineSection({
 }: TimelineSectionProps) {
   const Heading = headingLevel;
 
-  let data: TimelineResult;
-  try {
-    data = await serverGet<TimelineResult>(
-      `/timeline?limit=${PAGE_SIZE}&offset=0`,
-      { revalidate: 60, tags: ["timeline"], noAuth: true }
-    );
-  } catch (error) {
-    console.error("TimelineSection: タイムラインの取得に失敗しました", error);
-    return (
-      <section>
-        <Heading className="text-lg font-bold text-stone-900 mb-4">
-          みんなのレビュー
-        </Heading>
-        <p className="text-sm text-red-600">
-          タイムラインの読み込みに失敗しました
-        </p>
-      </section>
-    );
-  }
+  // 取得失敗時は throw して ErrorBoundary に委譲する
+  const data = await serverGet<TimelineResult>(
+    `/timeline?limit=${PAGE_SIZE}&offset=0`,
+    { revalidate: 60, tags: ["timeline"], noAuth: true }
+  );
 
   const reviews = data.reviews ?? [];
 

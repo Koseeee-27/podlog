@@ -3,7 +3,6 @@ import { serverGet } from "@/lib/api/server";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenrePodcastsLoadMore from "@/components/discover/GenrePodcastsLoadMore";
 import EmptyState from "@/components/ui/EmptyState";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import { MicrophoneIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type { PodcastSearchResult } from "@/types/podcast";
 import type { GenreListResponse } from "@/types/genre";
@@ -14,6 +13,10 @@ interface GenrePodcastsSectionProps {
   genre: string;
 }
 
+/**
+ * ジャンル別番組一覧セクション。
+ * 取得失敗時は throw して ErrorBoundary に委譲する。
+ */
 export default async function GenrePodcastsSection({
   genre,
 }: GenrePodcastsSectionProps) {
@@ -23,7 +26,7 @@ export default async function GenrePodcastsSection({
     offset: "0",
   });
 
-  const [genresResult, podcastsResult] = await Promise.allSettled([
+  const [genresResult, podcastsResult] = await Promise.all([
     serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
     serverGet<PodcastSearchResult>(
       `/podcasts/search?${genreParams.toString()}`,
@@ -31,17 +34,10 @@ export default async function GenrePodcastsSection({
     ),
   ]);
 
-  const genres =
-    genresResult.status === "fulfilled" ? genresResult.value.genres : [];
+  const genres = genresResult.genres;
   const genreName = genres.find((g) => g.id === genre)?.name_ja;
-
-  const podcasts =
-    podcastsResult.status === "fulfilled"
-      ? podcastsResult.value.podcasts
-      : [];
-  const total =
-    podcastsResult.status === "fulfilled" ? podcastsResult.value.total : 0;
-  const podcastsError = podcastsResult.status === "rejected";
+  const podcasts = podcastsResult.podcasts;
+  const total = podcastsResult.total;
 
   return (
     <>
@@ -57,12 +53,7 @@ export default async function GenrePodcastsSection({
         {genreName ?? genre}の番組
       </h2>
 
-      {podcastsError ? (
-        <ErrorMessage
-          message="番組の取得に失敗しました"
-          retryHref={`/discover?genre=${encodeURIComponent(genre)}`}
-        />
-      ) : podcasts.length === 0 ? (
+      {podcasts.length === 0 ? (
         <EmptyState
           icon={<MicrophoneIcon className="h-12 w-12" />}
           message="このジャンルの番組はまだありません"
