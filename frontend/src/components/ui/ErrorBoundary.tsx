@@ -1,16 +1,12 @@
 "use client";
 
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode, useCallback, useState } from "react";
+import { useRouter } from "next/navigation";
 import ErrorMessage from "./ErrorMessage";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  resetKey: number;
 }
 
 /**
@@ -19,19 +15,53 @@ interface ErrorBoundaryState {
  * アプリ全体のクラッシュを防止する。
  *
  * Error Boundary は class コンポーネントでのみ実装可能（React の制約）。
- * - getDerivedStateFromError: フォールバック UI を表示するためにエラー状態を更新
- * - componentDidCatch: エラーログの記録（本番デバッグ・モニタリング用）
- *
- * リトライ時は resetKey をインクリメントすることで children を新しいインスタンスとして
- * 再マウントさせ、同じ props/state による無限エラーループを防止する。
+ * class コンポーネントでは useRouter が使えないため、
+ * ErrorBoundaryWrapper（関数コンポーネント）で router.refresh() を注入する。
  */
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+
+/**
+ * ErrorBoundary のラッパー。
+ * class コンポーネントでは hooks が使えないため、
+ * 関数コンポーネントで router.refresh を取得して渡す。
+ */
+export default function ErrorBoundaryWrapper({ children, fallback }: ErrorBoundaryProps) {
+  const router = useRouter();
+  const [resetKey, setResetKey] = useState(0);
+
+  const handleRetry = useCallback(() => {
+    // サーバー側のデータを再取得させる
+    router.refresh();
+    // resetKey をインクリメントして ErrorBoundary の state をリセットし、
+    // children を再マウントさせる
+    setResetKey((prev) => prev + 1);
+  }, [router]);
+
+  return (
+    <ErrorBoundaryInner
+      key={resetKey}
+      fallback={fallback}
+      onRetry={handleRetry}
+    >
+      {children}
+    </ErrorBoundaryInner>
+  );
+}
+
+// --- 内部クラスコンポーネント ---
+
+interface ErrorBoundaryInnerProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  onRetry: () => void;
+}
+
+class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: boolean }> {
+  constructor(props: ErrorBoundaryInnerProps) {
     super(props);
-    this.state = { hasError: false, resetKey: 0 };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(): Pick<ErrorBoundaryState, "hasError"> {
+  static getDerivedStateFromError(): { hasError: boolean } {
     return { hasError: true };
   }
 
@@ -40,13 +70,6 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     console.error("[ErrorBoundary] Uncaught error:", error);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
   }
-
-  private handleRetry = () => {
-    // resetKey をインクリメントして children を再マウントさせる。
-    // 単に hasError: false にするだけだと、同じ props/state で再レンダリングされ
-    // 無限エラーループに陥る可能性がある。
-    this.setState((prev) => ({ hasError: false, resetKey: prev.resetKey + 1 }));
-  };
 
   render() {
     if (this.state.hasError) {
@@ -59,14 +82,12 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
         <div className="flex items-center justify-center min-h-[200px] p-8">
           <ErrorMessage
             message="予期しないエラーが発生しました。再試行してください。"
-            onRetry={this.handleRetry}
+            onRetry={this.props.onRetry}
           />
         </div>
       );
     }
 
-    // key を変えることで React が children を完全に再マウント（新しいインスタンスを作成）する。
-    // これにより内部状態がリセットされ、同じエラーの無限ループを防止する。
-    return <div key={this.state.resetKey}>{this.props.children}</div>;
+    return this.props.children;
   }
 }
