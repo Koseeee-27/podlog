@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, ErrorInfo, ReactNode, useCallback, useState } from "react";
+import { Component, ErrorInfo, ReactNode, startTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import ErrorMessage from "./ErrorMessage";
 
@@ -16,25 +16,24 @@ interface ErrorBoundaryProps {
  *
  * Error Boundary は class コンポーネントでのみ実装可能（React の制約）。
  * class コンポーネントでは useRouter が使えないため、
- * ErrorBoundaryWrapper（関数コンポーネント）で router.refresh() を注入する。
+ * 関数コンポーネント（ErrorBoundary）で router.refresh() を注入する。
+ *
+ * リトライ時は startTransition 内で router.refresh() + key 変更を行う。
+ * startTransition によって React はサーバーの応答を待ってから UI を更新するため、
+ * 古い（エラーの）RSC ペイロードが再利用される問題を防止する。
  */
-
-/**
- * ErrorBoundary のラッパー。
- * class コンポーネントでは hooks が使えないため、
- * 関数コンポーネントで router.refresh を取得して渡す。
- */
-export default function ErrorBoundaryWrapper({ children, fallback }: ErrorBoundaryProps) {
+export default function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   const router = useRouter();
   const [resetKey, setResetKey] = useState(0);
 
-  const handleRetry = useCallback(() => {
-    // サーバー側のデータを再取得させる
-    router.refresh();
-    // resetKey をインクリメントして ErrorBoundary の state をリセットし、
-    // children を再マウントさせる
-    setResetKey((prev) => prev + 1);
-  }, [router]);
+  const handleRetry = () => {
+    startTransition(() => {
+      // サーバー側の RSC ペイロードを再取得させる
+      router.refresh();
+      // key を変更して ErrorBoundaryInner を再マウントし、エラー状態をリセットする
+      setResetKey((prev) => prev + 1);
+    });
+  };
 
   return (
     <ErrorBoundaryInner
