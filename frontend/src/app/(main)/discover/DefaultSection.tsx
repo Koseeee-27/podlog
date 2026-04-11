@@ -6,10 +6,12 @@ import type { GenreListResponse } from "@/types/genre";
 
 /**
  * 探すページのデフォルト表示（ジャンル一覧 + 人気の番組）。
- * 取得失敗時は throw して ErrorBoundary に委譲する。
+ * 両セクションは独立しており、片方の失敗がもう片方に影響しないよう
+ * Promise.allSettled で並列取得し、失敗したセクションのみ非表示にする。
+ * 両方失敗した場合は throw して ErrorBoundary に委譲する。
  */
 export default async function DefaultSection() {
-  const [genresResult, popularResult] = await Promise.all([
+  const [genresSettled, popularSettled] = await Promise.allSettled([
     serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
     serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", {
       noAuth: true,
@@ -17,8 +19,15 @@ export default async function DefaultSection() {
     }),
   ]);
 
-  const genres = genresResult.genres;
-  const popularPodcasts = popularResult.podcasts;
+  // 両方失敗した場合は ErrorBoundary に委譲
+  if (genresSettled.status === "rejected" && popularSettled.status === "rejected") {
+    throw genresSettled.reason;
+  }
+
+  const genres =
+    genresSettled.status === "fulfilled" ? genresSettled.value.genres : [];
+  const popularPodcasts =
+    popularSettled.status === "fulfilled" ? popularSettled.value.podcasts : [];
 
   return (
     <>

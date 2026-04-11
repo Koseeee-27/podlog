@@ -102,30 +102,29 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
       <hr className="my-8 border-stone-200" />
 
       {/* レビューセクション: 認証データ取得中はレビュー一覧のみ表示 */}
-      <div id="review-section">
-        <ErrorBoundary fallback={
+      {(() => {
+        // ErrorBoundary と Suspense の両方で同じフォールバックを使うため変数に抽出
+        const reviewFallback = (
           <EpisodeReviewSection
             episodeId={episode.id}
             initialReviews={reviewsData}
             initialMyReview={null}
             isLoggedIn={false}
           />
-        }>
-          <Suspense fallback={
-            <EpisodeReviewSection
-              episodeId={episode.id}
-              initialReviews={reviewsData}
-              initialMyReview={null}
-              isLoggedIn={false}
-            />
-          }>
-            <ReviewSectionWithAuth
-              episodeId={episode.id}
-              reviewsData={reviewsData}
-            />
-          </Suspense>
-        </ErrorBoundary>
-      </div>
+        );
+        return (
+          <div id="review-section">
+            <ErrorBoundary fallback={reviewFallback}>
+              <Suspense fallback={reviewFallback}>
+                <ReviewSectionWithAuth
+                  episodeId={episode.id}
+                  reviewsData={reviewsData}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </div>
+        );
+      })()}
     </div>
   );
 }

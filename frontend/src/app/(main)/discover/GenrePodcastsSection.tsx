@@ -15,7 +15,8 @@ interface GenrePodcastsSectionProps {
 
 /**
  * ジャンル別番組一覧セクション。
- * 取得失敗時は throw して ErrorBoundary に委譲する。
+ * 番組検索（/podcasts/search）は必須データ — 失敗時は throw して ErrorBoundary に委譲する。
+ * ジャンル一覧（/genres）は補助データ — 失敗しても genre ID をそのまま表示して続行する。
  */
 export default async function GenrePodcastsSection({
   genre,
@@ -26,7 +27,7 @@ export default async function GenrePodcastsSection({
     offset: "0",
   });
 
-  const [genresResult, podcastsResult] = await Promise.all([
+  const [genresSettled, podcastsResult] = await Promise.allSettled([
     serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
     serverGet<PodcastSearchResult>(
       `/podcasts/search?${genreParams.toString()}`,
@@ -34,10 +35,17 @@ export default async function GenrePodcastsSection({
     ),
   ]);
 
-  const genres = genresResult.genres;
+  // 番組検索は必須 — 失敗時は ErrorBoundary に委譲
+  if (podcastsResult.status === "rejected") {
+    throw podcastsResult.reason;
+  }
+
+  // ジャンル一覧は補助データ — 失敗時は空配列にフォールバック
+  const genres =
+    genresSettled.status === "fulfilled" ? genresSettled.value.genres : [];
   const genreName = genres.find((g) => g.id === genre)?.name_ja;
-  const podcasts = podcastsResult.podcasts;
-  const total = podcastsResult.total;
+  const podcasts = podcastsResult.value.podcasts;
+  const total = podcastsResult.value.total;
 
   return (
     <>

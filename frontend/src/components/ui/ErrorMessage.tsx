@@ -2,12 +2,14 @@ interface ErrorMessageProps {
   message: string;
   /** Client Component 用: コールバックで再試行 */
   onRetry?: () => void;
+  /** 再試行の処理中かどうか（ボタンの無効化に使用） */
+  isPending?: boolean;
   /** Server Component 用: リンクで再試行（ページリロード） */
   retryHref?: string;
   className?: string;
 }
 
-export default function ErrorMessage({ message, onRetry, retryHref, className = "" }: ErrorMessageProps) {
+export default function ErrorMessage({ message, onRetry, isPending, retryHref, className = "" }: ErrorMessageProps) {
   return (
     <div className={`rounded-lg bg-red-50 border border-red-200 p-4 ${className}`}>
       <p className="text-sm text-red-700">{message}</p>
@@ -15,9 +17,10 @@ export default function ErrorMessage({ message, onRetry, retryHref, className = 
         <button
           type="button"
           onClick={onRetry}
-          className="mt-2 text-sm text-red-600 hover:text-red-800 underline"
+          disabled={isPending}
+          className="mt-2 text-sm text-red-600 hover:text-red-800 underline disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          再試行
+          {isPending ? "再試行中..." : "再試行"}
         </button>
       )}
       {retryHref && !onRetry && (

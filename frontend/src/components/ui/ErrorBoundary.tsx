@@ -1,6 +1,6 @@
 "use client";
 
-import { Component, ErrorInfo, ReactNode, startTransition, useState } from "react";
+import { Component, ErrorInfo, ReactNode, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
 import ErrorMessage from "./ErrorMessage";
 
@@ -25,6 +25,7 @@ interface ErrorBoundaryProps {
 export default function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
   const router = useRouter();
   const [resetKey, setResetKey] = useState(0);
+  const [isPending, startTransition] = useTransition();
 
   const handleRetry = () => {
     startTransition(() => {
@@ -40,6 +41,7 @@ export default function ErrorBoundary({ children, fallback }: ErrorBoundaryProps
       key={resetKey}
       fallback={fallback}
       onRetry={handleRetry}
+      isPending={isPending}
     >
       {children}
     </ErrorBoundaryInner>
@@ -52,6 +54,7 @@ interface ErrorBoundaryInnerProps {
   children: ReactNode;
   fallback?: ReactNode;
   onRetry: () => void;
+  isPending: boolean;
 }
 
 class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: boolean }> {
@@ -82,6 +85,7 @@ class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: 
           <ErrorMessage
             message="予期しないエラーが発生しました。再試行してください。"
             onRetry={this.props.onRetry}
+            isPending={this.props.isPending}
           />
         </div>
       );
