@@ -1058,12 +1058,18 @@ paths:
       - genres
   /health:
     get:
-      description: サーバーの稼働状態を確認します
+      description: サーバーとDBの稼働状態を確認します
       produces:
       - application/json
       responses:
         "200":
           description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "503":
+          description: Service Unavailable
           schema:
             additionalProperties:
               type: string

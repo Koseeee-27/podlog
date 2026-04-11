@@ -711,7 +711,7 @@ const docTemplate = `{
         },
         "/health": {
             "get": {
-                "description": "サーバーの稼働状態を確認します",
+                "description": "サーバーとDBの稼働状態を確認します",
                 "produces": [
                     "application/json"
                 ],
@@ -722,6 +722,15 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
