@@ -50,7 +50,9 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
+      // fallback={null} は「エラー時に何も表示しない」を意味する。
+      // undefined（未指定）と区別するために !== undefined で判定する。
+      if (this.props.fallback !== undefined) {
         return this.props.fallback;
       }
       return (
