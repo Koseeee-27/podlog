@@ -32,10 +32,12 @@ export default async function ReviewSectionWithAuth({
       } else if (err.status === 401) {
         // 未ログイン → isLoggedIn = false のまま
       } else {
-        console.warn("[ReviewSectionWithAuth] 自分のレビュー取得に失敗:", err);
+        // 500 系エラーは ErrorBoundary に委譲
+        throw err;
       }
     } else {
-      console.warn("[ReviewSectionWithAuth] 予期しないエラー:", err);
+      // ネットワークエラー等は ErrorBoundary に委譲
+      throw err;
     }
   }
 
