@@ -28,6 +28,9 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
   const encodedId = encodeURIComponent(id);
 
   // エピソード詳細とレビュー一覧を並列取得（両者は独立したデータ）
+  // レビュー取得が失敗してもエピソード詳細は表示できるため、
+  // レビューは空のフォールバック値で続行する。
+  const emptyReviews: ReviewListResult = { reviews: [], total: 0, average_rating: 0 };
   const [episodeResult, reviewsData] = await Promise.all([
     serverGet<EpisodeDetailResult>(
       `/episodes/${encodedId}`,
@@ -41,7 +44,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     serverGet<ReviewListResult>(
       `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
       { noAuth: true, revalidate: 0 },
-    ),
+    ).catch(() => emptyReviews),
   ]);
 
   if (!episodeResult) {

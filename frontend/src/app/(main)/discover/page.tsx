@@ -31,19 +31,19 @@ export default async function DiscoverPage({
 
       <div className="mt-6">
         {query ? (
-          <ErrorBoundary>
+          <ErrorBoundary key={query}>
             <Suspense fallback={<SearchResultsSkeleton />}>
               <SearchResultsSection query={query} />
             </Suspense>
           </ErrorBoundary>
         ) : genre ? (
-          <ErrorBoundary>
+          <ErrorBoundary key={genre}>
             <Suspense fallback={<GenrePodcastsSkeleton />}>
               <GenrePodcastsSection genre={genre} />
             </Suspense>
           </ErrorBoundary>
         ) : (
-          <ErrorBoundary>
+          <ErrorBoundary key="default">
             <Suspense fallback={<DefaultSectionSkeleton />}>
               <DefaultSection />
             </Suspense>
