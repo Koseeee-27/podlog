@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { usernameSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
+import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
 import type { UserPublicProfile } from "@/types/user";
 import type { FavoritePodcastListResult } from "@/types/user";
@@ -27,8 +28,11 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       `/users/${encodedUsername}`,
       { noAuth: true, revalidate: 60 },
     );
-  } catch {
-    notFound();
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
 
   // 各セクションのデータを Promise として作成（await しない）
