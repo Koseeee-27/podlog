@@ -20,8 +20,11 @@ export default async function FavoriteSection({ podcastId }: FavoriteSectionProp
   try {
     profile = await serverGet<User>("/users/me");
   } catch (err) {
-    if (err instanceof ApiRequestError && err.status === 401) {
-      // 未ログイン → お気に入りボタンを表示しない
+    if (
+      err instanceof ApiRequestError &&
+      (err.status === 401 || err.status === 404)
+    ) {
+      // 401: 未ログイン、404: プロフィール未作成 → お気に入りボタンを表示しない
       return null;
     }
     // 500 系やネットワークエラーは ErrorBoundary に委譲
