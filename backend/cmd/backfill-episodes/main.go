@@ -30,7 +30,7 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 	"github.com/Koseeee-27/podlog/backend/internal/usecase"
 
-	_ "github.com/lib/pq"
+	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
 func main() {
@@ -41,7 +41,7 @@ func main() {
 	}
 
 	// 2. DB に接続
-	db, err := sqlx.Connect("postgres", cfg.DatabaseDSN())
+	db, err := sqlx.Connect("pgx/v5", cfg.DatabaseDSN())
 	if err != nil {
 		log.Fatalf("DB 接続に失敗: %v", err)
 	}

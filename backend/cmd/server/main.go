@@ -41,7 +41,10 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 
-	_ "github.com/lib/pq"
+	// pgx/v5/stdlib は database/sql 互換の PostgreSQL ドライバー。
+	// lib/pq の後継で、よりアクティブにメンテナンスされている。
+	// 副作用インポートにより init() で "pgx/v5" ドライバーが sql.Register される。
+	_ "github.com/jackc/pgx/v5/stdlib"
 
 	_ "github.com/Koseeee-27/podlog/backend/docs"
 	echoSwagger "github.com/swaggo/echo-swagger"
@@ -87,7 +90,7 @@ func run() error {
 	const maxRetries = 3
 	for i := range maxRetries {
 		var err error
-		db, err = sqlx.Connect("postgres", cfg.DatabaseDSN())
+		db, err = sqlx.Connect("pgx/v5", cfg.DatabaseDSN())
 		if err == nil {
 			break
 		}

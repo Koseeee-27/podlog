@@ -13,13 +13,15 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
 	// iofs はGoのio/fsインターフェースを使ってマイグレーションファイルを読み込むドライバー
 	"github.com/golang-migrate/migrate/v4/source/iofs"
-	// PostgreSQL用のデータベースドライバー（副作用インポート）
-	// init() 関数でドライバーを登録するため、直接呼び出さないが必要
-	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	// pgx/v5 用のデータベースドライバー（副作用インポート）
+	// lib/pq ベースの "postgres" ドライバーから pgx/v5 ベースに移行。
+	// init() 関数で "pgx5" スキームのドライバーが登録される。
+	_ "github.com/golang-migrate/migrate/v4/database/pgx/v5"
 )
 
 // //go:embed は Go のコンパイラディレクティブ（特別なコメント）です。
@@ -40,6 +42,10 @@ var migrationsFS embed.FS
 //
 // エラーが発生した場合はサーバー起動前に中断できるよう、エラーを返します。
 func RunMigrations(databaseDSN string) error {
+	// golang-migrate の pgx/v5 ドライバーは "pgx5://" スキームを要求する。
+	// アプリケーション側の DSN は "postgres://" スキームなので、ここで変換する。
+	migrateDSN := strings.Replace(databaseDSN, "postgres://", "pgx5://", 1)
+
 	// iofs.New でembedしたファイルシステムからマイグレーションソースを作成
 	// 第2引数の "migrations" はembed.FS内のディレクトリパス
 	source, err := iofs.New(migrationsFS, "migrations")
@@ -51,8 +57,8 @@ func RunMigrations(databaseDSN string) error {
 	// データベース接続先を指定してマイグレーターを作成
 	// - 第1引数 "iofs": ソースドライバーの名前（ログ用の識別子）
 	// - 第2引数 source: 上で作成した iofs ドライバー
-	// - 第3引数 databaseDSN: "postgres://user:pass@host:port/dbname?sslmode=disable" 形式の接続文字列
-	m, err := migrate.NewWithSourceInstance("iofs", source, databaseDSN)
+	// - 第3引数 migrateDSN: "pgx5://user:pass@host:port/dbname?sslmode=disable" 形式の接続文字列
+	m, err := migrate.NewWithSourceInstance("iofs", source, migrateDSN)
 	if err != nil {
 		return fmt.Errorf("マイグレーターの作成に失敗: %w", err)
 	}

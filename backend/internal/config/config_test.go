@@ -16,7 +16,7 @@ func TestDatabaseDSN_BasicValues(t *testing.T) {
 	}
 
 	dsn := cfg.DatabaseDSN()
-	expected := "postgres://postgres:postgres@localhost:5432/podlog?sslmode=disable&connect_timeout=10"
+	expected := "postgres://postgres:postgres@localhost:5432/podlog?sslmode=disable&connect_timeout=10&default_query_exec_mode=exec"
 
 	if dsn != expected {
 		t.Errorf("expected DSN:\n  %s\ngot:\n  %s", expected, dsn)

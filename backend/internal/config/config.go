@@ -58,7 +58,13 @@ func (c *Config) DatabaseDSN() string {
 		Path:     "/" + c.DBName,
 		// connect_timeout: Neon（サーバーレス PostgreSQL）のコールドスタート対策。
 		// デフォルトはタイムアウトなしだが、Neon の復帰に数秒かかるため10秒に設定。
-		RawQuery: fmt.Sprintf("sslmode=%s&connect_timeout=10", url.QueryEscape(c.DBSSLMode)),
+		//
+		// default_query_exec_mode=exec: pgx/v5 のクエリ実行モード設定。
+		// デフォルトの cache_statement モードでは Prepare（プリペアドステートメント）を使うが、
+		// Neon が PgBouncer（コネクションプーラー）を経由するため、
+		// Prepare が「prepared statement does not exist」エラーを起こすことがある。
+		// exec モードでは Prepare をスキップし、クエリを直接実行するため PgBouncer と互換性がある。
+		RawQuery: fmt.Sprintf("sslmode=%s&connect_timeout=10&default_query_exec_mode=exec", url.QueryEscape(c.DBSSLMode)),
 	}
 	return u.String()
 }
