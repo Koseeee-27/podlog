@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { cookies } from "next/headers";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import PopularPodcastsSection from "@/components/home/PopularPodcastsSection";
@@ -17,6 +18,7 @@ import {
  * 認証 Cookie の有無で初期表示を出し分ける。
  * ログイン済みの場合は RecentListeningSection（Server Component）で
  * サーバーサイドでデータを取得する。
+ * 各セクションを ErrorBoundary でラップし、1 セクションの失敗がページ全体に伝播するのを防ぐ。
  */
 export default async function TopPage() {
   const cookieStore = await cookies();
@@ -27,9 +29,11 @@ export default async function TopPage() {
   return (
     <div className="space-y-8">
       {maybeLoggedIn ? (
-        <Suspense fallback={<RecentListeningSkeleton />}>
-          <RecentListeningSection />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense fallback={<RecentListeningSkeleton />}>
+            <RecentListeningSection />
+          </Suspense>
+        </ErrorBoundary>
       ) : (
         <>
           <HeroSection />
@@ -37,13 +41,17 @@ export default async function TopPage() {
         </>
       )}
 
-      <Suspense fallback={<PopularPodcastsSkeleton />}>
-        <PopularPodcastsSection />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<PopularPodcastsSkeleton />}>
+          <PopularPodcastsSection />
+        </Suspense>
+      </ErrorBoundary>
 
-      <Suspense fallback={<TimelineSkeleton />}>
-        <TimelineSection />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<TimelineSkeleton />}>
+          <TimelineSection />
+        </Suspense>
+      </ErrorBoundary>
 
       {!maybeLoggedIn && <CtaSection />}
     </div>

@@ -5,6 +5,7 @@ import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import ListenButtonSection from "./ListenButtonSection";
 import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
@@ -65,17 +66,19 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       {/* 聴取ボタン: 認証依存なので Suspense で分離 */}
       <div className="mt-4">
-        <Suspense fallback={
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-400"
-          >
-            読み込み中...
-          </button>
-        }>
-          <ListenButtonSection episodeId={episode.id} />
-        </Suspense>
+        <ErrorBoundary fallback={null}>
+          <Suspense fallback={
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-400"
+            >
+              読み込み中...
+            </button>
+          }>
+            <ListenButtonSection episodeId={episode.id} />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       <div className="mt-2">
@@ -100,7 +103,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       {/* レビューセクション: 認証データ取得中はレビュー一覧のみ表示 */}
       <div id="review-section">
-        <Suspense fallback={
+        <ErrorBoundary fallback={
           <EpisodeReviewSection
             episodeId={episode.id}
             initialReviews={reviewsData}
@@ -108,11 +111,20 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
             isLoggedIn={false}
           />
         }>
-          <ReviewSectionWithAuth
-            episodeId={episode.id}
-            reviewsData={reviewsData}
-          />
-        </Suspense>
+          <Suspense fallback={
+            <EpisodeReviewSection
+              episodeId={episode.id}
+              initialReviews={reviewsData}
+              initialMyReview={null}
+              isLoggedIn={false}
+            />
+          }>
+            <ReviewSectionWithAuth
+              episodeId={episode.id}
+              reviewsData={reviewsData}
+            />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );

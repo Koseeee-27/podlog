@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { uuidSchema } from "@/lib/schemas/common";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastDetail from "@/components/podcast/PodcastDetail";
 import RatingSection from "./RatingSection";
 import FavoriteSection from "./FavoriteSection";
@@ -42,21 +43,27 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
         podcast={podcast}
         favoriteCount={podcast.favorite_count}
         ratingSlot={
-          <Suspense fallback={null}>
-            <RatingSection podcastId={id} />
-          </Suspense>
+          <ErrorBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <RatingSection podcastId={id} />
+            </Suspense>
+          </ErrorBoundary>
         }
         actions={
-          <Suspense fallback={null}>
-            <FavoriteSection podcastId={id} />
-          </Suspense>
+          <ErrorBoundary fallback={null}>
+            <Suspense fallback={null}>
+              <FavoriteSection podcastId={id} />
+            </Suspense>
+          </ErrorBoundary>
         }
       />
 
       {/* エピソード一覧 — ストリーミング */}
-      <Suspense fallback={<EpisodeSkeleton />}>
-        <EpisodeSection podcastId={id} />
-      </Suspense>
+      <ErrorBoundary>
+        <Suspense fallback={<EpisodeSkeleton />}>
+          <EpisodeSection podcastId={id} />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 }
