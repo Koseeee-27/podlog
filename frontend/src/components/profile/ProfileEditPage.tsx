@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useTransition, useRef } from "react";
-import { updateMyProfile, updateMyFavoritePodcasts, getUserFavoritePodcasts } from "@/lib/api/users";
+import { useState, useTransition, useRef } from "react";
+import { updateMyProfile, updateMyFavoritePodcasts } from "@/lib/api/users";
 import { displayNameSchema } from "@/lib/schemas/common";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
@@ -15,6 +15,7 @@ import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 interface ProfileEditPageProps {
   profile: User;
+  initialFavoritePodcasts: FavoritePodcastItem[];
   refreshProfile: () => Promise<void>;
   onSaveComplete: () => void;
   onCancel: () => void;
@@ -22,6 +23,7 @@ interface ProfileEditPageProps {
 
 export default function ProfileEditPage({
   profile,
+  initialFavoritePodcasts,
   refreshProfile,
   onSaveComplete,
   onCancel,
@@ -32,35 +34,15 @@ export default function ProfileEditPage({
   const [displayName, setDisplayName] = useState(profile.display_name);
   const [bio, setBio] = useState(profile.bio || "");
   const [avatarUrl, setAvatarUrl] = useState<string | null>(profile.avatar_url);
-  const [favoritePodcasts, setFavoritePodcasts] = useState<FavoritePodcastItem[]>([]);
-  const initialFavoritePodcastsRef = useRef<FavoritePodcastItem[]>([]);
+  // 好きな番組は Server Component で取得済み（props で受け取る）
+  const [favoritePodcasts, setFavoritePodcasts] = useState<FavoritePodcastItem[]>(
+    initialFavoritePodcasts,
+  );
+  // 保存時の差分判定用に初期値を保持（props は再レンダ間で安定しているため初期化時のみ参照）
+  const initialFavoritePodcastsRef = useRef<FavoritePodcastItem[]>(initialFavoritePodcasts);
 
   const [error, setError] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [loadingFavorites, setLoadingFavorites] = useState(true);
-  const [favoritesLoadError, setFavoritesLoadError] = useState(false);
-
-  // 好きな番組を取得（外部データの同期なので useEffect が適切）
-  useEffect(() => {
-    let cancelled = false;
-    getUserFavoritePodcasts(profile.username)
-      .then((result) => {
-        if (!cancelled) {
-          setFavoritePodcasts(result.podcasts);
-          initialFavoritePodcastsRef.current = result.podcasts;
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setFavoritesLoadError(true);
-          setError("好きな番組の取得に失敗しました。お気に入りの編集はできません。");
-        }
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingFavorites(false);
-      });
-    return () => { cancelled = true; };
-  }, [profile.username]);
 
   function handleSave() {
     setError("");
@@ -81,13 +63,10 @@ export default function ProfileEditPage({
         });
 
         // 好きな番組が変更されている場合のみ更新
-        // お気に入り取得に失敗していた場合はデータ欠損を防ぐため更新をスキップ
-        if (!favoritesLoadError) {
-          const currentIds = favoritePodcasts.map((p) => p.id).sort().join(",");
-          const initialIds = initialFavoritePodcastsRef.current.map((p) => p.id).sort().join(",");
-          if (currentIds !== initialIds) {
-            await updateMyFavoritePodcasts(favoritePodcasts.map((p) => p.id));
-          }
+        const currentIds = favoritePodcasts.map((p) => p.id).sort().join(",");
+        const initialIds = initialFavoritePodcastsRef.current.map((p) => p.id).sort().join(",");
+        if (currentIds !== initialIds) {
+          await updateMyFavoritePodcasts(favoritePodcasts.map((p) => p.id));
         }
 
         // プロフィールを再取得してから遷移
@@ -141,28 +120,10 @@ export default function ProfileEditPage({
           </div>
 
           {/* 好きな番組 */}
-          {loadingFavorites ? (
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-2">
-                好きな番組
-              </label>
-              <p className="text-sm text-stone-500">読み込み中...</p>
-            </div>
-          ) : favoritesLoadError ? (
-            <div>
-              <label className="block text-sm font-medium text-stone-700 mb-2">
-                好きな番組
-              </label>
-              <p className="text-sm text-red-500">
-                好きな番組の読み込みに失敗しました。このまま保存すると、好きな番組は変更されません。
-              </p>
-            </div>
-          ) : (
-            <FavoritePodcastEditor
-              podcasts={favoritePodcasts}
-              onChange={setFavoritePodcasts}
-            />
-          )}
+          <FavoritePodcastEditor
+            podcasts={favoritePodcasts}
+            onChange={setFavoritePodcasts}
+          />
 
           {/* アクションボタン */}
           <div className="flex gap-3 pt-2">

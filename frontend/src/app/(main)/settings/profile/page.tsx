@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import ProfileEditClient from "./ProfileEditClient";
-import type { User } from "@/types/user";
+import type { User, FavoritePodcastListResult } from "@/types/user";
 
 export default async function ProfileEditPage() {
   const supabase = await createClient();
@@ -31,5 +31,17 @@ export default async function ProfileEditPage() {
     redirect("/profile/setup");
   }
 
-  return <ProfileEditClient initialProfile={profile} />;
+  // 好きな番組は公開エンドポイントなので noAuth で取得（二重のセッション取得を避ける）
+  // 取得失敗時は throw して settings/error.tsx に委譲する
+  const favorites = await serverGet<FavoritePodcastListResult>(
+    `/users/${encodeURIComponent(profile.username)}/favorite-podcasts`,
+    { noAuth: true, revalidate: 0 },
+  );
+
+  return (
+    <ProfileEditClient
+      initialProfile={profile}
+      initialFavoritePodcasts={favorites.podcasts}
+    />
+  );
 }
