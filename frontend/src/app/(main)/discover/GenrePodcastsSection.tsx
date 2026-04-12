@@ -3,7 +3,6 @@ import { serverGet } from "@/lib/api/server";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenrePodcastsLoadMore from "@/components/discover/GenrePodcastsLoadMore";
 import EmptyState from "@/components/ui/EmptyState";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import { MicrophoneIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
 import type { PodcastSearchResult } from "@/types/podcast";
 import type { GenreListResponse } from "@/types/genre";
@@ -14,6 +13,11 @@ interface GenrePodcastsSectionProps {
   genre: string;
 }
 
+/**
+ * ジャンル別番組一覧セクション。
+ * 番組検索（/podcasts/search）は必須データ — 失敗時は throw して ErrorBoundary に委譲する。
+ * ジャンル一覧（/genres）は補助データ — 失敗しても genre ID をそのまま表示して続行する。
+ */
 export default async function GenrePodcastsSection({
   genre,
 }: GenrePodcastsSectionProps) {
@@ -23,7 +27,7 @@ export default async function GenrePodcastsSection({
     offset: "0",
   });
 
-  const [genresResult, podcastsResult] = await Promise.allSettled([
+  const [genresSettled, podcastsResult] = await Promise.allSettled([
     serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
     serverGet<PodcastSearchResult>(
       `/podcasts/search?${genreParams.toString()}`,
@@ -31,17 +35,17 @@ export default async function GenrePodcastsSection({
     ),
   ]);
 
-  const genres =
-    genresResult.status === "fulfilled" ? genresResult.value.genres : [];
-  const genreName = genres.find((g) => g.id === genre)?.name_ja;
+  // 番組検索は必須 — 失敗時は ErrorBoundary に委譲
+  if (podcastsResult.status === "rejected") {
+    throw podcastsResult.reason;
+  }
 
-  const podcasts =
-    podcastsResult.status === "fulfilled"
-      ? podcastsResult.value.podcasts
-      : [];
-  const total =
-    podcastsResult.status === "fulfilled" ? podcastsResult.value.total : 0;
-  const podcastsError = podcastsResult.status === "rejected";
+  // ジャンル一覧は補助データ — 失敗時は空配列にフォールバック
+  const genres =
+    genresSettled.status === "fulfilled" ? genresSettled.value.genres : [];
+  const genreName = genres.find((g) => g.id === genre)?.name_ja;
+  const podcasts = podcastsResult.value.podcasts;
+  const total = podcastsResult.value.total;
 
   return (
     <>
@@ -57,12 +61,7 @@ export default async function GenrePodcastsSection({
         {genreName ?? genre}の番組
       </h2>
 
-      {podcastsError ? (
-        <ErrorMessage
-          message="番組の取得に失敗しました"
-          retryHref={`/discover?genre=${encodeURIComponent(genre)}`}
-        />
-      ) : podcasts.length === 0 ? (
+      {podcasts.length === 0 ? (
         <EmptyState
           icon={<MicrophoneIcon className="h-12 w-12" />}
           message="このジャンルの番組はまだありません"

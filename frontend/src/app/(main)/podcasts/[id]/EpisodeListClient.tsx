@@ -11,22 +11,24 @@ const PAGE_SIZE = 20;
 interface EpisodeListClientProps {
   podcastId: string;
   initialEpisodes: EpisodeListItem[];
-  /** Server Component での初回取得が失敗したか */
-  fetchFailed?: boolean;
 }
 
+/**
+ * エピソード一覧の Client Component。
+ * 初回データは Server Component から受け取る。初回取得の失敗は
+ * Server 側で throw されて ErrorBoundary に委譲されるため、ここでは
+ * 「追加読み込み」の失敗のみ扱う。
+ */
 export default function EpisodeListClient({
   podcastId,
   initialEpisodes,
-  fetchFailed = false,
 }: EpisodeListClientProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes);
-  const [initialError, setInitialError] = useState(fetchFailed);
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [hasMore, setHasMore] = useState(initialEpisodes.length >= PAGE_SIZE);
   const [isLoading, startTransition] = useTransition();
 
-  function handleFetch(offset: number) {
+  function handleLoadMore(offset: number) {
     startTransition(async () => {
       try {
         const data = await getEpisodesByPodcast(podcastId, {
@@ -34,32 +36,13 @@ export default function EpisodeListClient({
           offset,
         });
         const list = data.episodes ?? [];
-        if (offset === 0) {
-          setEpisodes(list);
-        } else {
-          setEpisodes(prev => [...prev, ...list]);
-        }
+        setEpisodes((prev) => [...prev, ...list]);
         setHasMore(list.length >= PAGE_SIZE);
-        setInitialError(false);
         setLoadMoreError(false);
       } catch {
-        if (offset === 0) {
-          setInitialError(true);
-        } else {
-          setLoadMoreError(true);
-        }
+        setLoadMoreError(true);
       }
     });
-  }
-
-  // 初回取得失敗: 全面エラー + リトライ
-  if (initialError && episodes.length === 0) {
-    return (
-      <ErrorMessage
-        message="エピソードの読み込みに失敗しました"
-        onRetry={() => handleFetch(0)}
-      />
-    );
   }
 
   return (
@@ -68,7 +51,7 @@ export default function EpisodeListClient({
         episodes={episodes}
         loading={isLoading}
         hasMore={hasMore && !loadMoreError}
-        onLoadMore={() => handleFetch(episodes.length)}
+        onLoadMore={() => handleLoadMore(episodes.length)}
       />
       {loadMoreError && (
         <div className="mt-4">
@@ -76,7 +59,7 @@ export default function EpisodeListClient({
             message="追加の読み込みに失敗しました"
             onRetry={() => {
               setLoadMoreError(false);
-              handleFetch(episodes.length);
+              handleLoadMore(episodes.length);
             }}
           />
         </div>

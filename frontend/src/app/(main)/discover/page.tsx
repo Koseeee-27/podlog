@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import DiscoverSearchBar from "./DiscoverSearchBar";
 import SearchResultsSection from "./SearchResultsSection";
 import GenrePodcastsSection from "./GenrePodcastsSection";
@@ -30,17 +31,23 @@ export default async function DiscoverPage({
 
       <div className="mt-6">
         {query ? (
-          <Suspense fallback={<SearchResultsSkeleton />}>
-            <SearchResultsSection query={query} />
-          </Suspense>
+          <ErrorBoundary key={query}>
+            <Suspense fallback={<SearchResultsSkeleton />}>
+              <SearchResultsSection query={query} />
+            </Suspense>
+          </ErrorBoundary>
         ) : genre ? (
-          <Suspense fallback={<GenrePodcastsSkeleton />}>
-            <GenrePodcastsSection genre={genre} />
-          </Suspense>
+          <ErrorBoundary key={genre}>
+            <Suspense fallback={<GenrePodcastsSkeleton />}>
+              <GenrePodcastsSection genre={genre} />
+            </Suspense>
+          </ErrorBoundary>
         ) : (
-          <Suspense fallback={<DefaultSectionSkeleton />}>
-            <DefaultSection />
-          </Suspense>
+          <ErrorBoundary key="default">
+            <Suspense fallback={<DefaultSectionSkeleton />}>
+              <DefaultSection />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </div>
     </>

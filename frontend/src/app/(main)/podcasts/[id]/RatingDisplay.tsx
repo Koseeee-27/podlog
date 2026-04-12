@@ -1,54 +1,17 @@
-"use client";
-
-import { useState, useTransition } from "react";
-import { apiGet } from "@/lib/api/client";
-import ErrorMessage from "@/components/ui/ErrorMessage";
-import type { PodcastRatingResult } from "@/types/review";
-
 interface RatingDisplayProps {
-  podcastId: string;
   averageRating?: number;
   totalReviews?: number;
-  fetchFailed?: boolean;
 }
 
+/**
+ * ポッドキャストの平均評価と総レビュー数を表示する。
+ * 取得失敗は親の Server Component (RatingSection) が throw し
+ * ErrorBoundary に委譲するため、ここではエラー状態を持たない。
+ */
 export default function RatingDisplay({
-  podcastId,
-  averageRating: initialRating,
-  totalReviews: initialReviews,
-  fetchFailed = false,
+  averageRating,
+  totalReviews,
 }: RatingDisplayProps) {
-  const [averageRating, setAverageRating] = useState(initialRating);
-  const [totalReviews, setTotalReviews] = useState(initialReviews);
-  const [error, setError] = useState(fetchFailed);
-  const [isRetrying, startRetry] = useTransition();
-
-  function handleRetry() {
-    startRetry(async () => {
-      try {
-        const result = await apiGet<PodcastRatingResult>(
-          `/podcasts/${encodeURIComponent(podcastId)}/rating`,
-        );
-        setAverageRating(result.average_rating);
-        setTotalReviews(result.total_reviews);
-        setError(false);
-      } catch {
-        setError(true);
-      }
-    });
-  }
-
-  if (error) {
-    return isRetrying ? (
-      <span className="text-xs text-stone-400">読み込み中...</span>
-    ) : (
-      <ErrorMessage
-        message="評価の取得に失敗しました"
-        onRetry={handleRetry}
-      />
-    );
-  }
-
   if (totalReviews === undefined || totalReviews === 0 || averageRating === undefined) {
     return null;
   }

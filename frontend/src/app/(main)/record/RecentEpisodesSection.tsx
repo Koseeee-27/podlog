@@ -7,7 +7,6 @@ import {
 } from "@heroicons/react/24/outline";
 import { serverGet } from "@/lib/api/server";
 import RecentEpisodeCard from "@/components/episode/RecentEpisodeCard";
-import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { RecentEpisodesResult } from "@/types/episode";
 
 /**
@@ -17,19 +16,12 @@ import type { RecentEpisodesResult } from "@/types/episode";
  * - serverGet でデータ取得（useEffect 不要）
  * - 初回ユーザー（recorded_podcast_count === 0）なら何も表示しない
  * - 新着が空なら「新着エピソードはありません」を表示
+ * - データ取得失敗時は throw して ErrorBoundary に委譲する
  */
 export default async function RecentEpisodesSection() {
   const result = await serverGet<RecentEpisodesResult>(
     "/users/me/recent-episodes",
-  ).catch(() => null);
-
-  if (!result) {
-    return (
-      <section className="mt-8">
-        <ErrorMessage message="新着エピソードの取得に失敗しました" />
-      </section>
-    );
-  }
+  );
 
   const podcastGroups = result.podcasts ?? [];
   const recordedPodcastCount = result.recorded_podcast_count ?? 0;

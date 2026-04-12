@@ -5,12 +5,10 @@ import { serverGet } from "@/lib/api/server";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
-import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import ListenButtonSection from "./ListenButtonSection";
 import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
 import type { EpisodeDetailResult } from "@/types/episode";
-import { REVIEW_PAGE_SIZE } from "@/lib/constants";
-import type { ReviewListResult } from "@/types/review";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -26,28 +24,21 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
   const encodedId = encodeURIComponent(id);
 
-  // エピソード詳細とレビュー一覧を並列取得（両者は独立したデータ）
-  const [episodeResult, reviewsData] = await Promise.all([
-    serverGet<EpisodeDetailResult>(
+  // エピソード詳細のみページレベルで取得する。
+  // レビュー（認証依存の自分のレビュー含む）は ReviewSectionWithAuth 内で
+  // 取得し、Suspense + ErrorBoundary で分離する。
+  let episode: EpisodeDetailResult;
+  try {
+    episode = await serverGet<EpisodeDetailResult>(
       `/episodes/${encodedId}`,
       { noAuth: true, revalidate: 60 },
-    ).catch((err) => {
-      if (err instanceof ApiRequestError && err.status === 404) {
-        return null;
-      }
-      throw err;
-    }),
-    serverGet<ReviewListResult>(
-      `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
-      { noAuth: true, revalidate: 0 },
-    ),
-  ]);
-
-  if (!episodeResult) {
-    notFound();
+    );
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
-
-  const episode = episodeResult;
 
   return (
     <div>
@@ -65,17 +56,19 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       {/* 聴取ボタン: 認証依存なので Suspense で分離 */}
       <div className="mt-4">
-        <Suspense fallback={
-          <button
-            type="button"
-            disabled
-            className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-400"
-          >
-            読み込み中...
-          </button>
-        }>
-          <ListenButtonSection episodeId={episode.id} />
-        </Suspense>
+        <ErrorBoundary fallback={null}>
+          <Suspense fallback={
+            <button
+              type="button"
+              disabled
+              className="inline-flex items-center gap-2 rounded-lg border border-stone-300 px-4 py-2 text-sm text-stone-400"
+            >
+              読み込み中...
+            </button>
+          }>
+            <ListenButtonSection episodeId={episode.id} />
+          </Suspense>
+        </ErrorBoundary>
       </div>
 
       <div className="mt-2">
@@ -98,21 +91,21 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
-      {/* レビューセクション: 認証データ取得中はレビュー一覧のみ表示 */}
+      {/* レビューセクション: データ取得中は Skeleton を表示 */}
       <div id="review-section">
-        <Suspense fallback={
-          <EpisodeReviewSection
-            episodeId={episode.id}
-            initialReviews={reviewsData}
-            initialMyReview={null}
-            isLoggedIn={false}
-          />
-        }>
-          <ReviewSectionWithAuth
-            episodeId={episode.id}
-            reviewsData={reviewsData}
-          />
-        </Suspense>
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="space-y-3">
+                <div className="h-6 w-32 rounded bg-stone-200 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+              </div>
+            }
+          >
+            <ReviewSectionWithAuth episodeId={episode.id} />
+          </Suspense>
+        </ErrorBoundary>
       </div>
     </div>
   );

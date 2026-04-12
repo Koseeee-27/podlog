@@ -4,14 +4,14 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 
-interface DiscoverErrorProps {
+interface RecordErrorProps {
   error: Error;
   reset: () => void;
 }
 
-export default function DiscoverError({ error, reset }: DiscoverErrorProps) {
+export default function RecordError({ error, reset }: RecordErrorProps) {
   // エラー監視サービス（Sentry 等）への送信ポイント。
-  console.error("[DiscoverError]", error);
+  console.error("[RecordError]", error);
 
   const router = useRouter();
   const [isPending, startTransition] = useTransition();

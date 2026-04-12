@@ -1,16 +1,18 @@
 "use client";
 
-import { Component, ErrorInfo, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode, useTransition, useState } from "react";
+import { useRouter } from "next/navigation";
 import ErrorMessage from "./ErrorMessage";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  /**
+   * エラー時に表示する要素。
+   * - 省略（undefined）: デフォルトのエラー UI（メッセージ + 再試行ボタン）を表示
+   * - `null`: エラー時に何も表示しない（認証依存ボタンなど「失敗したら消したい」場合）
+   * - ReactNode: 指定した要素を表示
+   */
   fallback?: ReactNode;
-}
-
-interface ErrorBoundaryState {
-  hasError: boolean;
-  resetKey: number;
 }
 
 /**
@@ -19,19 +21,56 @@ interface ErrorBoundaryState {
  * アプリ全体のクラッシュを防止する。
  *
  * Error Boundary は class コンポーネントでのみ実装可能（React の制約）。
- * - getDerivedStateFromError: フォールバック UI を表示するためにエラー状態を更新
- * - componentDidCatch: エラーログの記録（本番デバッグ・モニタリング用）
+ * class コンポーネントでは useRouter が使えないため、
+ * 関数コンポーネント（ErrorBoundary）で router.refresh() を注入する。
  *
- * リトライ時は resetKey をインクリメントすることで children を新しいインスタンスとして
- * 再マウントさせ、同じ props/state による無限エラーループを防止する。
+ * リトライ時は startTransition 内で router.refresh() + key 変更を行う。
+ * startTransition で更新を遷移として扱い、isPending で再試行中の状態を
+ * 表示できるようにする。router.refresh() が RSC ペイロードを再取得し、
+ * key 変更で ErrorBoundaryInner を再マウントしてエラー状態をリセットする。
  */
-export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
-  constructor(props: ErrorBoundaryProps) {
+export default function ErrorBoundary({ children, fallback }: ErrorBoundaryProps) {
+  const router = useRouter();
+  const [resetKey, setResetKey] = useState(0);
+  const [isPending, startTransition] = useTransition();
+
+  const handleRetry = () => {
+    startTransition(() => {
+      // サーバー側の RSC ペイロードを再取得させる
+      router.refresh();
+      // key を変更して ErrorBoundaryInner を再マウントし、エラー状態をリセットする
+      setResetKey((prev) => prev + 1);
+    });
+  };
+
+  return (
+    <ErrorBoundaryInner
+      key={resetKey}
+      fallback={fallback}
+      onRetry={handleRetry}
+      isPending={isPending}
+    >
+      {children}
+    </ErrorBoundaryInner>
+  );
+}
+
+// --- 内部クラスコンポーネント ---
+
+interface ErrorBoundaryInnerProps {
+  children: ReactNode;
+  fallback?: ReactNode;
+  onRetry: () => void;
+  isPending: boolean;
+}
+
+class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: boolean }> {
+  constructor(props: ErrorBoundaryInnerProps) {
     super(props);
-    this.state = { hasError: false, resetKey: 0 };
+    this.state = { hasError: false };
   }
 
-  static getDerivedStateFromError(): Pick<ErrorBoundaryState, "hasError"> {
+  static getDerivedStateFromError(): { hasError: boolean } {
     return { hasError: true };
   }
 
@@ -41,30 +80,24 @@ export default class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBo
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
   }
 
-  private handleRetry = () => {
-    // resetKey をインクリメントして children を再マウントさせる。
-    // 単に hasError: false にするだけだと、同じ props/state で再レンダリングされ
-    // 無限エラーループに陥る可能性がある。
-    this.setState((prev) => ({ hasError: false, resetKey: prev.resetKey + 1 }));
-  };
-
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
+      // fallback={null} は「エラー時に何も表示しない」を意味する。
+      // undefined（未指定）と区別するために !== undefined で判定する。
+      if (this.props.fallback !== undefined) {
         return this.props.fallback;
       }
       return (
         <div className="flex items-center justify-center min-h-[200px] p-8">
           <ErrorMessage
             message="予期しないエラーが発生しました。再試行してください。"
-            onRetry={this.handleRetry}
+            onRetry={this.props.onRetry}
+            isPending={this.props.isPending}
           />
         </div>
       );
     }
 
-    // key を変えることで React が children を完全に再マウント（新しいインスタンスを作成）する。
-    // これにより内部状態がリセットされ、同じエラーの無限ループを防止する。
-    return <div key={this.state.resetKey}>{this.props.children}</div>;
+    return this.props.children;
   }
 }
