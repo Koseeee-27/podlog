@@ -19,7 +19,6 @@ export default async function RatingSection({ podcastId }: RatingSectionProps) {
 
   return (
     <RatingDisplay
-      podcastId={podcastId}
       averageRating={result.average_rating}
       totalReviews={result.total_reviews}
     />
