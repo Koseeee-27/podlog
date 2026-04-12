@@ -5,6 +5,16 @@ import { REVIEW_PAGE_SIZE } from "@/lib/constants";
 import type { ReviewListResult, MyReviewResult } from "@/types/review";
 
 /**
+ * 自分のレビュー取得結果の判別 union。
+ * 成功時は `{ kind: "ok", review }`、認証関連エラーは `{ kind: "auth-error", status }` を返す。
+ * `MyReviewResult`（= Review 型）に将来 `status` 等のフィールドが追加されても
+ * 判別条件が壊れないよう、専用のタグ（`kind`）で分岐する。
+ */
+type MyReviewFetchResult =
+  | { kind: "ok"; review: MyReviewResult }
+  | { kind: "auth-error"; status: 401 | 404 };
+
+/**
  * レビューセクション。
  * レビュー一覧と、認証依存データ（自分のレビュー）を Server で並列取得する。
  *
@@ -27,30 +37,29 @@ export default async function ReviewSectionWithAuth({
       `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
       { noAuth: true, revalidate: 0 },
     ),
-    serverGet<MyReviewResult>(
-      `/episodes/${encodedId}/reviews/mine`,
-    ).catch((err) => {
-      // 認証関連のエラーは正常系として扱う
-      // 401: 未ログイン、404: 未投稿 → null を返して後段で判定
-      // 500 系やネットワークエラーは throw して ErrorBoundary に委譲
-      if (err instanceof ApiRequestError && (err.status === 401 || err.status === 404)) {
-        return { status: err.status } as const;
-      }
-      throw err;
-    }),
+    serverGet<MyReviewResult>(`/episodes/${encodedId}/reviews/mine`)
+      .then<MyReviewFetchResult>((review) => ({ kind: "ok", review }))
+      .catch<MyReviewFetchResult>((err) => {
+        // 認証関連のエラーは正常系として扱う
+        // 401: 未ログイン、404: 未投稿 → タグ付きで後段に返す
+        // 500 系やネットワークエラーは throw して ErrorBoundary に委譲
+        if (
+          err instanceof ApiRequestError &&
+          (err.status === 401 || err.status === 404)
+        ) {
+          return { kind: "auth-error", status: err.status };
+        }
+        throw err;
+      }),
   ]);
 
-  // myReviewResult の形で認証状態を判定
-  let myReview: MyReviewResult | null = null;
-  let isLoggedIn = false;
-  if ("status" in myReviewResult) {
-    // 401: 未ログイン、404: ログイン済みだが未投稿
-    isLoggedIn = myReviewResult.status === 404;
-  } else {
-    // レビュー取得成功 → ログイン済み
-    myReview = myReviewResult;
-    isLoggedIn = true;
-  }
+  // 認証状態を判定
+  // - ok:          レビュー取得成功 → ログイン済み・投稿済み
+  // - auth-error(404): ログイン済みだが未投稿
+  // - auth-error(401): 未ログイン
+  const myReview = myReviewResult.kind === "ok" ? myReviewResult.review : null;
+  const isLoggedIn =
+    myReviewResult.kind === "ok" || myReviewResult.status === 404;
 
   return (
     <EpisodeReviewSection
