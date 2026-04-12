@@ -4,7 +4,7 @@
 
 認証情報の取得は **Server Component** に一本化し、Client Component は props で受け取るだけにする。`useEffect` + `getUser` / `onAuthStateChange` による Client Component でのリアルタイム反映は廃止する。
 
-```
+```text
 Middleware        → 門番（保護ルートの検証）+ セッションリフレッシュ
 Server Component  → getViewer() で認証情報を取得（表示の出し分け）
 Client Component  → props で viewer / profile / isLoggedIn を受け取るだけ
@@ -14,7 +14,7 @@ Client Component  → props で viewer / profile / isLoggedIn を受け取るだ
 
 - **セキュリティ**: 認可判断をサーバーサイドに集約する（JWT 改ざん対策）
 - **パフォーマンス**: 公開ページは Supabase Auth への通信を極力避ける（最速パス）
-- **一貫性**: 1 リクエスト内で `getUser()` が呼ばれる回数を `cache()` で 1 回に抑える
+- **一貫性**: `cache()` により、Server Component 内での `getViewer()` の重複呼び出しを 1 回に集約する（ただし Middleware での `getUser()` は別レイヤーなので別途発生する）
 - **シンプルさ**: チラつきなしで初回レンダリング時に認証状態が確定する
 
 ## 2 つのユーザー概念
@@ -161,7 +161,7 @@ export default async function HomePage() {
 
 ### 保護ページ
 
-ログイン必須のページ（`/record`, `/settings`, `/profile/setup` 以外の保護ルート）。
+ログイン必須のページ（`/record`, `/settings`, `/profile/setup` などの保護ルート）。
 
 ```tsx
 // 例: src/app/(main)/settings/page.tsx
