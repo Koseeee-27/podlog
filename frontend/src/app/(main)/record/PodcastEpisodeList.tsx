@@ -35,9 +35,13 @@ export default function PodcastEpisodeList({
   const initialEpisodes = initialResult.episodes ?? [];
 
   const [episodes, setEpisodes] = useState<EpisodeListItem[]>(initialEpisodes);
-  const [hasMore, setHasMore] = useState(initialEpisodes.length >= PAGE_SIZE);
+  const [total, setTotal] = useState(initialResult.total);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // `list.length >= PAGE_SIZE` での判定だと、総件数がちょうど PAGE_SIZE の
+  // 倍数のときに「もっと見る」が 1 回空振りクリックされる不具合が起きるため、
+  // 総件数ベースの派生値で判定する。
+  const hasMore = episodes.length < total;
 
   const handleLoadMore = () => {
     setError(null);
@@ -49,7 +53,7 @@ export default function PodcastEpisodeList({
         });
         const list = data.episodes ?? [];
         setEpisodes((prev) => [...prev, ...list]);
-        setHasMore(list.length >= PAGE_SIZE);
+        setTotal(data.total);
       } catch (err) {
         setError(getUserFriendlyErrorMessage(err));
       }

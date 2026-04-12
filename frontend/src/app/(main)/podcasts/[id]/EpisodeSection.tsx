@@ -23,6 +23,7 @@ export default async function EpisodeSection({ podcastId }: EpisodeSectionProps)
       <EpisodeListClient
         podcastId={podcastId}
         initialEpisodes={result.episodes}
+        initialTotal={result.total}
       />
     </div>
   );
