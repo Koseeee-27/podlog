@@ -6,12 +6,9 @@ import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
-import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import ListenButtonSection from "./ListenButtonSection";
 import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
 import type { EpisodeDetailResult } from "@/types/episode";
-import { REVIEW_PAGE_SIZE } from "@/lib/constants";
-import type { ReviewListResult } from "@/types/review";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
@@ -27,31 +24,21 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
   const encodedId = encodeURIComponent(id);
 
-  // エピソード詳細とレビュー一覧を並列取得（両者は独立したデータ）
-  // レビュー取得が失敗してもエピソード詳細は表示できるため、
-  // レビューは空のフォールバック値で続行する。
-  const emptyReviews: ReviewListResult = { reviews: [], total: 0, average_rating: 0 };
-  const [episodeResult, reviewsData] = await Promise.all([
-    serverGet<EpisodeDetailResult>(
+  // エピソード詳細のみページレベルで取得する。
+  // レビュー（認証依存の自分のレビュー含む）は ReviewSectionWithAuth 内で
+  // 取得し、Suspense + ErrorBoundary で分離する。
+  let episode: EpisodeDetailResult;
+  try {
+    episode = await serverGet<EpisodeDetailResult>(
       `/episodes/${encodedId}`,
       { noAuth: true, revalidate: 60 },
-    ).catch((err) => {
-      if (err instanceof ApiRequestError && err.status === 404) {
-        return null;
-      }
-      throw err;
-    }),
-    serverGet<ReviewListResult>(
-      `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
-      { noAuth: true, revalidate: 0 },
-    ).catch(() => emptyReviews),
-  ]);
-
-  if (!episodeResult) {
-    notFound();
+    );
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
   }
-
-  const episode = episodeResult;
 
   return (
     <div>
@@ -104,30 +91,22 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
-      {/* レビューセクション: 認証データ取得中はレビュー一覧のみ表示 */}
-      {(() => {
-        // ErrorBoundary と Suspense の両方で同じフォールバックを使うため変数に抽出
-        const reviewFallback = (
-          <EpisodeReviewSection
-            episodeId={episode.id}
-            initialReviews={reviewsData}
-            initialMyReview={null}
-            isLoggedIn={false}
-          />
-        );
-        return (
-          <div id="review-section">
-            <ErrorBoundary fallback={reviewFallback}>
-              <Suspense fallback={reviewFallback}>
-                <ReviewSectionWithAuth
-                  episodeId={episode.id}
-                  reviewsData={reviewsData}
-                />
-              </Suspense>
-            </ErrorBoundary>
-          </div>
-        );
-      })()}
+      {/* レビューセクション: データ取得中は Skeleton を表示 */}
+      <div id="review-section">
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="space-y-3">
+                <div className="h-6 w-32 rounded bg-stone-200 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+              </div>
+            }
+          >
+            <ReviewSectionWithAuth episodeId={episode.id} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
     </div>
   );
 }

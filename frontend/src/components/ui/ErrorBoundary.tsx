@@ -6,6 +6,12 @@ import ErrorMessage from "./ErrorMessage";
 
 interface ErrorBoundaryProps {
   children: ReactNode;
+  /**
+   * エラー時に表示する要素。
+   * - 省略（undefined）: デフォルトのエラー UI（メッセージ + 再試行ボタン）を表示
+   * - `null`: エラー時に何も表示しない（認証依存ボタンなど「失敗したら消したい」場合）
+   * - ReactNode: 指定した要素を表示
+   */
   fallback?: ReactNode;
 }
 
