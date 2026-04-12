@@ -6,11 +6,12 @@ import EpisodeList from "@/components/episode/EpisodeList";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import type { EpisodeListItem } from "@/types/episode";
 
-const PAGE_SIZE = 20;
+export const PAGE_SIZE = 20;
 
 interface EpisodeListClientProps {
   podcastId: string;
   initialEpisodes: EpisodeListItem[];
+  initialTotal: number;
 }
 
 /**
@@ -18,15 +19,21 @@ interface EpisodeListClientProps {
  * 初回データは Server Component から受け取る。初回取得の失敗は
  * Server 側で throw されて ErrorBoundary に委譲されるため、ここでは
  * 「追加読み込み」の失敗のみ扱う。
+ *
+ * hasMore は `episodes.length < total` の派生値として算出する。
+ * `list.length >= PAGE_SIZE` での判定だと、総件数がちょうど PAGE_SIZE の
+ * 倍数のときに「もっと読む」が 1 回空振りクリックされる不具合が起きる。
  */
 export default function EpisodeListClient({
   podcastId,
   initialEpisodes,
+  initialTotal,
 }: EpisodeListClientProps) {
   const [episodes, setEpisodes] = useState(initialEpisodes);
+  const [total, setTotal] = useState(initialTotal);
   const [loadMoreError, setLoadMoreError] = useState(false);
-  const [hasMore, setHasMore] = useState(initialEpisodes.length >= PAGE_SIZE);
   const [isLoading, startTransition] = useTransition();
+  const hasMore = episodes.length < total;
 
   function handleLoadMore(offset: number) {
     startTransition(async () => {
@@ -37,7 +44,7 @@ export default function EpisodeListClient({
         });
         const list = data.episodes ?? [];
         setEpisodes((prev) => [...prev, ...list]);
-        setHasMore(list.length >= PAGE_SIZE);
+        setTotal(data.total);
         setLoadMoreError(false);
       } catch {
         setLoadMoreError(true);
