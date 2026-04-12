@@ -17,7 +17,10 @@ interface PodcastErrorProps {
  * reset() だけではキャッシュされた RSC ペイロードが再利用されるため、
  * router.refresh() でサーバー側のキャッシュを破棄してから reset() を呼ぶ。
  */
-export default function PodcastError({ reset }: PodcastErrorProps) {
+export default function PodcastError({ error, reset }: PodcastErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[PodcastError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

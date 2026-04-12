@@ -9,7 +9,10 @@ interface EpisodeErrorProps {
   reset: () => void;
 }
 
-export default function EpisodeError({ reset }: EpisodeErrorProps) {
+export default function EpisodeError({ error, reset }: EpisodeErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[EpisodeError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

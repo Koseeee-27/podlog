@@ -9,7 +9,10 @@ interface UserProfileErrorProps {
   reset: () => void;
 }
 
-export default function UserProfileError({ reset }: UserProfileErrorProps) {
+export default function UserProfileError({ error, reset }: UserProfileErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[UserProfileError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

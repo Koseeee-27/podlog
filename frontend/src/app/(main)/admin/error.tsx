@@ -9,7 +9,10 @@ interface AdminErrorProps {
   reset: () => void;
 }
 
-export default function AdminError({ reset }: AdminErrorProps) {
+export default function AdminError({ error, reset }: AdminErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[AdminError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

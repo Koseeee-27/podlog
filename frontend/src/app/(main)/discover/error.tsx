@@ -9,7 +9,10 @@ interface DiscoverErrorProps {
   reset: () => void;
 }
 
-export default function DiscoverError({ reset }: DiscoverErrorProps) {
+export default function DiscoverError({ error, reset }: DiscoverErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[DiscoverError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

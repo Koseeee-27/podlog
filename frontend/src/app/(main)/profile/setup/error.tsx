@@ -9,7 +9,10 @@ interface ProfileSetupErrorProps {
   reset: () => void;
 }
 
-export default function ProfileSetupError({ reset }: ProfileSetupErrorProps) {
+export default function ProfileSetupError({ error, reset }: ProfileSetupErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[ProfileSetupError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 

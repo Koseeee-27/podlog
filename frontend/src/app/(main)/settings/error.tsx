@@ -9,7 +9,10 @@ interface SettingsErrorProps {
   reset: () => void;
 }
 
-export default function SettingsError({ reset }: SettingsErrorProps) {
+export default function SettingsError({ error, reset }: SettingsErrorProps) {
+  // エラー監視サービス（Sentry 等）への送信ポイント。
+  console.error("[SettingsError]", error);
+
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
