@@ -23,9 +23,8 @@ export function getPublicProfile(username: string): Promise<UserPublicProfile> {
   return apiGet<UserPublicProfile>(`/users/${encodeURIComponent(username)}`);
 }
 
-export function getUserFavoritePodcasts(username: string): Promise<FavoritePodcastListResult> {
-  return apiGet<FavoritePodcastListResult>(`/users/${encodeURIComponent(username)}/favorite-podcasts`);
-}
+// 好きな番組の GET は Server Component で `serverGet` を直接呼ぶため、
+// クライアント側のラッパーは提供しない（rules/frontend.md: useEffect + fetch 禁止）。
 
 export function updateMyFavoritePodcasts(podcastIds: string[]): Promise<FavoritePodcastListResult> {
   return apiPut<FavoritePodcastListResult>("/users/me/favorite-podcasts", { podcast_ids: podcastIds });

@@ -3,13 +3,17 @@
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import ProfileEditForm from "@/components/profile/ProfileEditPage";
-import type { User } from "@/types/user";
+import type { User, FavoritePodcastItem } from "@/types/user";
 
 interface ProfileEditClientProps {
   initialProfile: User;
+  initialFavoritePodcasts: FavoritePodcastItem[];
 }
 
-export default function ProfileEditClient({ initialProfile }: ProfileEditClientProps) {
+export default function ProfileEditClient({
+  initialProfile,
+  initialFavoritePodcasts,
+}: ProfileEditClientProps) {
   const auth = useAuth();
   const router = useRouter();
 
@@ -29,6 +33,7 @@ export default function ProfileEditClient({ initialProfile }: ProfileEditClientP
   return (
     <ProfileEditForm
       profile={profile}
+      initialFavoritePodcasts={initialFavoritePodcasts}
       refreshProfile={refreshProfile}
       onSaveComplete={handleSaveComplete}
       onCancel={handleCancel}
