@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile, getMyFavoritePodcasts } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ProfileEditClient from "./ProfileEditClient";
-import type { User, FavoritePodcastListResult } from "@/types/user";
+import type { User } from "@/types/user";
 
 export default async function ProfileEditPage() {
   const supabase = await createClient();
@@ -17,7 +17,7 @@ export default async function ProfileEditPage() {
 
   let profile: User | null = null;
   try {
-    profile = await serverGet<User>("/users/me");
+    profile = await getMyProfile();
   } catch (err) {
     // 404 = プロフィール未設定 → セットアップへ
     if (err instanceof ApiRequestError && err.status === 404) {
@@ -31,12 +31,10 @@ export default async function ProfileEditPage() {
     redirect("/profile/setup");
   }
 
-  // 好きな番組は公開エンドポイントなので noAuth で取得（二重のセッション取得を避ける）
-  // 取得失敗時は throw して settings/error.tsx に委譲する
-  const favorites = await serverGet<FavoritePodcastListResult>(
-    `/users/${encodeURIComponent(profile.username)}/favorite-podcasts`,
-    { noAuth: true, revalidate: 0 },
-  );
+  // 好きな番組は認証必須のショートカット (`/users/me/favorite-podcasts`) で取得。
+  // ユーザー名解決を介さず 1 リクエストで済む。
+  // 取得失敗時は throw して settings/error.tsx に委譲する。
+  const favorites = await getMyFavoritePodcasts();
 
   return (
     <ProfileEditClient

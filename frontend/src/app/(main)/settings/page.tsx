@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import SettingsClient from "./SettingsClient";
 import type { User } from "@/types/user";
@@ -17,7 +17,7 @@ export default async function SettingsPage() {
 
   let profile: User | null = null;
   try {
-    profile = await serverGet<User>("/users/me");
+    profile = await getMyProfile();
   } catch (err) {
     // 404 = プロフィール未設定 → null のまま表示
     if (err instanceof ApiRequestError && err.status === 404) {

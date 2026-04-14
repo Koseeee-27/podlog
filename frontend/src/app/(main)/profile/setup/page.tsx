@@ -1,9 +1,8 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ProfileSetupClient from "./ProfileSetupClient";
-import type { User } from "@/types/user";
 
 export default async function ProfileSetupPage() {
   const supabase = await createClient();
@@ -17,7 +16,7 @@ export default async function ProfileSetupPage() {
 
   // プロフィール設定済みならトップへリダイレクト
   try {
-    await serverGet<User>("/users/me");
+    await getMyProfile();
     // 取得成功 = プロフィール設定済み
     redirect("/");
   } catch (err) {

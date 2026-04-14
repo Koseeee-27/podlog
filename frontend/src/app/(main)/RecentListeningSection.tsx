@@ -1,22 +1,20 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile, getMyListeningRecords } from "@/lib/data/me";
 import { formatDate } from "@/lib/utils";
 import { ApiRequestError } from "@/types/api";
 import EmptyState from "@/components/ui/EmptyState";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import CtaSection from "@/components/home/CtaSection";
-import type { ListeningRecordListResult } from "@/types/listening-record";
-import type { User } from "@/types/user";
 
 const DISPLAY_LIMIT = 5;
 
 /**
  * ログイン済みユーザー向けホーム画面。
  * Server Component でプロフィールと聴取履歴を並列取得する。
- * serverGet("/users/me") の成功/失敗で認証状態を判定する。
+ * `getMyProfile()` の成功/失敗で認証状態を判定する。
  * - 401: 未認証 → マーケティング UI にフォールバック
  * - 404: プロフィール未設定 → null（何も表示しない）
  * - その他のエラー: throw して Error Boundary で捕捉
@@ -24,10 +22,8 @@ const DISPLAY_LIMIT = 5;
 export default async function RecentListeningSection() {
   // プロフィールと聴取履歴を並列取得
   const [profileResult, recordsResult] = await Promise.allSettled([
-    serverGet<User>("/users/me"),
-    serverGet<ListeningRecordListResult>(
-      `/users/me/listening-records?limit=${DISPLAY_LIMIT}`,
-    ),
+    getMyProfile(),
+    getMyListeningRecords(DISPLAY_LIMIT),
   ]);
 
   // プロフィール取得の結果を判定

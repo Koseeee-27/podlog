@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import AdminClient from "./AdminClient";
 import type { User } from "@/types/user";
@@ -18,7 +18,7 @@ export default async function AdminPage() {
 
   let profile: User | null = null;
   try {
-    profile = await serverGet<User>("/users/me");
+    profile = await getMyProfile();
   } catch (err) {
     // 401/403 はログインへ、404 はプロフィール未設定
     if (err instanceof ApiRequestError && (err.status === 401 || err.status === 403)) {

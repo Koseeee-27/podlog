@@ -1,12 +1,11 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
 import { RecentEpisodesSkeleton } from "./skeletons";
-import type { User } from "@/types/user";
 
 // 認証ユーザーごとにデータが異なるため、静的生成をスキップする
 export const dynamic = "force-dynamic";
@@ -16,7 +15,7 @@ export const dynamic = "force-dynamic";
  *
  * 認証チェックは middleware で完了済み。
  * ここではプロフィール確認のみ行い、未設定ならセットアップへ誘導する。
- * serverGet("/users/me") が 401 を返した場合はセッション期限切れとして /login へ。
+ * getMyProfile() が 401 を返した場合はセッション期限切れとして /login へ。
  *
  * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）は
  * 対等な兄弟として配置する。新着エピソードの取得は Suspense で分離し、
@@ -25,7 +24,7 @@ export const dynamic = "force-dynamic";
 export default async function RecordPage() {
   // プロフィール確認（認証チェックは middleware で完了済み）
   try {
-    await serverGet<User>("/users/me");
+    await getMyProfile();
   } catch (err) {
     if (err instanceof ApiRequestError) {
       if (err.status === 404) redirect("/profile/setup");
