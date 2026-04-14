@@ -35,9 +35,15 @@ describe("getTimeline", () => {
 
     await getTimeline();
 
+    // クエリ省略時でも fetch オプション (revalidate / tags) の退行を
+    // 取りこぼさないよう、URL だけでなく next の中身まで明示検証する。
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/timeline",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 60, tags: ["timeline"] },
+      }),
     );
   });
 });

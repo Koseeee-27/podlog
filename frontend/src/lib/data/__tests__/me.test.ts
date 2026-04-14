@@ -26,6 +26,13 @@ beforeEach(() => {
   mockGetAuthHeaders.mockReset();
 });
 
+// React の `cache()` は引数ベースのメモ化を行うため、同一ファイル内で
+// 引数なしの DAL 関数 (`getMyProfile`, `getMyRecentEpisodes`) を 2 回呼ぶと
+// 2 回目以降は apiFetch が呼ばれずモックがフレークする。そのため:
+// - 引数なし関数 (getMyProfile, getMyRecentEpisodes) は it() を 1 ケースに
+//   統合する
+// - 引数あり関数 (getMyListeningRecords) は呼び出しごとにユニークな
+//   limit / offset を使う
 describe("getMyProfile", () => {
   it("Authorization 付き + cache: no-store で /users/me を呼ぶ", async () => {
     mockGetAuthHeaders.mockResolvedValueOnce({ Authorization: "Bearer jwt" });
@@ -47,12 +54,15 @@ describe("getMyProfile", () => {
     expect(init).not.toHaveProperty("next");
   });
 
-  it("認証ヘッダーが空でも事前 throw せず apiFetch に委ねる", async () => {
+  // 「認証ヘッダーが空でも事前 throw しない」ケースは、cache() メモ化を
+  // 避けるためユニークな引数を持つ `getMyListeningRecords` で代替検証する。
+  // (`getMyProfile` / `getMyRecentEpisodes` を再度呼ぶとメモ化されてしまう)
+  it("認証必須 DAL は認証ヘッダーが空でも事前 throw せず apiFetch に委ねる", async () => {
     mockGetAuthHeaders.mockResolvedValueOnce({});
-    mockApiFetch.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce({ records: [], total: 0 });
 
-    await getMyProfile();
-
+    // ユニークな limit (このファイル内で他のテストが使っていない値)
+    await expect(getMyListeningRecords(999)).resolves.toBeDefined();
     expect(mockApiFetch).toHaveBeenCalled();
   });
 });

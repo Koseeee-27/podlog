@@ -16,7 +16,10 @@ export default async function ProfileEditPage() {
     redirect("/login");
   }
 
-  let profile: User | null = null;
+  // getMyProfile() は成功時に必ず User を返し、404 は catch で
+  // redirect("/profile/setup") する (`redirect` は内部的に throw する) ため、
+  // catch を抜けて以降では profile は確実に User 型。
+  let profile: User;
   try {
     profile = await getMyProfile();
   } catch (err) {
@@ -26,10 +29,6 @@ export default async function ProfileEditPage() {
     }
     // その他のエラー（500等）は throw して Next.js エラーページに任せる
     throw err;
-  }
-
-  if (!profile) {
-    redirect("/profile/setup");
   }
 
   // 好きな番組は公開エンドポイント (`/users/:username/favorite-podcasts`) で取得。

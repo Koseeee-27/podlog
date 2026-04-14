@@ -105,4 +105,16 @@ describe("getEpisodeListenStatus", () => {
 
     expect(mockApiFetch).toHaveBeenCalled();
   });
+
+  it("episodeId を encodeURIComponent して呼ぶ", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({ Authorization: "Bearer jwt" });
+    mockApiFetch.mockResolvedValueOnce({ listened: false });
+
+    await getEpisodeListenStatus("listen with/slash");
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/episodes/listen%20with%2Fslash/listen",
+      expect.any(Object),
+    );
+  });
 });
