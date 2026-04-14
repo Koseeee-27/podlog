@@ -19,11 +19,19 @@ export default async function SettingsPage() {
   try {
     profile = await getMyProfile();
   } catch (err) {
-    // 404 = プロフィール未設定 → null のまま表示
-    if (err instanceof ApiRequestError && err.status === 404) {
-      // fall through
+    if (err instanceof ApiRequestError) {
+      // 401/403 = セッション失効 → /login (admin/page.tsx と挙動を揃える)
+      if (err.status === 401 || err.status === 403) {
+        redirect("/login");
+      }
+      // 404 = プロフィール未設定 → null のまま表示
+      if (err.status === 404) {
+        // fall through
+      } else {
+        // その他のエラー（500 等）は throw
+        throw err;
+      }
     } else {
-      // その他のエラー（500等）は throw
       throw err;
     }
   }
