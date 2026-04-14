@@ -5,7 +5,6 @@ import {
   getMyProfile,
   getMyListeningRecords,
   getMyRecentEpisodes,
-  getMyFavoritePodcasts,
 } from "../me";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
@@ -98,25 +97,6 @@ describe("getMyRecentEpisodes", () => {
 
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/users/me/recent-episodes",
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Authorization: "Bearer jwt",
-        }),
-        cache: "no-store",
-      }),
-    );
-  });
-});
-
-describe("getMyFavoritePodcasts", () => {
-  it("Authorization 付き + cache: no-store で呼ぶ", async () => {
-    mockGetAuthHeaders.mockResolvedValueOnce({ Authorization: "Bearer jwt" });
-    mockApiFetch.mockResolvedValueOnce({ podcasts: [] });
-
-    await getMyFavoritePodcasts();
-
-    expect(mockApiFetch).toHaveBeenCalledWith(
-      "/users/me/favorite-podcasts",
       expect.objectContaining({
         headers: expect.objectContaining({
           Authorization: "Bearer jwt",

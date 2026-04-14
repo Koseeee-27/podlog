@@ -1,6 +1,8 @@
-import { getMyFavoritePodcasts } from "@/lib/data/me";
+import { getMyProfile } from "@/lib/data/me";
+import { getUserFavoritePodcasts } from "@/lib/data/users";
 import { ApiRequestError } from "@/types/api";
 import FavoriteButtonClient from "./FavoriteButtonClient";
+import type { User } from "@/types/user";
 
 interface FavoriteSectionProps {
   podcastId: string;
@@ -9,19 +11,20 @@ interface FavoriteSectionProps {
 /**
  * お気に入りボタンの Server Component。
  *
- * 自分のお気に入り一覧を取得し、現在の番組が含まれているかを判定して
- * `FavoriteButtonClient` に渡す。未ログイン (401) / プロフィール未作成 (404)
- * なら何も表示せず、500 系エラーは throw して ErrorBoundary に委譲する。
+ * プロフィール取得 → お気に入り取得 → FavoriteButtonClient を描画する。
+ * 未ログイン (401) / プロフィール未作成 (404) なら何も表示せず、
+ * 500 系エラーは throw して ErrorBoundary に委譲する。
  *
- * `/users/me/favorite-podcasts` を直接叩くことで、以前必要だった
- * 「プロフィール取得 → username 解決 → お気に入り取得」の 2 ホップを
- * 1 リクエストに削減している。
+ * バックエンドには `GET /users/me/favorite-podcasts` が無いため、
+ * 公開エンドポイント `/users/:username/favorite-podcasts` を使う必要がある。
+ * `getMyProfile` は `cache()` 済みなので、同一リクエスト内で他の Server
+ * Component が既に呼んでいれば追加コストはほぼゼロ。
  */
 export default async function FavoriteSection({ podcastId }: FavoriteSectionProps) {
-  let favoriteIds: string[];
+  // プロフィール取得（未ログインなら 401 → null で非表示）
+  let profile: User | null = null;
   try {
-    const favoritesResult = await getMyFavoritePodcasts();
-    favoriteIds = favoritesResult.podcasts.map((p) => p.id);
+    profile = await getMyProfile();
   } catch (err) {
     if (
       err instanceof ApiRequestError &&
@@ -34,6 +37,12 @@ export default async function FavoriteSection({ podcastId }: FavoriteSectionProp
     throw err;
   }
 
+  if (!profile?.username) return null;
+
+  // お気に入り一覧を取得（公開 API なので認証エラーは起きない。失敗時は throw）
+  const favoritesResult = await getUserFavoritePodcasts(profile.username);
+
+  const favoriteIds = favoritesResult.podcasts.map((p) => p.id);
   const isFavorite = favoriteIds.includes(podcastId);
 
   return (

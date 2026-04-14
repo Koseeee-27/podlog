@@ -15,7 +15,7 @@ import "server-only";
 import { cache } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
-import type { User, FavoritePodcastListResult } from "@/types/user";
+import type { User } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { RecentEpisodesResult } from "@/types/episode";
 
@@ -85,23 +85,9 @@ export const getMyRecentEpisodes = cache(
   },
 );
 
-/**
- * 自分のお気に入り番組一覧を取得する (認証必須)。
- *
- * 注意: 公開エンドポイント `/users/:username/favorite-podcasts` (DAL は
- * `getUserFavoritePodcasts`) と内容は同じだが、ユーザー名を解決する手間を
- * 省きたい認証済み画面ではこちらを使う。
- */
-export const getMyFavoritePodcasts = cache(
-  async (): Promise<FavoritePodcastListResult> => {
-    const authHeaders = await getAuthHeaders();
-    return apiFetch<FavoritePodcastListResult>("/users/me/favorite-podcasts", {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders,
-      },
-      cache: "no-store",
-    });
-  },
-);
+// 注意: バックエンドには `GET /users/me/favorite-podcasts` エンドポイントは
+// 存在しない (`PUT` のみ存在)。お気に入り取得は公開エンドポイント
+// `/users/:username/favorite-podcasts` を使うため、`lib/data/users.ts` の
+// `getUserFavoritePodcasts(profile.username)` を呼び出すこと。
+// 自分自身を解決するには `getMyProfile()` を併用する (`cache()` 済みなので
+// 同一リクエスト内なら追加コストはほぼゼロ)。

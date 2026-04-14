@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getMyProfile, getMyFavoritePodcasts } from "@/lib/data/me";
+import { getMyProfile } from "@/lib/data/me";
+import { getUserFavoritePodcasts } from "@/lib/data/users";
 import { ApiRequestError } from "@/types/api";
 import ProfileEditClient from "./ProfileEditClient";
 import type { User } from "@/types/user";
@@ -31,10 +32,10 @@ export default async function ProfileEditPage() {
     redirect("/profile/setup");
   }
 
-  // 好きな番組は認証必須のショートカット (`/users/me/favorite-podcasts`) で取得。
-  // ユーザー名解決を介さず 1 リクエストで済む。
+  // 好きな番組は公開エンドポイント (`/users/:username/favorite-podcasts`) で取得。
+  // バックエンドに `GET /users/me/favorite-podcasts` は存在しない (`PUT` のみ)。
   // 取得失敗時は throw して settings/error.tsx に委譲する。
-  const favorites = await getMyFavoritePodcasts();
+  const favorites = await getUserFavoritePodcasts(profile.username);
 
   return (
     <ProfileEditClient
