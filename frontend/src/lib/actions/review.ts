@@ -2,9 +2,13 @@
 
 import { createReviewRequestSchema } from "@/lib/schemas/review";
 import { uuidSchema } from "@/lib/schemas/common";
-import { serverPost, serverPut, serverDelete } from "@/lib/api/server";
+import {
+  createReview,
+  updateMyReview,
+  deleteMyReview,
+} from "@/lib/data/reviews";
+import { getViewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
 import type { Review } from "@/types/review";
 
 export interface ReviewFormState {
@@ -18,6 +22,14 @@ export interface DeleteReviewState {
   error?: string;
 }
 
+/**
+ * エピソードにレビューを新規投稿する Server Action。
+ *
+ * 認証チェックは `getViewer()` に統一している (PR A で導入した `cache()` の
+ * リクエストスコープメモ化が効くため、同一リクエスト内で認証情報取得が
+ * 重複しない)。DAL 側 (`createReview`) も認証ヘッダーを付けるため、実質的に
+ * 二重防御となる。
+ */
 export async function createReviewAction(
   episodeId: string,
   _prevState: ReviewFormState,
@@ -27,9 +39,8 @@ export async function createReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const viewer = await getViewer();
+  if (viewer.status !== "authenticated") {
     return { success: false, error: "ログインが必要です" };
   }
 
@@ -41,10 +52,10 @@ export async function createReviewAction(
   }
 
   try {
-    const review = await serverPost<Review>(
-      `/episodes/${encodeURIComponent(episodeId)}/reviews`,
-      { ...result.data, comment: result.data.comment || undefined },
-    );
+    const review = await createReview(episodeId, {
+      ...result.data,
+      comment: result.data.comment || undefined,
+    });
     return { success: true, review };
   } catch (err) {
     return {
@@ -54,6 +65,9 @@ export async function createReviewAction(
   }
 }
 
+/**
+ * 自分のエピソードレビューを更新する Server Action。
+ */
 export async function updateReviewAction(
   episodeId: string,
   _prevState: ReviewFormState,
@@ -63,9 +77,8 @@ export async function updateReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const viewer = await getViewer();
+  if (viewer.status !== "authenticated") {
     return { success: false, error: "ログインが必要です" };
   }
 
@@ -77,10 +90,10 @@ export async function updateReviewAction(
   }
 
   try {
-    const review = await serverPut<Review>(
-      `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
-      { ...result.data, comment: result.data.comment || undefined },
-    );
+    const review = await updateMyReview(episodeId, {
+      ...result.data,
+      comment: result.data.comment || undefined,
+    });
     return { success: true, review };
   } catch (err) {
     return {
@@ -90,6 +103,9 @@ export async function updateReviewAction(
   }
 }
 
+/**
+ * 自分のエピソードレビューを削除する Server Action。
+ */
 export async function deleteReviewAction(
   episodeId: string,
 ): Promise<DeleteReviewState> {
@@ -97,16 +113,13 @@ export async function deleteReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  const viewer = await getViewer();
+  if (viewer.status !== "authenticated") {
     return { success: false, error: "ログインが必要です" };
   }
 
   try {
-    await serverDelete(
-      `/episodes/${encodeURIComponent(episodeId)}/reviews/mine`,
-    );
+    await deleteMyReview(episodeId);
     return { success: true };
   } catch (err) {
     return {
