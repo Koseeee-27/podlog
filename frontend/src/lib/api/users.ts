@@ -7,7 +7,16 @@ export function createProfile(data: CreateProfileRequest): Promise<User> {
   return apiPost<User>("/users/profile", data);
 }
 
-export function getMyProfile(): Promise<User> {
+/**
+ * 自分のプロフィールをクライアントから取得する。
+ *
+ * SSR 初期取得は `lib/data/me.ts` の `getMyProfile` (DAL) を使うこと。
+ * クライアント側はログアウト/プロフィール更新後の再取得などに限定する。
+ *
+ * FE 規約「DAL = `getXxx` / クライアント API = `fetchXxx`」に従い、
+ * 同名衝突を避けるため `fetchMyProfile` 命名。
+ */
+export function fetchMyProfile(): Promise<User> {
   return apiGet<User>("/users/me");
 }
 
@@ -21,7 +30,17 @@ export function uploadAvatar(file: File): Promise<AvatarUploadResult> {
   return apiUpload<AvatarUploadResult>("/users/me/avatar", formData);
 }
 
-export function getPublicProfile(username: string): Promise<UserPublicProfile> {
+/**
+ * ユーザーの公開プロフィールをクライアントから取得する。
+ *
+ * SSR 初期取得は `lib/data/users.ts` の `getUserPublicProfile` (DAL) を
+ * 使うこと。FE 規約「DAL = `getXxx` / クライアント API = `fetchXxx`」に従う。
+ *
+ * 注意: 現状このクライアント API は呼び出し側がない (dead-code に近い)。
+ * 将来 Client Component から公開プロフィールを取り直すケースに備えて
+ * 残置している。不要と判明したら削除する。
+ */
+export function fetchPublicProfile(username: string): Promise<UserPublicProfile> {
   return apiGet<UserPublicProfile>(`/users/${encodeURIComponent(username)}`);
 }
 
