@@ -41,7 +41,9 @@ func main() {
 	}
 
 	// 2. DB に接続
-	db, err := sqlx.Connect("pgx/v5", cfg.DatabaseDSN())
+	// driver 名は "pgx" を使う。"pgx/v5" だと sqlx の BindType が UNKNOWN を返し
+	// NamedExec の ? → $N 変換が効かなくなる。詳細は cmd/server/main.go のコメント参照。
+	db, err := sqlx.Connect("pgx", cfg.DatabaseDSN())
 	if err != nil {
 		log.Fatalf("DB 接続に失敗: %v", err)
 	}
