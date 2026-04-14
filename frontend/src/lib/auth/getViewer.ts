@@ -32,6 +32,11 @@ export type Viewer =
   | { status: "no_profile" }
   | { status: "authenticated"; profile: User };
 
+/**
+ * 現在の閲覧者を `guest` / `no_profile` / `authenticated` の判別 union で返す。
+ * `getAuthHeaders()` → `/users/me` の 1 段階で解決し、React `cache()` でリクエスト
+ * スコープメモ化する。詳細はモジュール冒頭の JSDoc を参照。
+ */
 export const getViewer = cache(async (): Promise<Viewer> => {
   const headers = await getAuthHeaders();
 

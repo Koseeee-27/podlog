@@ -21,6 +21,11 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
 
+/**
+ * Supabase SSR の Cookie から JWT を取り出して認証ヘッダーを返す。
+ * ログイン済みなら `{ Authorization: "Bearer ..." }`、未ログインなら `{}`。
+ * React `cache()` でリクエストスコープメモ化。詳細はモジュール冒頭の JSDoc を参照。
+ */
 export const getAuthHeaders = cache(
   async (): Promise<Record<string, string>> => {
     const cookieStore = await cookies();
