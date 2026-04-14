@@ -18,10 +18,16 @@
  * `router.refresh()` で Server Component ツリーを再実行して `getViewer()` を
  * guest 状態で再評価させ、その後 `/login` に遷移する。
  */
-import type { AppRouterInstance } from "next/dist/shared/lib/app-router-context.shared-runtime";
+import type { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-export async function signOut(router: AppRouterInstance): Promise<void> {
+/**
+ * `useRouter()` の戻り値型。Next.js の公式 API から導出する
+ * (`next/dist/*` の内部モジュールを直接参照しないため)。
+ */
+type AppRouter = ReturnType<typeof useRouter>;
+
+export async function signOut(router: AppRouter): Promise<void> {
   const supabase = createClient();
   await supabase.auth.signOut();
   router.refresh();

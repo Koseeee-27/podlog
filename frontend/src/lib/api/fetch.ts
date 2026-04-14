@@ -47,9 +47,10 @@ export type ApiFetchInit = RequestInit & {
  *
  * **注意**: リトライ時は `init` をそのまま `fetch()` に再利用する。呼び出し側が
  * `body` に ReadableStream を渡すと 2 回目の `fetch()` で「already read」になる。
- * 現状の呼び出し経路 (`serverPost`/`serverPut`) は `JSON.stringify` 済み文字列しか
- * 渡さないため問題ないが、将来ストリーム body を渡す場合はリトライ対象を GET 限定の
- * 現設計と整合させること (非 GET はリトライしない設計なので body 問題は発生しない)。
+ * 現状の呼び出し経路 (Server Action から DAL 経由で呼ばれる mutation) は
+ * `JSON.stringify` 済み文字列しか渡さないため問題ないが、将来ストリーム body を
+ * 渡す場合はリトライ対象を GET 限定の現設計と整合させること (非 GET はリトライ
+ * しない設計なので body 問題は発生しない)。
  *
  * @throws {ApiRequestError} レスポンスが 2xx 以外の場合
  * @throws {Error} fetch 自体がネットワークエラーで失敗した場合
