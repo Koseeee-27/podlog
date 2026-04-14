@@ -43,7 +43,9 @@ import (
 
 	// pgx/v5/stdlib は database/sql 互換の PostgreSQL ドライバー。
 	// lib/pq の後継で、よりアクティブにメンテナンスされている。
-	// 副作用インポートにより init() で "pgx/v5" ドライバーが sql.Register される。
+	// 副作用インポートにより init() で "pgx" と "pgx/v5" の両方の名前で sql.Register される。
+	// sqlx と組み合わせる場合は "pgx" を使うこと。"pgx/v5" は sqlx の BindType() が
+	// 認識できず UNKNOWN を返すため、NamedExec 経由の ? → $N 変換（Rebind）が効かなくなる。
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	_ "github.com/Koseeee-27/podlog/backend/docs"
@@ -90,7 +92,7 @@ func run() error {
 	const maxRetries = 3
 	for i := range maxRetries {
 		var err error
-		db, err = sqlx.Connect("pgx/v5", cfg.DatabaseDSN())
+		db, err = sqlx.Connect("pgx", cfg.DatabaseDSN())
 		if err == nil {
 			break
 		}
