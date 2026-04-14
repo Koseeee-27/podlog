@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { serverGet } from "@/lib/api/server";
+import { getEpisodeById } from "@/lib/data/episodes";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
@@ -22,17 +22,14 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
     notFound();
   }
 
-  const encodedId = encodeURIComponent(id);
-
   // エピソード詳細のみページレベルで取得する。
   // レビュー（認証依存の自分のレビュー含む）は ReviewSectionWithAuth 内で
   // 取得し、Suspense + ErrorBoundary で分離する。
+  // `getEpisodeById` はオプショナル認証 — ログイン中は Authorization 付き
+  // で `cache: "no-store"`、未ログイン時は `revalidate: 60` でキャッシュ。
   let episode: EpisodeDetailResult;
   try {
-    episode = await serverGet<EpisodeDetailResult>(
-      `/episodes/${encodedId}`,
-      { noAuth: true, revalidate: 60 },
-    );
+    episode = await getEpisodeById(id);
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) {
       notFound();
