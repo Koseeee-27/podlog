@@ -15,7 +15,12 @@ const DISPLAY_LIMIT = 5;
  * ログイン済みユーザー向けホーム画面。
  * Server Component でプロフィールと聴取履歴を並列取得する。
  * `getMyProfile()` の成功/失敗で認証状態を判定する。
- * - 401: 未認証 → マーケティング UI にフォールバック
+ *
+ * 公開ページ (/) のフォールバック系コンポーネントなので、保護ページの
+ * 「401/403 → /login redirect」とは異なり、未認証時はマーケティング UI を
+ * インラインで表示する設計。
+ *
+ * - 401/403: 未認証 or セッション失効・権限剥奪 → マーケティング UI
  * - 404: プロフィール未設定 → null（何も表示しない）
  * - その他のエラー: throw して Error Boundary で捕捉
  */
@@ -30,8 +35,9 @@ export default async function RecentListeningSection() {
   if (profileResult.status === "rejected") {
     const err = profileResult.reason;
     if (err instanceof ApiRequestError) {
-      if (err.status === 401) {
-        // 未認証（Cookie はあるがセッション期限切れ等）→ マーケティング UI
+      // 401/403 = 未認証 or セッション失効 → マーケティング UI
+      // (保護ページとは違いリダイレクトせず、公開ページとして fallback 表示)
+      if (err.status === 401 || err.status === 403) {
         return (
           <>
             <HeroSection />
