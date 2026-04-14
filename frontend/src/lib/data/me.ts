@@ -1,21 +1,22 @@
 /**
  * Me ドメインの Data Access Layer (DAL)。
  *
- * 「自分自身」(`/users/me/...`) のリソースを取得する関数を集約する。
- * すべて認証必須エンドポイントだが、DAL 側では事前に 401 判定を行わない。
- * 呼び出し側 (`page.tsx` 等) で `ApiRequestError` を catch して
- * `redirect("/login")` するか、未ログインフォールバック UI を出すかを
+ * 「自分自身」(`/users/me/...` や `/users/profile`) のリソースを取得・作成する
+ * 関数を集約する。すべて認証必須エンドポイントだが、DAL 側では事前に 401 判定を
+ * 行わない。呼び出し側 (`page.tsx` や Server Action) で `ApiRequestError` を
+ * catch して `redirect("/login")` するか、未ログインフォールバック UI を出すかを
  * 決める (FE 規約の 401 ハンドリング統一ルール)。
  *
- * Authorization ヘッダー付きの呼び出しなので全関数で `cache: "no-store"` を
+ * Authorization ヘッダー付きの GET 呼び出しは `cache: "no-store"` を
  * 明示する (Next.js の fetch キャッシュに別ユーザーのレスポンスが混ざる
- * リスクを避けるため、FE 規約)。
+ * リスクを避けるため、FE 規約)。mutation (POST 等) は Next.js の fetch
+ * キャッシュに乗らないため cache 指定は不要。
  */
 import "server-only";
 import { cache } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
-import type { User } from "@/types/user";
+import type { User, CreateProfileRequest } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { RecentEpisodesResult } from "@/types/episode";
 
@@ -84,6 +85,28 @@ export const getMyRecentEpisodes = cache(
     });
   },
 );
+
+/**
+ * 自分のプロフィールを新規作成する (認証必須)。
+ * `POST /users/profile`。
+ *
+ * Supabase 認証済みだが PodLog にプロフィール未作成 (no_profile) のユーザーが
+ * 初回プロフィール設定画面から呼び出す想定。DAL 側では 401 を事前判定せず、
+ * 呼び出し側 (Server Action) で `ApiRequestError` を catch して扱う (FE 規約)。
+ */
+export async function createProfile(
+  data: CreateProfileRequest,
+): Promise<User> {
+  const authHeaders = await getAuthHeaders();
+  return apiFetch<User>("/users/profile", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...authHeaders,
+    },
+    body: JSON.stringify(data),
+  });
+}
 
 // 注意: バックエンドには `GET /users/me/favorite-podcasts` エンドポイントは
 // 存在しない (`PUT` のみ存在)。お気に入り取得は公開エンドポイント
