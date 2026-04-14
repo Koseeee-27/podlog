@@ -1,11 +1,7 @@
-import { apiGet, apiPost, apiPut, apiUpload } from "./client";
-import type { User, UserPublicProfile, CreateProfileRequest, UpdateProfileRequest, FavoritePodcastListResult, AvatarUploadResult } from "@/types/user";
+import { apiGet, apiPut, apiUpload } from "./client";
+import type { User, UserPublicProfile, UpdateProfileRequest, FavoritePodcastListResult, AvatarUploadResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
-
-export function createProfile(data: CreateProfileRequest): Promise<User> {
-  return apiPost<User>("/users/profile", data);
-}
 
 /**
  * 自分のプロフィールをクライアントから取得する。
