@@ -28,8 +28,8 @@ export default function ListeningHistoryLoader({
 //
 // - useTransition で連打防止（isPending は即座に true になるため、useState より安全）
 // - クライアント API (`fetchUserListeningRecords`) で直接取得する
-//   (frontend.md「ユーザー操作による追加データ取得はクライアント API で直接行う」
-//    の規約に従い、Server Action は使わない)
+//   (FE 規約「ユーザー操作による追加データ取得はクライアント API で直接行う」
+//    に従い、Server Action は使わない)
 // - エラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
 // - total はサーバーの最新値で更新し、hasMore の判定が正確になるようにする
 // ---------------------------------------------------------------------------

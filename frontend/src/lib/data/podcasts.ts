@@ -13,7 +13,7 @@
  * `/podcasts/:id/episodes` だけはオプショナル認証で、未ログインでも動くが
  * ログイン中はエピソードに「聴取済み」フラグが付く。Authorization ヘッダーが
  * 付く場合は `cache: "no-store"` を明示して Next.js の fetch キャッシュに
- * 別ユーザーのレスポンスが混ざらないようにする (frontend.md の規約)。
+ * 別ユーザーのレスポンスが混ざらないようにする (FE 規約)。
  */
 import "server-only";
 import { cache } from "react";

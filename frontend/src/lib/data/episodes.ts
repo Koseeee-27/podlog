@@ -6,7 +6,7 @@
  *   `cache: "no-store"` を明示する
  * - `getEpisodeListenStatus`: 自分の聴取状態 (認証必須)。401 は DAL 側では
  *   throw せず、呼び出し側で `ApiRequestError` を catch して未ログイン
- *   扱いにする (frontend.md 規約)
+ *   扱いにする (FE 規約)
  */
 import "server-only";
 import { cache } from "react";
@@ -48,7 +48,7 @@ export const getEpisodeById = cache(
  * 未ログイン時は `getAuthHeaders()` が空オブジェクトを返すが、DAL 側では
  * 事前判定せず `apiFetch` にそのまま投げる。バックエンドが 401 を返すので
  * 呼び出し側で `ApiRequestError` を catch して未ログイン扱いにする
- * (frontend.md: 保護ページ・公開ページで 401 ハンドリングを統一するため)。
+ * (FE 規約: 保護ページ・公開ページで 401 ハンドリングを統一するため)。
  *
  * Authorization ヘッダー付きの呼び出しなので `cache: "no-store"` を明示する。
  */

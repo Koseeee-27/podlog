@@ -5,7 +5,7 @@
  *   ユーザー操作で頻繁に変わるため `revalidate: 0` (キャッシュなし)
  * - `getMyReview`: 自分のレビュー (認証必須)。401/404 は呼び出し側で
  *   `ApiRequestError` を catch して未ログイン or 未投稿として扱う
- *   (frontend.md の 401 ハンドリング統一ルール)
+ *   (FE 規約: 401 ハンドリング統一ルール)
  */
 import "server-only";
 import { cache } from "react";

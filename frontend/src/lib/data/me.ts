@@ -5,11 +5,11 @@
  * すべて認証必須エンドポイントだが、DAL 側では事前に 401 判定を行わない。
  * 呼び出し側 (`page.tsx` 等) で `ApiRequestError` を catch して
  * `redirect("/login")` するか、未ログインフォールバック UI を出すかを
- * 決める (frontend.md の 401 ハンドリング統一ルール)。
+ * 決める (FE 規約の 401 ハンドリング統一ルール)。
  *
  * Authorization ヘッダー付きの呼び出しなので全関数で `cache: "no-store"` を
  * 明示する (Next.js の fetch キャッシュに別ユーザーのレスポンスが混ざる
- * リスクを避けるため、frontend.md の規約)。
+ * リスクを避けるため、FE 規約)。
  */
 import "server-only";
 import { cache } from "react";

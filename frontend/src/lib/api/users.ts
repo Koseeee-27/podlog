@@ -27,7 +27,7 @@ export function getPublicProfile(username: string): Promise<UserPublicProfile> {
 
 // 好きな番組の GET は Server Component で DAL (`lib/data/users.ts`) を直接
 // 呼ぶため、クライアント側のラッパーは提供しない
-// (rules/frontend.md: useEffect + fetch 禁止)。
+// (FE 規約: useEffect + fetch 禁止)。
 
 export function updateMyFavoritePodcasts(podcastIds: string[]): Promise<FavoritePodcastListResult> {
   return apiPut<FavoritePodcastListResult>("/users/me/favorite-podcasts", { podcast_ids: podcastIds });
@@ -39,8 +39,8 @@ export function updateMyFavoritePodcasts(podcastIds: string[]): Promise<Favorite
  * Client Component の「もっと見る」ページネーション用。
  * SSR 初期取得は `lib/data/users.ts` の `getUserListeningRecords` を使うこと。
  *
- * `frontend.md`「ユーザー操作による追加データ取得はクライアント API で直接行う」
- * の規約に従い、Server Action ではなくここに置く。
+ * FE 規約「ユーザー操作による追加データ取得はクライアント API で直接行う」
+ * に従い、Server Action ではなくここに置く。
  */
 export function fetchUserListeningRecords(
   username: string,
