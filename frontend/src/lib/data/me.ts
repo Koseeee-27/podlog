@@ -89,5 +89,7 @@ export const getMyRecentEpisodes = cache(
 // 存在しない (`PUT` のみ存在)。お気に入り取得は公開エンドポイント
 // `/users/:username/favorite-podcasts` を使うため、`lib/data/users.ts` の
 // `getUserFavoritePodcasts(profile.username)` を呼び出すこと。
-// 自分自身を解決するには `getMyProfile()` を併用する (`cache()` 済みなので
-// 同一リクエスト内なら追加コストはほぼゼロ)。
+// 自分自身を解決するには `getMyProfile()` を併用する。`getMyProfile()` 自体は
+// `cache()` 済みのため、同一リクエスト内で他の Server Component が既に呼んで
+// いれば追加コストはほぼゼロだが、`getUserFavoritePodcasts` 側は別エンドポイント
+// なので 1 リクエスト追加される (DAL 側でメモ化されるのは関数引数が同じ場合のみ)。
