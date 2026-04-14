@@ -72,9 +72,15 @@ describe("getPopularPodcasts", () => {
 
     await getPopularPodcasts(6);
 
+    // limit 未指定ケースと同じく fetch オプション (revalidate / tags) も
+    // 明示検証して退行を取りこぼさない
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/podcasts/popular?limit=6",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 300, tags: ["popular-podcasts"] },
+      }),
     );
   });
 });

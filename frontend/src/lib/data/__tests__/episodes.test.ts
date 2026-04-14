@@ -71,9 +71,14 @@ describe("getEpisodeById", () => {
 
     await getEpisodeById("id with/slash");
 
+    // 未ログイン時 (Authorization なし) のオプションも明示検証する
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/episodes/id%20with%2Fslash",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 60 },
+      }),
     );
   });
 });
@@ -112,9 +117,17 @@ describe("getEpisodeListenStatus", () => {
 
     await getEpisodeListenStatus("listen with/slash");
 
+    // 認証必須エンドポイントなのでオプションも明示検証する
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/episodes/listen%20with%2Fslash/listen",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          Authorization: "Bearer jwt",
+        }),
+        cache: "no-store",
+      }),
     );
   });
 });

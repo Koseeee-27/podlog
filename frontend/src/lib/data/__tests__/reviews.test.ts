@@ -60,7 +60,11 @@ describe("getReviewsByEpisodeId", () => {
 
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/episodes/review-list-no-q/reviews",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 0 },
+      }),
     );
   });
 });

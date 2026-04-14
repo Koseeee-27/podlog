@@ -64,7 +64,11 @@ describe("getUserListeningRecords", () => {
 
     expect(mockApiFetch).toHaveBeenCalledWith(
       "/users/bob/listening-records",
-      expect.any(Object),
+      expect.objectContaining({
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        next: { revalidate: 0 },
+      }),
     );
   });
 });
