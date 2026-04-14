@@ -53,18 +53,6 @@ describe("getMyProfile", () => {
     const init = mockApiFetch.mock.calls[0][1];
     expect(init).not.toHaveProperty("next");
   });
-
-  // 「認証ヘッダーが空でも事前 throw しない」ケースは、cache() メモ化を
-  // 避けるためユニークな引数を持つ `getMyListeningRecords` で代替検証する。
-  // (`getMyProfile` / `getMyRecentEpisodes` を再度呼ぶとメモ化されてしまう)
-  it("認証必須 DAL は認証ヘッダーが空でも事前 throw せず apiFetch に委ねる", async () => {
-    mockGetAuthHeaders.mockResolvedValueOnce({});
-    mockApiFetch.mockResolvedValueOnce({ records: [], total: 0 });
-
-    // ユニークな limit (このファイル内で他のテストが使っていない値)
-    await expect(getMyListeningRecords(999)).resolves.toBeDefined();
-    expect(mockApiFetch).toHaveBeenCalled();
-  });
 });
 
 describe("getMyListeningRecords", () => {
@@ -99,6 +87,18 @@ describe("getMyListeningRecords", () => {
         cache: "no-store",
       }),
     );
+  });
+
+  // 「認証必須 DAL は認証ヘッダーが空でも事前 throw しない」共通挙動の検証。
+  // (getMyProfile / getMyRecentEpisodes は引数なしで cache() メモ化のため
+  //  ここではユニーク引数を取れる getMyListeningRecords で代表検証する)
+  it("認証ヘッダーが空でも事前 throw せず apiFetch に委ねる", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce({ records: [], total: 0 });
+
+    // ユニークな limit (このファイル内で他のテストが使っていない値)
+    await expect(getMyListeningRecords(999)).resolves.toBeDefined();
+    expect(mockApiFetch).toHaveBeenCalled();
   });
 });
 
