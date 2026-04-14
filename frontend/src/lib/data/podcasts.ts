@@ -97,11 +97,13 @@ export const searchPodcasts = cache(
     limit?: number;
     offset?: number;
   }): Promise<PodcastSearchResult> => {
-    // 空文字列の `q` は「未指定」として扱う (`q=` を URL に乗せると意味が変わる)。
-    // 同様に空文字列の `genre` も未指定扱いにする。
-    const hasFreeText = typeof params.q === "string" && params.q.length > 0;
-    const hasGenre =
-      typeof params.genre === "string" && params.genre.length > 0;
+    // 入力を trim して空白だけの文字列も「未指定」として扱う。
+    // ("   " のような空白のみ入力は検索条件としては無意味なため)
+    const trimmedQ = typeof params.q === "string" ? params.q.trim() : "";
+    const trimmedGenre =
+      typeof params.genre === "string" ? params.genre.trim() : "";
+    const hasFreeText = trimmedQ.length > 0;
+    const hasGenre = trimmedGenre.length > 0;
 
     // 検索条件 (`q` / `genre`) のいずれかが必須。
     // バックエンド (`backend/internal/handler/podcast.go: Search`) は
@@ -114,8 +116,8 @@ export const searchPodcasts = cache(
     }
 
     const search = new URLSearchParams();
-    if (hasFreeText) search.set("q", params.q as string);
-    if (hasGenre) search.set("genre", params.genre as string);
+    if (hasFreeText) search.set("q", trimmedQ);
+    if (hasGenre) search.set("genre", trimmedGenre);
     if (params.limit !== undefined) search.set("limit", String(params.limit));
     if (params.offset !== undefined)
       search.set("offset", String(params.offset));

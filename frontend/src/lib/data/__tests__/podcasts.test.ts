@@ -152,6 +152,35 @@ describe("searchPodcasts", () => {
     );
     expect(mockApiFetch).not.toHaveBeenCalled();
   });
+
+  it("q / genre が両方空白のみでも fail-fast で throw する (trim 後判定)", async () => {
+    await expect(
+      searchPodcasts({ q: "   ", genre: " \t\n " }),
+    ).rejects.toThrow(/searchPodcasts/);
+    expect(mockApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("q の前後空白は trim されて URL に乗る", async () => {
+    mockApiFetch.mockResolvedValueOnce({ podcasts: [], total: 0 });
+
+    await searchPodcasts({ q: "  hello world  " });
+
+    const call = mockApiFetch.mock.calls[0];
+    // q=hello+world (trim 後、URLSearchParams のスペースエンコード)
+    expect(call[0]).toContain("q=hello+world");
+    // 空白を含む生の値はクエリに乗らない
+    expect(call[0]).not.toContain("+++hello");
+  });
+
+  it("genre の前後空白も trim される", async () => {
+    mockApiFetch.mockResolvedValueOnce({ podcasts: [], total: 0 });
+
+    await searchPodcasts({ genre: "  news-trim-test  " });
+
+    const call = mockApiFetch.mock.calls[0];
+    expect(call[0]).toContain("genre=news-trim-test");
+    expect(call[0]).not.toContain("genre=+");
+  });
 });
 
 describe("getPodcastEpisodes", () => {
