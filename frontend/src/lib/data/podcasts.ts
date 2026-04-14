@@ -97,18 +97,29 @@ export const searchPodcasts = cache(
     limit?: number;
     offset?: number;
   }): Promise<PodcastSearchResult> => {
-    // 空文字列の `q` は「未指定」として扱う。`q=` を URL に乗せたまま
-    // `revalidate: 60` で長期キャッシュすると、バックエンドが空 q を
-    // 全件返す等の挙動になった場合に意図しないレスポンスがキャッシュに乗る。
+    // 空文字列の `q` は「未指定」として扱う (`q=` を URL に乗せると意味が変わる)。
+    // 同様に空文字列の `genre` も未指定扱いにする。
     const hasFreeText = typeof params.q === "string" && params.q.length > 0;
+    const hasGenre =
+      typeof params.genre === "string" && params.genre.length > 0;
+
+    // 検索条件 (`q` / `genre`) のいずれかが必須。
+    // バックエンド (`backend/internal/handler/podcast.go: Search`) は
+    // `q == "" && genre == ""` のとき 400 を返す。DAL 側で fail-fast にする
+    // ことで、呼び出し側の誤呼び出しをランタイム前に分かりやすい形で表面化する。
+    if (!hasFreeText && !hasGenre) {
+      throw new Error(
+        "searchPodcasts: 'q' または 'genre' のいずれかを指定してください",
+      );
+    }
 
     const search = new URLSearchParams();
     if (hasFreeText) search.set("q", params.q as string);
-    if (params.genre !== undefined) search.set("genre", params.genre);
+    if (hasGenre) search.set("genre", params.genre as string);
     if (params.limit !== undefined) search.set("limit", String(params.limit));
     if (params.offset !== undefined)
       search.set("offset", String(params.offset));
-    const query = search.toString() ? `?${search.toString()}` : "";
+    const query = `?${search.toString()}`;
 
     // フリーワード指定時はキャッシュしない (検索結果は無数 + iTunes フォール
     // バックの副作用あり)。そうでなければ 60 秒キャッシュ。

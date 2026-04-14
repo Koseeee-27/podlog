@@ -136,6 +136,22 @@ describe("searchPodcasts", () => {
       expect.objectContaining({ next: { revalidate: 60 } }),
     );
   });
+
+  it("q / genre が両方未指定なら fail-fast で throw する (apiFetch を呼ばない)", async () => {
+    // バックエンドの /podcasts/search ハンドラは q / genre が両方空だと 400 を
+    // 返す。DAL 側でも明示的に throw して呼び出し側の誤呼び出しを早期発見する。
+    await expect(searchPodcasts({})).rejects.toThrow(
+      /searchPodcasts.*'q'.*'genre'/,
+    );
+    expect(mockApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("q / genre が両方空文字列でも fail-fast で throw する", async () => {
+    await expect(searchPodcasts({ q: "", genre: "" })).rejects.toThrow(
+      /searchPodcasts/,
+    );
+    expect(mockApiFetch).not.toHaveBeenCalled();
+  });
 });
 
 describe("getPodcastEpisodes", () => {
