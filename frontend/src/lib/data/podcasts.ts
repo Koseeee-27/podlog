@@ -48,7 +48,10 @@ export const getPodcastById = cache(
  */
 export const getPopularPodcasts = cache(
   async (limit?: number): Promise<PodcastSearchResult> => {
-    const query = limit !== undefined ? `?limit=${limit}` : "";
+    const search = new URLSearchParams();
+    if (limit !== undefined) search.set("limit", String(limit));
+    const query = search.toString() ? `?${search.toString()}` : "";
+
     return apiFetch<PodcastSearchResult>(`/podcasts/popular${query}`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
@@ -94,17 +97,22 @@ export const searchPodcasts = cache(
     limit?: number;
     offset?: number;
   }): Promise<PodcastSearchResult> => {
+    // 空文字列の `q` は「未指定」として扱う。`q=` を URL に乗せたまま
+    // `revalidate: 60` で長期キャッシュすると、バックエンドが空 q を
+    // 全件返す等の挙動になった場合に意図しないレスポンスがキャッシュに乗る。
+    const hasFreeText = typeof params.q === "string" && params.q.length > 0;
+
     const search = new URLSearchParams();
-    if (params.q !== undefined) search.set("q", params.q);
+    if (hasFreeText) search.set("q", params.q as string);
     if (params.genre !== undefined) search.set("genre", params.genre);
     if (params.limit !== undefined) search.set("limit", String(params.limit));
     if (params.offset !== undefined)
       search.set("offset", String(params.offset));
     const query = search.toString() ? `?${search.toString()}` : "";
 
-    // q (フリーワード) 指定時はキャッシュしない。そうでなければ 60 秒キャッシュ。
-    const isFreeText = params.q !== undefined && params.q !== "";
-    const revalidate = isFreeText ? 0 : 60;
+    // フリーワード指定時はキャッシュしない (検索結果は無数 + iTunes フォール
+    // バックの副作用あり)。そうでなければ 60 秒キャッシュ。
+    const revalidate = hasFreeText ? 0 : 60;
 
     return apiFetch<PodcastSearchResult>(`/podcasts/search${query}`, {
       method: "GET",

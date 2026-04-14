@@ -1,5 +1,11 @@
 /**
  * podcasts DAL のユニットテスト。
+ *
+ * 注意: DAL 関数は React `cache()` でラップされているため、同一テストファイル
+ * 内で同じ引数を複数回渡すと 2 回目以降 `apiFetch` が呼ばれない (リクエスト
+ * スコープのメモ化)。各テストではユニークな id / クエリパラメータを使うか、
+ * 別関数を呼ぶことでメモ化のヒットを避けている。新しいテストを追加する際は
+ * この点に注意。
  */
 import {
   getPodcastById,
@@ -111,6 +117,21 @@ describe("searchPodcasts", () => {
     expect(call[0]).toContain("genre=news");
     expect(call[0]).toContain("limit=20");
     expect(call[0]).toContain("offset=0");
+    expect(call[1]).toEqual(
+      expect.objectContaining({ next: { revalidate: 60 } }),
+    );
+  });
+
+  it("空文字列の q は「未指定」として扱い、URL にも乗せず revalidate: 60 にフォールバック", async () => {
+    mockApiFetch.mockResolvedValueOnce({ podcasts: [], total: 0 });
+
+    await searchPodcasts({ q: "", genre: "news-empty-q" });
+
+    const call = mockApiFetch.mock.calls[0];
+    // q= が URL に乗っていない
+    expect(call[0]).not.toContain("q=");
+    expect(call[0]).toContain("genre=news-empty-q");
+    // revalidate は 60 秒側にフォールバック (フリーワード判定が false なので)
     expect(call[1]).toEqual(
       expect.objectContaining({ next: { revalidate: 60 } }),
     );

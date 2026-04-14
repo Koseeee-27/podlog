@@ -1,5 +1,9 @@
 /**
  * reviews DAL のユニットテスト。
+ *
+ * 注意: DAL 関数は React `cache()` でラップされているため、同一テストファイル
+ * 内で同じ引数を複数回渡すと 2 回目以降 `apiFetch` が呼ばれない。各テストでは
+ * ユニークな episodeId を使ってメモ化のヒットを避けている。
  */
 import { getReviewsByEpisodeId, getMyReview } from "../reviews";
 import { apiFetch } from "@/lib/api/fetch";
