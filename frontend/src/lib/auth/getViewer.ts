@@ -43,6 +43,10 @@ export const getViewer = cache(async (): Promise<Viewer> => {
   }
 
   try {
+    // Authorization ヘッダー付き fetch に `cache: "no-store"` を明示する。
+    // `next: { revalidate }` と同時指定はしない (Next.js 16 では併用時に
+    // 警告が出る場合があり、また別ユーザーのレスポンスが Next.js の fetch
+    // キャッシュに混ざるリスクを確実に避けるため)。
     const profile = await apiFetch<User>("/users/me", {
       method: "GET",
       headers: {

@@ -24,12 +24,16 @@ import { createClient } from "@/lib/supabase/server";
 export const getAuthHeaders = cache(
   async (): Promise<Record<string, string>> => {
     const cookieStore = await cookies();
+    // Supabase SSR の認証 Cookie は `sb-<project-ref>-auth-token` 形式。
+    // PodLog は Supabase プロジェクトを 1 つしか使わない前提で `sb-` prefix 判定を採用。
+    // 将来複数プロジェクトを同一ドメインで併用する場合は、具体的な project-ref を含む
+    // 正確な Cookie 名で判定すること (無関係な sb- Cookie で誤作動するため)。
     const hasAuthCookie = cookieStore
       .getAll()
       .some((c) => c.name.startsWith("sb-"));
 
     // Supabase の認証 Cookie がなければ未ログイン確定。
-    // Supabase クライアント生成コスト (getAll() + createServerClient()) を
+    // Supabase クライアント生成コスト (createServerClient()) を
     // スキップするための最速パス。
     if (!hasAuthCookie) return {};
 

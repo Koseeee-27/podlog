@@ -45,6 +45,12 @@ export type ApiFetchInit = RequestInit & {
  * - 200 系以外のレスポンスは {@link ApiRequestError} として throw する
  * - 204 No Content は `undefined` として返す (T が void のときに利用)
  *
+ * **注意**: リトライ時は `init` をそのまま `fetch()` に再利用する。呼び出し側が
+ * `body` に ReadableStream を渡すと 2 回目の `fetch()` で「already read」になる。
+ * 現状の呼び出し経路 (`serverPost`/`serverPut`) は `JSON.stringify` 済み文字列しか
+ * 渡さないため問題ないが、将来ストリーム body を渡す場合はリトライ対象を GET 限定の
+ * 現設計と整合させること (非 GET はリトライしない設計なので body 問題は発生しない)。
+ *
  * @throws {ApiRequestError} レスポンスが 2xx 以外の場合
  * @throws {Error} fetch 自体がネットワークエラーで失敗した場合
  */
@@ -55,6 +61,9 @@ export async function apiFetch<T>(
   const url = `${getApiBaseUrl()}${path}`;
   const method = (init?.method ?? "GET").toUpperCase();
   const isGet = method === "GET";
+  // 非 GET は maxAttempts = 1 なので、下の for ループの `continue` 分岐
+  // (isGet && attempt === 0 の条件付き) には到達しない。冪等でない POST/PUT/DELETE
+  // をリトライしない設計のため。
   const maxAttempts = isGet ? 2 : 1;
 
   let response: Response | undefined;
@@ -67,6 +76,8 @@ export async function apiFetch<T>(
       lastError = err;
       response = undefined;
       if (isGet && attempt === 0) {
+        // 注意: path にクエリ文字列が含まれる場合、将来的に秘匿情報が混じる設計に
+        // なったらここでマスクすること。現状の /users/me 等のパスは PII を含まない。
         console.warn(`[apiFetch] ${path} network error, retrying...`, err);
         await new Promise((r) => setTimeout(r, 1000));
         continue;
@@ -94,10 +105,14 @@ export async function apiFetch<T>(
   }
 
   if (!response.ok) {
-    const body = await response
-      .json()
-      .catch(() => ({ error: "Unknown error" }));
-    throw new ApiRequestError(response.status, body.error || "Request failed");
+    // catch 時のデフォルトを空オブジェクトにし、`|| "Request failed"` フォールバック
+    // を活かす (こうしておくことで `{ error: "Unknown error" }` のようなデッドコードに
+    // ならない)。
+    const body = await response.json().catch(() => ({}));
+    throw new ApiRequestError(
+      response.status,
+      body?.error || "Request failed",
+    );
   }
 
   // 204 No Content はボディなし (DELETE 等)

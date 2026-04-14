@@ -179,14 +179,14 @@ describe("apiFetch", () => {
     expect(mockFetch).toHaveBeenCalledTimes(1);
   });
 
-  it("エラーレスポンスが JSON でない場合は 'Unknown error' をメッセージにする", async () => {
+  it("エラーレスポンスが JSON でない場合は 'Request failed' をメッセージにする", async () => {
     mockFetch.mockResolvedValueOnce(nonJsonErrorResponse(500));
     mockFetch.mockResolvedValueOnce(nonJsonErrorResponse(500));
 
     const promise = apiFetch("/podcasts");
     const assertion = expect(promise).rejects.toMatchObject({
       status: 500,
-      message: "Unknown error",
+      message: "Request failed",
     });
     await flushRetryDelay();
     await assertion;

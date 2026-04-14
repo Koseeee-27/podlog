@@ -87,7 +87,9 @@ export async function serverDelete(path: string): Promise<void> {
   const authHeaders = await getAuthHeaders();
   await apiFetch<void>(path, {
     method: "DELETE",
-    // DELETE はボディを送らないため Content-Type を付けない
+    // 現状の PodLog API は DELETE でリクエストボディを送らないため
+    // Content-Type は付けない。将来 DELETE で body を送る API が
+    // 追加されたら個別に Content-Type を指定すること。
     headers: authHeaders,
   });
 }
