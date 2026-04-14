@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { serverGet } from "@/lib/api/server";
+import { getGenres } from "@/lib/data/genres";
+import { searchPodcasts } from "@/lib/data/podcasts";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenrePodcastsLoadMore from "@/components/discover/GenrePodcastsLoadMore";
 import EmptyState from "@/components/ui/EmptyState";
 import { MicrophoneIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
-import type { PodcastSearchResult } from "@/types/podcast";
-import type { GenreListResponse } from "@/types/genre";
 
 const PAGE_SIZE = 20;
 
@@ -21,18 +20,9 @@ interface GenrePodcastsSectionProps {
 export default async function GenrePodcastsSection({
   genre,
 }: GenrePodcastsSectionProps) {
-  const genreParams = new URLSearchParams({
-    genre,
-    limit: String(PAGE_SIZE),
-    offset: "0",
-  });
-
   const [genresSettled, podcastsResult] = await Promise.allSettled([
-    serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
-    serverGet<PodcastSearchResult>(
-      `/podcasts/search?${genreParams.toString()}`,
-      { noAuth: true, revalidate: 60 },
-    ),
+    getGenres(),
+    searchPodcasts({ genre, limit: PAGE_SIZE, offset: 0 }),
   ]);
 
   // 番組検索は必須 — 失敗時は ErrorBoundary に委譲

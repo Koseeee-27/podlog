@@ -1,6 +1,5 @@
-import { serverGet } from "@/lib/api/server";
+import { getPodcastRating } from "@/lib/data/podcasts";
 import RatingDisplay from "./RatingDisplay";
-import type { PodcastRatingResult } from "@/types/review";
 
 interface RatingSectionProps {
   podcastId: string;
@@ -20,10 +19,7 @@ interface RatingSectionProps {
  * `componentDidCatch` でエラー監視サービス（Sentry 等）に送信可能。
  */
 export default async function RatingSection({ podcastId }: RatingSectionProps) {
-  const result = await serverGet<PodcastRatingResult>(
-    `/podcasts/${encodeURIComponent(podcastId)}/rating`,
-    { noAuth: true, revalidate: 60 },
-  );
+  const result = await getPodcastRating(podcastId);
 
   return (
     <RatingDisplay

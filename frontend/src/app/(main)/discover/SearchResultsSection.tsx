@@ -1,9 +1,8 @@
-import { serverGet } from "@/lib/api/server";
+import { searchPodcasts } from "@/lib/data/podcasts";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import EmptyState from "@/components/ui/EmptyState";
 import PodcastRequestPrompt from "./PodcastRequestPrompt";
 import { MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-import type { PodcastSearchResult } from "@/types/podcast";
 
 interface SearchResultsSectionProps {
   query: string;
@@ -16,10 +15,7 @@ interface SearchResultsSectionProps {
 export default async function SearchResultsSection({
   query,
 }: SearchResultsSectionProps) {
-  const result = await serverGet<PodcastSearchResult>(
-    `/podcasts/search?q=${encodeURIComponent(query)}`,
-    { noAuth: true, revalidate: 0 },
-  );
+  const result = await searchPodcasts({ q: query });
   const podcasts = result.podcasts;
 
   if (podcasts.length === 0) {
