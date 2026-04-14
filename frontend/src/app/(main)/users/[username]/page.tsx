@@ -6,6 +6,7 @@ import {
   getUserListeningRecords,
   getUserReviews,
 } from "@/lib/data/users";
+import { getViewer } from "@/lib/auth/getViewer";
 import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
 import type { UserPublicProfile } from "@/types/user";
@@ -32,6 +33,11 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     throw err;
   }
 
+  // Client Component で「自分自身のプロフィールか」「管理者か」を判定するため、
+  // Server Component で getViewer() を呼んで viewer を解決してから渡す。
+  // layout.tsx で既に呼ばれていても React cache() で重複排除される。
+  const viewer = await getViewer();
+
   // 各セクションのデータを Promise として作成（await しない）。
   // プロフィール取得で DB が起きているのでコールドスタートの影響を受けにくい。
   // ユーザー操作で頻繁に変わるデータなので DAL 側で `revalidate: 0` (キャッシュなし)。
@@ -43,6 +49,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     <PublicProfileClient
       username={username}
       initialProfile={profile}
+      viewer={viewer}
       favoritesPromise={favoritesPromise}
       recordsPromise={recordsPromise}
       reviewsPromise={reviewsPromise}

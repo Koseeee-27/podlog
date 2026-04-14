@@ -43,7 +43,7 @@ export default async function ProfileEditPage() {
 
   return (
     <ProfileEditClient
-      initialProfile={profile}
+      profile={profile}
       initialFavoritePodcasts={favorites.podcasts}
     />
   );

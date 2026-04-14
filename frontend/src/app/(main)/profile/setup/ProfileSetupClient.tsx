@@ -1,16 +1,21 @@
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import ProfileSetupForm from "@/components/profile/ProfileSetupForm";
-import Loading from "@/components/ui/Loading";
 
+/**
+ * 初回プロフィール作成画面のクライアント境界。
+ *
+ * 認証チェックとプロフィール未作成チェックは Server Component (page.tsx) で
+ * 完了済みのため、ここでは loading 分岐は不要。保存完了時は `router.refresh()`
+ * で Server Component ツリーを再実行し、`getViewer()` が
+ * `authenticated` になった状態でホームに遷移する。
+ */
 export default function ProfileSetupClient() {
-  const auth = useAuth();
+  const router = useRouter();
 
-  // 認証チェックとプロフィール存在チェックは Server Component (page.tsx) で完了済み
-  // auth がまだロード中の場合はローディングを表示
-  if (auth.status === "loading") {
-    return <Loading />;
+  async function handleComplete() {
+    router.refresh();
   }
 
   return (
@@ -20,7 +25,7 @@ export default function ProfileSetupClient() {
         <p className="mt-1 text-stone-600">はじめに、プロフィールを設定しましょう</p>
       </div>
       <div className="bg-white rounded-xl shadow-sm border border-stone-200 p-6">
-        <ProfileSetupForm onComplete={auth.refreshProfile} />
+        <ProfileSetupForm onComplete={handleComplete} />
       </div>
     </div>
   );

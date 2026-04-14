@@ -1,47 +1,43 @@
 "use client";
 
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
+import { useRouter } from "next/navigation";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import { ChevronRightIcon, ShieldCheckIcon } from "@heroicons/react/24/outline";
+import { signOut } from "@/lib/auth/signOut";
 import type { User } from "@/types/user";
 
 interface SettingsClientProps {
-  initialProfile: User | null;
+  /** Server Component (page.tsx) で解決済みのプロフィール。 */
+  profile: User;
 }
 
-export default function SettingsClient({ initialProfile }: SettingsClientProps) {
-  const auth = useAuth();
-
-  // クライアント側の認証状態がロード済みならそちらを優先、そうでなければサーバーから渡されたデータを使用
-  const profile =
-    auth.status === "authenticated" ? auth.profile : initialProfile;
+export default function SettingsClient({ profile }: SettingsClientProps) {
+  const router = useRouter();
 
   return (
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-stone-900 mb-6">設定</h1>
 
       <div className="space-y-4">
-        {profile && (
-          <Card padding="lg">
-            <h2 className="text-lg font-semibold text-stone-900 mb-2">アカウント情報</h2>
-            <dl className="space-y-2 text-sm">
-              <div className="flex gap-2">
-                <dt className="text-stone-500 w-24">ユーザー名</dt>
-                <dd className="text-stone-900">@{profile.username}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="text-stone-500 w-24">表示名</dt>
-                <dd className="text-stone-900">{profile.display_name}</dd>
-              </div>
-              <div className="flex gap-2">
-                <dt className="text-stone-500 w-24">ログイン方法</dt>
-                <dd className="text-stone-900">Google</dd>
-              </div>
-            </dl>
-          </Card>
-        )}
+        <Card padding="lg">
+          <h2 className="text-lg font-semibold text-stone-900 mb-2">アカウント情報</h2>
+          <dl className="space-y-2 text-sm">
+            <div className="flex gap-2">
+              <dt className="text-stone-500 w-24">ユーザー名</dt>
+              <dd className="text-stone-900">@{profile.username}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-stone-500 w-24">表示名</dt>
+              <dd className="text-stone-900">{profile.display_name}</dd>
+            </div>
+            <div className="flex gap-2">
+              <dt className="text-stone-500 w-24">ログイン方法</dt>
+              <dd className="text-stone-900">Google</dd>
+            </div>
+          </dl>
+        </Card>
 
         <Link href="/settings/profile" className="block">
           <Card padding="lg" className="flex items-center justify-between hover:bg-stone-50 transition-colors cursor-pointer">
@@ -55,7 +51,7 @@ export default function SettingsClient({ initialProfile }: SettingsClientProps) 
           </Card>
         </Link>
 
-        {profile?.is_admin && (
+        {profile.is_admin && (
           <Link href="/admin" className="block">
             <Card padding="lg" className="flex items-center justify-between hover:bg-rose-50 transition-colors cursor-pointer border-rose-100">
               <div className="flex items-center gap-3">
@@ -80,8 +76,7 @@ export default function SettingsClient({ initialProfile }: SettingsClientProps) 
           <Button
             variant="danger"
             onClick={async () => {
-              await auth.signOut();
-              window.location.href = "/login";
+              await signOut(router);
             }}
           >
             ログアウト

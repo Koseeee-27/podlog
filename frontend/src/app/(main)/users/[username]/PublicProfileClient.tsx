@@ -2,7 +2,6 @@
 
 import { Suspense } from "react";
 import Link from "next/link";
-import { useAuth } from "@/hooks/useAuth";
 import Avatar from "@/components/ui/Avatar";
 import Card from "@/components/ui/Card";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -12,6 +11,7 @@ import AdminBadge from "@/components/ui/AdminBadge";
 import type { UserPublicProfile, FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
+import type { Viewer } from "@/lib/auth/getViewer";
 import { SectionSkeleton, SectionError } from "./SectionFallbacks";
 import FavoritePodcastsLoader from "./FavoritePodcastsLoader";
 import ListeningHistoryLoader from "./ListeningHistoryLoader";
@@ -20,6 +20,8 @@ import ReviewListLoader from "./ReviewListLoader";
 interface PublicProfileClientProps {
   username: string;
   initialProfile: UserPublicProfile;
+  /** 閲覧者自身の状態 (Server Component で解決済み)。 */
+  viewer: Viewer;
   favoritesPromise: Promise<FavoritePodcastListResult>;
   recordsPromise: Promise<ListeningRecordListResult>;
   reviewsPromise: Promise<UserReviewListResult>;
@@ -28,12 +30,14 @@ interface PublicProfileClientProps {
 export default function PublicProfileClient({
   username,
   initialProfile,
+  viewer,
   favoritesPromise,
   recordsPromise,
   reviewsPromise,
 }: PublicProfileClientProps) {
-  const auth = useAuth();
-  const isOwnProfile = auth.status === "authenticated" && auth.profile.username === username;
+  const isOwnProfile =
+    viewer.status === "authenticated" && viewer.profile.username === username;
+  const isOwnAdmin = isOwnProfile && viewer.profile.is_admin;
 
   return (
     <div className="max-w-2xl mx-auto space-y-8">
@@ -53,9 +57,7 @@ export default function PublicProfileClient({
             <div className="text-center sm:text-left">
               <div className="flex items-center gap-2 justify-center sm:justify-start flex-wrap">
                 <h1 className="text-2xl font-bold text-stone-900">{initialProfile.display_name}</h1>
-                {isOwnProfile && auth.status === "authenticated" && auth.profile.is_admin && (
-                  <AdminBadge />
-                )}
+                {isOwnAdmin && <AdminBadge />}
               </div>
               <p className="text-stone-500">@{initialProfile.username}</p>
               {initialProfile.bio && (

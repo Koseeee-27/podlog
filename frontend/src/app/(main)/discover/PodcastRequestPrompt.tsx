@@ -1,14 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/hooks/useAuth";
 import PodcastRequestDialog from "@/components/discover/PodcastRequestDialog";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import { PlusCircleIcon } from "@heroicons/react/24/outline";
 
-export default function PodcastRequestPrompt() {
+interface PodcastRequestPromptProps {
+  /** 呼び出し側 (page.tsx 等) が `getViewer()` を使って解決したログイン状態。 */
+  isLoggedIn: boolean;
+}
+
+/**
+ * 検索結果が 0 件のときに表示する「番組追加をリクエスト」プロンプト。
+ * ログイン状態は Server Component で確定させて props で受け取り、
+ * このコンポーネント自体では認証フックを使わない。
+ */
+export default function PodcastRequestPrompt({
+  isLoggedIn,
+}: PodcastRequestPromptProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
-  const auth = useAuth();
 
   return (
     <>
@@ -20,8 +30,7 @@ export default function PodcastRequestPrompt() {
           番組の追加をリクエストできます
         </p>
         <div className="mt-4">
-          {auth.status === "authenticated" ||
-          auth.status === "no_profile" ? (
+          {isLoggedIn ? (
             <button
               type="button"
               onClick={() => setDialogOpen(true)}

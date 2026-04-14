@@ -1,4 +1,5 @@
 import { searchPodcasts } from "@/lib/data/podcasts";
+import { getViewer } from "@/lib/auth/getViewer";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import EmptyState from "@/components/ui/EmptyState";
 import PodcastRequestPrompt from "./PodcastRequestPrompt";
@@ -11,12 +12,20 @@ interface SearchResultsSectionProps {
 /**
  * 検索結果セクション。
  * 取得失敗時は throw して ErrorBoundary に委譲する。
+ *
+ * 0 件時の PodcastRequestPrompt にログイン状態を渡すため `getViewer()` を
+ * 呼ぶ。`cache()` でメモ化されているので layout.tsx で既に呼ばれていても
+ * 追加コストはほぼゼロ。
  */
 export default async function SearchResultsSection({
   query,
 }: SearchResultsSectionProps) {
-  const result = await searchPodcasts({ q: query });
+  const [result, viewer] = await Promise.all([
+    searchPodcasts({ q: query }),
+    getViewer(),
+  ]);
   const podcasts = result.podcasts;
+  const isLoggedIn = viewer.status !== "guest";
 
   if (podcasts.length === 0) {
     return (
@@ -26,7 +35,7 @@ export default async function SearchResultsSection({
           message={`"${query}" に一致するポッドキャストが見つかりませんでした`}
           description="別のキーワードで試してみてください"
         />
-        <PodcastRequestPrompt />
+        <PodcastRequestPrompt isLoggedIn={isLoggedIn} />
       </>
     );
   }
