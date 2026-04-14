@@ -1,0 +1,54 @@
+/**
+ * Server Component / DAL 向け認証ヘッダー取得ヘルパー。
+ *
+ * Supabase SSR の Cookie から JWT を取り出し、
+ * `Authorization: Bearer <token>` ヘッダーを組み立てる。
+ *
+ * - Cookie がない場合は Supabase クライアントの生成すらスキップ (最速パス)
+ * - 認証されていなければ空オブジェクト `{}` を返す
+ * - 本物の例外 (Supabase の内部エラー等) は握りつぶさず呼び出し側に投げる
+ *
+ * 戻り値の型は敢えて `Record<string, string>` に narrow している。
+ * `HeadersInit` ユニオン型のままだと呼び出し側で `"Authorization" in headers`
+ * の判定が `Headers` インスタンスや配列形式で誤作動するため
+ * (frontend.md のコーディング規約参照)。
+ *
+ * React の `cache()` でラップしているため、同一リクエスト内で複数回呼ばれても
+ * Supabase への問い合わせは 1 回しか行われない。
+ */
+import "server-only";
+import { cache } from "react";
+import { cookies } from "next/headers";
+import { createClient } from "@/lib/supabase/server";
+
+/**
+ * Supabase SSR の Cookie から JWT を取り出して認証ヘッダーを返す。
+ * ログイン済みなら `{ Authorization: "Bearer ..." }`、未ログインなら `{}`。
+ * React `cache()` でリクエストスコープメモ化。詳細はモジュール冒頭の JSDoc を参照。
+ */
+export const getAuthHeaders = cache(
+  async (): Promise<Record<string, string>> => {
+    const cookieStore = await cookies();
+    // Supabase SSR の認証 Cookie は `sb-<project-ref>-auth-token` 形式。
+    // PodLog は Supabase プロジェクトを 1 つしか使わない前提で `sb-` prefix 判定を採用。
+    // 将来複数プロジェクトを同一ドメインで併用する場合は、具体的な project-ref を含む
+    // 正確な Cookie 名で判定すること (無関係な sb- Cookie で誤作動するため)。
+    const hasAuthCookie = cookieStore
+      .getAll()
+      .some((c) => c.name.startsWith("sb-"));
+
+    // Supabase の認証 Cookie がなければ未ログイン確定。
+    // Supabase クライアント生成コスト (createServerClient()) を
+    // スキップするための最速パス。
+    if (!hasAuthCookie) return {};
+
+    const supabase = await createClient();
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (!session?.access_token) return {};
+
+    return { Authorization: `Bearer ${session.access_token}` };
+  },
+);
