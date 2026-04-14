@@ -1,8 +1,7 @@
-import { serverGet } from "@/lib/api/server";
+import { getGenres } from "@/lib/data/genres";
+import { getPopularPodcasts } from "@/lib/data/podcasts";
 import PodcastCard from "@/components/podcast/PodcastCard";
 import GenreGrid from "@/components/discover/GenreGrid";
-import type { PodcastSearchResult } from "@/types/podcast";
-import type { GenreListResponse } from "@/types/genre";
 
 /**
  * 探すページのデフォルト表示（ジャンル一覧 + 人気の番組）。
@@ -12,11 +11,8 @@ import type { GenreListResponse } from "@/types/genre";
  */
 export default async function DefaultSection() {
   const [genresSettled, popularSettled] = await Promise.allSettled([
-    serverGet<GenreListResponse>("/genres", { noAuth: true, revalidate: 300 }),
-    serverGet<PodcastSearchResult>("/podcasts/popular?limit=6", {
-      noAuth: true,
-      revalidate: 300,
-    }),
+    getGenres(),
+    getPopularPodcasts(6),
   ]);
 
   // 両方失敗した場合は ErrorBoundary に委譲

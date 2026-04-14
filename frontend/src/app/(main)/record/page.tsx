@@ -1,12 +1,11 @@
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
 import { RecentEpisodesSkeleton } from "./skeletons";
-import type { User } from "@/types/user";
 
 // 認証ユーザーごとにデータが異なるため、静的生成をスキップする
 export const dynamic = "force-dynamic";
@@ -14,9 +13,16 @@ export const dynamic = "force-dynamic";
 /**
  * /record ページ（保護ページ）。
  *
- * 認証チェックは middleware で完了済み。
- * ここではプロフィール確認のみ行い、未設定ならセットアップへ誘導する。
- * serverGet("/users/me") が 401 を返した場合はセッション期限切れとして /login へ。
+ * 認証チェックは middleware (`/record` は保護パス) で完了済み。
+ * page 側では `getMyProfile()` の 401/403/404 catch でフォローアップする
+ * (FE 規約: 認証情報の取得は DAL/getViewer に集約し、Server Component から
+ * Supabase クライアントを直接呼ばない)。
+ *
+ * 他の 4 保護ページ (settings/admin/settings/profile/profile/setup) と
+ * 同じ catch パターンに統一:
+ * - 401/403 (セッション失効) → /login
+ * - 404 (プロフィール未設定) → /profile/setup
+ * - 500 系 → throw
  *
  * 検索セクション（Client）と新着エピソードセクション（Server / Suspense）は
  * 対等な兄弟として配置する。新着エピソードの取得は Suspense で分離し、
@@ -25,12 +31,19 @@ export const dynamic = "force-dynamic";
 export default async function RecordPage() {
   // プロフィール確認（認証チェックは middleware で完了済み）
   try {
-    await serverGet<User>("/users/me");
+    await getMyProfile();
   } catch (err) {
     if (err instanceof ApiRequestError) {
-      if (err.status === 404) redirect("/profile/setup");
-      if (err.status === 401) redirect("/login");
+      // 401/403 = セッション失効 → /login
+      if (err.status === 401 || err.status === 403) {
+        redirect("/login");
+      }
+      // 404 = プロフィール未設定 → セットアップへ
+      if (err.status === 404) {
+        redirect("/profile/setup");
+      }
     }
+    // 500 等のサーバーエラー、または redirect() の特殊 throw は再 throw
     throw err;
   }
 

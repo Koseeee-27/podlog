@@ -1,7 +1,7 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { uuidSchema } from "@/lib/schemas/common";
-import { serverGet } from "@/lib/api/server";
+import { getPodcastById } from "@/lib/data/podcasts";
 import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastDetail from "@/components/podcast/PodcastDetail";
@@ -25,10 +25,7 @@ export default async function PodcastPage({ params }: PodcastPageProps) {
   // podcast 詳細は必須データ — 取得できなければ 404
   let podcast: PodcastDetailResult;
   try {
-    podcast = await serverGet<PodcastDetailResult>(`/podcasts/${encodeURIComponent(id)}`, {
-      noAuth: true,
-      revalidate: 60,
-    });
+    podcast = await getPodcastById(id);
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) {
       notFound();

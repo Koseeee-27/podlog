@@ -5,7 +5,7 @@ import UserReviewListSection from "@/components/profile/UserReviewList";
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { UserReviewListResult } from "@/types/review";
-import { loadMoreReviews } from "./actions";
+import { fetchUserReviews } from "@/lib/api/users";
 import { PAGE_SIZE } from "./constants";
 
 /**
@@ -27,7 +27,10 @@ export default function ReviewListLoader({
 // 「もっと見る」のページネーションを管理するコンポーネント
 //
 // - useTransition で連打防止（isPending は即座に true になるため、useState より安全）
-// - Server Action のエラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
+// - クライアント API (`fetchUserReviews`) で直接取得する
+//   (FE 規約「ユーザー操作による追加データ取得はクライアント API で直接行う」
+//    に従い、Server Action は使わない)
+// - エラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
 // - total はサーバーの最新値で更新し、hasMore の判定が正確になるようにする
 // ---------------------------------------------------------------------------
 
@@ -48,7 +51,7 @@ function ReviewListWithLoadMore({
     startTransition(async () => {
       try {
         setError(null);
-        const data = await loadMoreReviews(username, reviews.length, PAGE_SIZE);
+        const data = await fetchUserReviews(username, PAGE_SIZE, reviews.length);
         setReviews((prev) => [...prev, ...(data.reviews ?? [])]);
         setTotal(data.total);
       } catch (err) {

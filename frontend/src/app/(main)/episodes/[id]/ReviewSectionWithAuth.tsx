@@ -1,8 +1,8 @@
-import { serverGet } from "@/lib/api/server";
+import { getReviewsByEpisodeId, getMyReview } from "@/lib/data/reviews";
 import { ApiRequestError } from "@/types/api";
 import EpisodeReviewSection from "@/components/review/EpisodeReviewSection";
 import { REVIEW_PAGE_SIZE } from "@/lib/constants";
-import type { ReviewListResult, MyReviewResult } from "@/types/review";
+import type { MyReviewResult } from "@/types/review";
 
 /**
  * 自分のレビュー取得結果の判別 union。
@@ -29,15 +29,10 @@ export default async function ReviewSectionWithAuth({
 }: {
   episodeId: string;
 }) {
-  const encodedId = encodeURIComponent(episodeId);
-
   // レビュー一覧と自分のレビューを並列取得
   const [reviewsData, myReviewResult] = await Promise.all([
-    serverGet<ReviewListResult>(
-      `/episodes/${encodedId}/reviews?limit=${REVIEW_PAGE_SIZE}&offset=0`,
-      { noAuth: true, revalidate: 0 },
-    ),
-    serverGet<MyReviewResult>(`/episodes/${encodedId}/reviews/mine`)
+    getReviewsByEpisodeId(episodeId, REVIEW_PAGE_SIZE, 0),
+    getMyReview(episodeId)
       .then<MyReviewFetchResult>((review) => ({ kind: "ok", review }))
       .catch<MyReviewFetchResult>((err) => {
         // 認証関連のエラーは正常系として扱う

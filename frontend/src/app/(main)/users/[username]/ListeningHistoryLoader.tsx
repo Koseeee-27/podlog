@@ -5,7 +5,7 @@ import UserListeningHistorySection from "@/components/profile/UserListeningHisto
 import ErrorMessage from "@/components/ui/ErrorMessage";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { ListeningRecordListResult } from "@/types/listening-record";
-import { loadMoreListeningRecords } from "./actions";
+import { fetchUserListeningRecords } from "@/lib/api/users";
 import { PAGE_SIZE } from "./constants";
 
 /**
@@ -27,7 +27,10 @@ export default function ListeningHistoryLoader({
 // 「もっと見る」のページネーションを管理するコンポーネント
 //
 // - useTransition で連打防止（isPending は即座に true になるため、useState より安全）
-// - Server Action のエラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
+// - クライアント API (`fetchUserListeningRecords`) で直接取得する
+//   (FE 規約「ユーザー操作による追加データ取得はクライアント API で直接行う」
+//    に従い、Server Action は使わない)
+// - エラーは catch で表示（Suspense/ErrorBoundary ではなく手動管理）
 // - total はサーバーの最新値で更新し、hasMore の判定が正確になるようにする
 // ---------------------------------------------------------------------------
 
@@ -48,7 +51,7 @@ function ListeningHistoryWithLoadMore({
     startTransition(async () => {
       try {
         setError(null);
-        const data = await loadMoreListeningRecords(username, records.length, PAGE_SIZE);
+        const data = await fetchUserListeningRecords(username, PAGE_SIZE, records.length);
         setRecords((prev) => [...prev, ...(data.records ?? [])]);
         setTotal(data.total);
       } catch (err) {

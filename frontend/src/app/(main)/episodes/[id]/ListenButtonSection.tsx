@@ -1,4 +1,4 @@
-import { serverGet } from "@/lib/api/server";
+import { getEpisodeListenStatus } from "@/lib/data/episodes";
 import { ApiRequestError } from "@/types/api";
 import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import ListenButtonWithPrompt from "@/components/episode/ListenButtonWithPrompt";
@@ -15,9 +15,7 @@ export default async function ListenButtonSection({ episodeId }: { episodeId: st
   let status: ListeningStatus;
 
   try {
-    status = await serverGet<ListeningStatus>(
-      `/episodes/${encodeURIComponent(episodeId)}/listen`,
-    );
+    status = await getEpisodeListenStatus(episodeId);
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 401) {
       // 未ログイン → ログインボタンを表示

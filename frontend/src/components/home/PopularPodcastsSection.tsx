@@ -1,7 +1,6 @@
 import PodcastCard from "@/components/podcast/PodcastCard";
 import Link from "next/link";
-import { serverGet } from "@/lib/api/server";
-import type { PodcastSearchResult } from "@/types/podcast";
+import { getPopularPodcasts } from "@/lib/data/podcasts";
 
 const DISPLAY_COUNT = 6;
 
@@ -10,10 +9,7 @@ const DISPLAY_COUNT = 6;
  * 取得失敗時は throw して ErrorBoundary に委譲する。
  */
 export default async function PopularPodcastsSection() {
-  const result = await serverGet<PodcastSearchResult>(
-    `/podcasts/popular?limit=${DISPLAY_COUNT}`,
-    { revalidate: 300, tags: ["popular-podcasts"], noAuth: true }
-  );
+  const result = await getPopularPodcasts(DISPLAY_COUNT);
   const podcasts = result.podcasts;
 
   if (podcasts.length === 0) {

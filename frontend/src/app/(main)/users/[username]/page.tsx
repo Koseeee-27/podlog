@@ -1,12 +1,14 @@
 import { notFound } from "next/navigation";
 import { usernameSchema } from "@/lib/schemas/common";
-import { serverGet } from "@/lib/api/server";
+import {
+  getUserPublicProfile,
+  getUserFavoritePodcasts,
+  getUserListeningRecords,
+  getUserReviews,
+} from "@/lib/data/users";
 import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
 import type { UserPublicProfile } from "@/types/user";
-import type { FavoritePodcastListResult } from "@/types/user";
-import type { ListeningRecordListResult } from "@/types/listening-record";
-import type { UserReviewListResult } from "@/types/review";
 import { PAGE_SIZE } from "./constants";
 
 interface PublicProfilePageProps {
@@ -20,14 +22,9 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     notFound();
   }
 
-  const encodedUsername = encodeURIComponent(username);
-
   let profile: UserPublicProfile;
   try {
-    profile = await serverGet<UserPublicProfile>(
-      `/users/${encodedUsername}`,
-      { noAuth: true, revalidate: 60 },
-    );
+    profile = await getUserPublicProfile(username);
   } catch (err) {
     if (err instanceof ApiRequestError && err.status === 404) {
       notFound();
@@ -35,21 +32,12 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     throw err;
   }
 
-  // 各セクションのデータを Promise として作成（await しない）
-  // プロフィール取得で DB が起きているので、コールドスタートの影響を受けにくい
-  // ユーザー操作で頻繁に変わるデータなのでキャッシュしない（revalidate: 0）
-  const favoritesPromise = serverGet<FavoritePodcastListResult>(
-    `/users/${encodedUsername}/favorite-podcasts`,
-    { noAuth: true, revalidate: 0 },
-  );
-  const recordsPromise = serverGet<ListeningRecordListResult>(
-    `/users/${encodedUsername}/listening-records?limit=${PAGE_SIZE}&offset=0`,
-    { noAuth: true, revalidate: 0 },
-  );
-  const reviewsPromise = serverGet<UserReviewListResult>(
-    `/users/${encodedUsername}/reviews?limit=${PAGE_SIZE}&offset=0`,
-    { noAuth: true, revalidate: 0 },
-  );
+  // 各セクションのデータを Promise として作成（await しない）。
+  // プロフィール取得で DB が起きているのでコールドスタートの影響を受けにくい。
+  // ユーザー操作で頻繁に変わるデータなので DAL 側で `revalidate: 0` (キャッシュなし)。
+  const favoritesPromise = getUserFavoritePodcasts(username);
+  const recordsPromise = getUserListeningRecords(username, PAGE_SIZE, 0);
+  const reviewsPromise = getUserReviews(username, PAGE_SIZE, 0);
 
   return (
     <PublicProfileClient

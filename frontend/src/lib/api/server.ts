@@ -1,51 +1,20 @@
 /**
- * Server Component / Server Action 用の API クライアント (後方互換レイヤー)。
+ * Server Action 用の mutation API クライアント (後方互換レイヤー)。
  *
- * このファイルは現在 22 箇所から呼ばれているため、外部シグネチャは維持したまま
- * 内部実装を新しい 3 層構造 (`apiFetch` + `getAuthHeaders`) に差し替えている。
+ * GET 系のデータ取得は `lib/data/*` の DAL に移行済み (podlog#331)。
+ * このファイルには Server Action から呼ぶ POST / PUT / DELETE のみが残っている。
  *
- * PR B (DAL 層 `lib/data/` の新設) で呼び出し側を移行した後、このファイルは
- * 廃止予定 (podlog-workspace#58 の認証フロー再設計ロードマップ参照)。
+ * 後続 PR (PR C) で `serverPost` / `serverPut` / `serverDelete` も `apiFetch`
+ * ベースの薄いラッパーを廃止し、各 Server Action 内で直接 `apiFetch` +
+ * `getAuthHeaders` を呼ぶ形に置き換える予定 (podlog-workspace#58 参照)。
  *
  * ポイント:
- * - 認証エラー握りつぶしを除去 (`getAuthHeaders()` が本物のエラーを throw する)
  * - `Content-Type: application/json` を POST/PUT で明示的に付与
- *   (旧 `getServerAuthHeaders` の暗黙挙動を明示化)
  * - リトライ / エラーハンドリング / ベース URL 解決は全て `apiFetch` に委譲
  */
 import "server-only";
 import { apiFetch } from "./fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
-
-interface ServerFetchOptions {
-  /** Next.js の revalidate 秒数。0 でキャッシュなし。 */
-  revalidate?: number | false;
-  /** Next.js の cache タグ (revalidateTag で無効化するため) */
-  tags?: string[];
-  /** 認証ヘッダーを付けない (公開 API 用)。true にするとキャッシュが安定する */
-  noAuth?: boolean;
-}
-
-/**
- * Server Component 用の GET リクエスト。
- */
-export async function serverGet<T>(
-  path: string,
-  options?: ServerFetchOptions,
-): Promise<T> {
-  const authHeaders = options?.noAuth ? {} : await getAuthHeaders();
-  return apiFetch<T>(path, {
-    method: "GET",
-    headers: {
-      "Content-Type": "application/json",
-      ...authHeaders,
-    },
-    next: {
-      revalidate: options?.revalidate ?? 0,
-      tags: options?.tags,
-    },
-  });
-}
 
 /**
  * Server Component / Server Action 用の POST リクエスト。

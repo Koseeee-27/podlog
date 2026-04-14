@@ -5,23 +5,20 @@ import {
   PlusCircleIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/outline";
-import { serverGet } from "@/lib/api/server";
+import { getMyRecentEpisodes } from "@/lib/data/me";
 import RecentEpisodeCard from "@/components/episode/RecentEpisodeCard";
-import type { RecentEpisodesResult } from "@/types/episode";
 
 /**
  * 記録した番組の新着エピソードセクション。
  * async Server Component として Suspense 内で使用する。
  *
- * - serverGet でデータ取得（useEffect 不要）
+ * - DAL (`getMyRecentEpisodes`) でデータ取得（useEffect 不要）
  * - 初回ユーザー（recorded_podcast_count === 0）なら何も表示しない
  * - 新着が空なら「新着エピソードはありません」を表示
  * - データ取得失敗時は throw して ErrorBoundary に委譲する
  */
 export default async function RecentEpisodesSection() {
-  const result = await serverGet<RecentEpisodesResult>(
-    "/users/me/recent-episodes",
-  );
+  const result = await getMyRecentEpisodes();
 
   const podcastGroups = result.podcasts ?? [];
   const recordedPodcastCount = result.recorded_podcast_count ?? 0;

@@ -1,6 +1,5 @@
-import { serverGet } from "@/lib/api/server";
+import { getPodcastEpisodes } from "@/lib/data/podcasts";
 import EpisodeListClient from "./EpisodeListClient";
-import type { EpisodeListResult } from "@/types/episode";
 
 interface EpisodeSectionProps {
   podcastId: string;
@@ -10,12 +9,14 @@ interface EpisodeSectionProps {
  * エピソード一覧の Server Component。
  * エピソード初期データを取得し、EpisodeListClient に渡す。
  * 取得失敗時は throw して ErrorBoundary に委譲する。
+ *
+ * `GET /podcasts/:id/episodes` はオプショナル認証エンドポイント。
+ * ログイン中は `getPodcastEpisodes` が Authorization ヘッダーを付与して
+ * ユーザー固有の「聴取済み」情報を取得する (Authorization 付きのときは
+ * `cache: "no-store"`、未ログイン時は `revalidate: 60`)。
  */
 export default async function EpisodeSection({ podcastId }: EpisodeSectionProps) {
-  const result = await serverGet<EpisodeListResult>(
-    `/podcasts/${encodeURIComponent(podcastId)}/episodes?limit=20&offset=0`,
-    { noAuth: true, revalidate: 60 },
-  );
+  const result = await getPodcastEpisodes(podcastId, 20, 0);
 
   return (
     <div className="mt-8">

@@ -1,41 +1,49 @@
 import Link from "next/link";
 import Image from "next/image";
 import { MusicalNoteIcon } from "@heroicons/react/24/outline";
-import { serverGet } from "@/lib/api/server";
+import { getMyProfile, getMyListeningRecords } from "@/lib/data/me";
 import { formatDate } from "@/lib/utils";
 import { ApiRequestError } from "@/types/api";
 import EmptyState from "@/components/ui/EmptyState";
 import HeroSection from "@/components/home/HeroSection";
 import FeaturesSection from "@/components/home/FeaturesSection";
 import CtaSection from "@/components/home/CtaSection";
-import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { User } from "@/types/user";
 
 const DISPLAY_LIMIT = 5;
 
 /**
  * ログイン済みユーザー向けホーム画面。
- * Server Component でプロフィールと聴取履歴を並列取得する。
- * serverGet("/users/me") の成功/失敗で認証状態を判定する。
- * - 401: 未認証 → マーケティング UI にフォールバック
+ * Server Component で `getMyProfile()` → `getMyListeningRecords()` の順に
+ * 直列取得する。
+ *
+ * 公開ページ (/) のフォールバック系コンポーネントなので、保護ページの
+ * 「401/403 → /login redirect」とは異なり、未認証時はマーケティング UI を
+ * インラインで表示する設計。
+ *
+ * 並列ではなく直列にしている理由:
+ * - 公開ページなので未ログイン/セッション失効ユーザーのアクセスも多い
+ * - 並列だと未ログイン時にも /users/me/listening-records を必ず叩くため、
+ *   日次で大量の無駄な 401 リクエストがバックエンド負荷・ログノイズになる
+ * - 認証状態を確定してから records を取得することで、未ログイン時は
+ *   1 リクエストで済む (200 経路ではレイテンシが ~50ms 増えるが体感上影響なし)
+ *
+ * 状態別の挙動:
+ * - 401/403: 未認証 or セッション失効・権限剥奪 → マーケティング UI
  * - 404: プロフィール未設定 → null（何も表示しない）
  * - その他のエラー: throw して Error Boundary で捕捉
  */
 export default async function RecentListeningSection() {
-  // プロフィールと聴取履歴を並列取得
-  const [profileResult, recordsResult] = await Promise.allSettled([
-    serverGet<User>("/users/me"),
-    serverGet<ListeningRecordListResult>(
-      `/users/me/listening-records?limit=${DISPLAY_LIMIT}`,
-    ),
-  ]);
-
-  // プロフィール取得の結果を判定
-  if (profileResult.status === "rejected") {
-    const err = profileResult.reason;
+  // ステップ 1: 認証状態を確定する。401/403/404 で未ログイン/未作成と
+  // 分かれば listening-records は呼ばずにフォールバック UI に倒す。
+  let profile: User;
+  try {
+    profile = await getMyProfile();
+  } catch (err) {
     if (err instanceof ApiRequestError) {
-      if (err.status === 401) {
-        // 未認証（Cookie はあるがセッション期限切れ等）→ マーケティング UI
+      // 401/403 = 未認証 or セッション失効 → マーケティング UI
+      // (保護ページとは違いリダイレクトせず、公開ページとして fallback 表示)
+      if (err.status === 401 || err.status === 403) {
         return (
           <>
             <HeroSection />
@@ -53,13 +61,12 @@ export default async function RecentListeningSection() {
     throw err;
   }
 
-  const profile = profileResult.value;
-
-  if (recordsResult.status === "rejected") {
-    throw recordsResult.reason;
-  }
-
-  const displayRecords = recordsResult.value.records ?? [];
+  // ステップ 2: 認証確定後に聴取履歴を取得する。
+  // 失敗は throw して Error Boundary に委譲する (records が無くても
+  // ヘッダー等は表示できる方が UX が良いが、並列時の挙動と揃えるため
+  // throw 経路を維持する)。
+  const recordsResult = await getMyListeningRecords(DISPLAY_LIMIT);
+  const displayRecords = recordsResult.records ?? [];
 
   return (
     <>

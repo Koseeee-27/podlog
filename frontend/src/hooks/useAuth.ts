@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getMyProfile } from "@/lib/api/users";
+import { fetchMyProfile } from "@/lib/api/users";
 import type { User as AppUser } from "@/types/user";
 import type { AuthChangeEvent, Session, User as SupabaseUser } from "@supabase/supabase-js";
 import { ApiRequestError } from "@/types/api";
@@ -33,7 +33,7 @@ export function useAuth() {
     // プロフィール取得を最大2回試行（コールドスタート対策）
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
-        const profile = await getMyProfile();
+        const profile = await fetchMyProfile();
         setState({ status: "authenticated", authUser: user, profile });
         return;
       } catch (err) {

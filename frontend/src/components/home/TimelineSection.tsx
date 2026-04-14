@@ -2,8 +2,7 @@ import TimelineCard from "@/components/timeline/TimelineCard";
 import EmptyState from "@/components/ui/EmptyState";
 import TimelineLoadMore from "@/components/home/TimelineLoadMore";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
-import { serverGet } from "@/lib/api/server";
-import type { TimelineResult } from "@/types/review";
+import { getTimeline } from "@/lib/data/timeline";
 
 const PAGE_SIZE = 20;
 
@@ -17,10 +16,7 @@ export default async function TimelineSection({
   const Heading = headingLevel;
 
   // 取得失敗時は throw して ErrorBoundary に委譲する
-  const data = await serverGet<TimelineResult>(
-    `/timeline?limit=${PAGE_SIZE}&offset=0`,
-    { revalidate: 60, tags: ["timeline"], noAuth: true }
-  );
+  const data = await getTimeline(PAGE_SIZE, 0);
 
   const reviews = data.reviews ?? [];
 
