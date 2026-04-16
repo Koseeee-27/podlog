@@ -74,6 +74,7 @@ export default function SettingsClient({ profile }: SettingsClientProps) {
             ログアウトすると、再度ログインが必要になります。
           </p>
           <Button
+            type="button"
             variant="danger"
             onClick={async () => {
               await signOut(router);

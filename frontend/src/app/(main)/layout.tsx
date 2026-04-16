@@ -28,10 +28,11 @@ export default async function MainLayout({
   let viewer: Viewer;
   try {
     viewer = await getViewer();
-  } catch {
+  } catch (err) {
     // 500 等のサーバーエラー時はナビだけ未ログイン扱いにして本体の描画を続行。
     // 保護ページ側では page.tsx の `getMyProfile()` で再度エラーが投げられる
     // ため、認証必須画面でも適切なリダイレクト/エラーハンドリングが効く。
+    console.error("[MainLayout] getViewer failed, falling back to guest:", err);
     viewer = { status: "guest" };
   }
 

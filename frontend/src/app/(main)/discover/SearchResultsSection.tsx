@@ -22,10 +22,13 @@ export default async function SearchResultsSection({
 }: SearchResultsSectionProps) {
   const [result, viewer] = await Promise.all([
     searchPodcasts({ q: query }),
-    getViewer(),
+    getViewer().catch((): { status: "guest" } => {
+      console.error("[SearchResultsSection] getViewer failed, falling back to guest");
+      return { status: "guest" };
+    }),
   ]);
   const podcasts = result.podcasts;
-  const isLoggedIn = viewer.status !== "guest";
+  const isLoggedIn = viewer.status === "authenticated";
 
   if (podcasts.length === 0) {
     return (

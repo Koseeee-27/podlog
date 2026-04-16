@@ -40,8 +40,11 @@ export async function createReviewAction(
   }
 
   const viewer = await getViewer();
-  if (viewer.status !== "authenticated") {
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
+  }
+  if (viewer.status !== "authenticated") {
+    return { success: false, error: "プロフィール設定が必要です" };
   }
 
   const raw = Object.fromEntries(formData);
@@ -78,8 +81,11 @@ export async function updateReviewAction(
   }
 
   const viewer = await getViewer();
-  if (viewer.status !== "authenticated") {
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
+  }
+  if (viewer.status !== "authenticated") {
+    return { success: false, error: "プロフィール設定が必要です" };
   }
 
   const raw = Object.fromEntries(formData);
@@ -114,8 +120,11 @@ export async function deleteReviewAction(
   }
 
   const viewer = await getViewer();
-  if (viewer.status !== "authenticated") {
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
+  }
+  if (viewer.status !== "authenticated") {
+    return { success: false, error: "プロフィール設定が必要です" };
   }
 
   try {

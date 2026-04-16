@@ -27,8 +27,11 @@ export async function submitPodcastRequestAction(
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
   const viewer = await getViewer();
-  if (viewer.status !== "authenticated") {
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
+  }
+  if (viewer.status !== "authenticated") {
+    return { success: false, error: "プロフィール設定が必要です" };
   }
 
   const raw = Object.fromEntries(formData);
