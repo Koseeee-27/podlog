@@ -1,24 +1,7 @@
-import { apiGet, apiPost, apiPut, apiUpload } from "./client";
-import type { User, UserPublicProfile, CreateProfileRequest, UpdateProfileRequest, FavoritePodcastListResult, AvatarUploadResult } from "@/types/user";
+import { apiGet, apiPut, apiUpload } from "./client";
+import type { User, UserPublicProfile, UpdateProfileRequest, FavoritePodcastListResult, AvatarUploadResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserReviewListResult } from "@/types/review";
-
-export function createProfile(data: CreateProfileRequest): Promise<User> {
-  return apiPost<User>("/users/profile", data);
-}
-
-/**
- * 自分のプロフィールをクライアントから取得する。
- *
- * SSR 初期取得は `lib/data/me.ts` の `getMyProfile` (DAL) を使うこと。
- * クライアント側はログアウト/プロフィール更新後の再取得などに限定する。
- *
- * FE 規約「DAL = `getXxx` / クライアント API = `fetchXxx`」に従い、
- * 同名衝突を避けるため `fetchMyProfile` 命名。
- */
-export function fetchMyProfile(): Promise<User> {
-  return apiGet<User>("/users/me");
-}
 
 export function updateMyProfile(data: UpdateProfileRequest): Promise<User> {
   return apiPut<User>("/users/me", data);

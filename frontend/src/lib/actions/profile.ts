@@ -2,10 +2,9 @@
 
 import { z } from "zod";
 import { createProfileRequestSchema } from "@/lib/schemas/user";
-import { serverPost } from "@/lib/api/server";
+import { createProfile } from "@/lib/data/me";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
-import type { User } from "@/types/user";
 
 export interface ProfileFormState {
   success: boolean;
@@ -17,13 +16,26 @@ export interface ProfileFormState {
   };
 }
 
+/**
+ * 初回プロフィール作成 Server Action。
+ *
+ * 認証チェックは `getViewer()` に統一している。`no_profile` は
+ * 「ログイン済みだがプロフィール未作成」という状態のため、ここで受け入れる
+ * (`/profile/setup` 画面から呼ばれる通常フロー)。`authenticated` の場合は
+ * 既にプロフィールがあるので本来ここを呼ばない想定だが、安全側に倒して許容
+ * している (二重作成はバックエンドが 409 を返すので最終的にはそちらで弾く)。
+ */
 export async function createProfileAction(
   _prevState: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }
 
@@ -40,7 +52,7 @@ export async function createProfileAction(
   }
 
   try {
-    await serverPost<User>("/users/profile", {
+    await createProfile({
       ...result.data,
       bio: result.data.bio || undefined,
     });

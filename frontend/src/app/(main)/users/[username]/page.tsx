@@ -6,6 +6,7 @@ import {
   getUserListeningRecords,
   getUserReviews,
 } from "@/lib/data/users";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
 import type { UserPublicProfile } from "@/types/user";
@@ -32,6 +33,18 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     throw err;
   }
 
+  // Client Component で「自分自身のプロフィールか」「管理者か」を判定するため、
+  // Server Component で getViewer() を呼んで viewer を解決してから渡す。
+  // 公開ページのため、viewer 取得だけ失敗してもページ全体を error.tsx に
+  // 落とさず guest として描画を続行する。
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch (err) {
+    console.error("[PublicProfilePage] getViewer failed, falling back to guest:", err);
+    viewer = { status: "guest" };
+  }
+
   // 各セクションのデータを Promise として作成（await しない）。
   // プロフィール取得で DB が起きているのでコールドスタートの影響を受けにくい。
   // ユーザー操作で頻繁に変わるデータなので DAL 側で `revalidate: 0` (キャッシュなし)。
@@ -43,6 +56,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
     <PublicProfileClient
       username={username}
       initialProfile={profile}
+      viewer={viewer}
       favoritesPromise={favoritesPromise}
       recordsPromise={recordsPromise}
       reviewsPromise={reviewsPromise}

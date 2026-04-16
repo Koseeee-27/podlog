@@ -5,6 +5,7 @@ import {
   getMyProfile,
   getMyListeningRecords,
   getMyRecentEpisodes,
+  createProfile,
 } from "../me";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
@@ -121,5 +122,40 @@ describe("getMyRecentEpisodes", () => {
         cache: "no-store",
       }),
     );
+  });
+});
+
+// --- mutation 関数のテスト ---
+// createProfile は cache() でラップされていない通常の async 関数。
+
+describe("createProfile", () => {
+  it("POST /users/profile に認証付きで body を送る", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({ Authorization: "Bearer jwt" });
+    mockApiFetch.mockResolvedValueOnce({ id: "user-1", username: "testuser" });
+
+    const data = { username: "testuser", display_name: "テストユーザー" };
+    await createProfile(data);
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/users/profile",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          Authorization: "Bearer jwt",
+          "Content-Type": "application/json",
+        }),
+        body: JSON.stringify(data),
+      }),
+    );
+  });
+
+  it("認証ヘッダーが空でも事前 throw せず apiFetch に委ねる", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce({});
+
+    await expect(
+      createProfile({ username: "guest-test", display_name: "Guest" }),
+    ).resolves.toBeDefined();
+    expect(mockApiFetch).toHaveBeenCalled();
   });
 });

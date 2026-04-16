@@ -16,31 +16,33 @@ import ProfileSetupClient from "./ProfileSetupClient";
  * - 404 (プロフィール未設定): セットアップフォームを表示
  * - 401/403 (セッション失効): `/login` にリダイレクト
  * - その他 (500 等): throw して Next.js エラーページに委譲
+ *
+ * 実装メモ:
+ * 他の保護ページ (`settings` / `settings/profile`) の統一テンプレートは
+ * 「成功時は画面を描画、catch 内でリダイレクト」パターンだが、本ページは
+ * **成功時にリダイレクト** する逆パターンのため、404 を「期待された状態」
+ * として扱い catch 内で `return` する。これにより `redirect("/")` が
+ * try の外で呼ばれ、NEXT_REDIRECT 特殊 throw を catch に巻き込まないように
+ * している。
  */
 export default async function ProfileSetupPage() {
-  // プロフィール設定済みなら / にリダイレクトする (try 内の redirect は
-  // Next.js の NEXT_REDIRECT 特殊 throw となり catch で再 throw される)
   try {
     await getMyProfile();
-    redirect("/");
   } catch (err) {
     if (err instanceof ApiRequestError) {
       // 401/403 = セッション失効 → /login
       if (err.status === 401 || err.status === 403) {
         redirect("/login");
       }
-      // 404 = プロフィール未設定 → fall through してセットアップ画面を表示
+      // 404 = プロフィール未設定 → セットアップ画面を表示 (期待された動作)
       if (err.status === 404) {
-        // fall through
-      } else {
-        // 500 等のサーバーエラー
-        throw err;
+        return <ProfileSetupClient />;
       }
-    } else {
-      // redirect() の特殊 throw (NEXT_REDIRECT) や予期しない例外は再 throw
-      throw err;
     }
+    // 500 等のサーバーエラーは throw して Next.js エラーページに任せる
+    throw err;
   }
 
-  return <ProfileSetupClient />;
+  // ここに到達した = プロフィール設定済み → ホームへ
+  redirect("/");
 }

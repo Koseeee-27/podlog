@@ -2,10 +2,9 @@
 
 import { z } from "zod";
 import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
-import { serverPost } from "@/lib/api/server";
+import { createPodcastRequest } from "@/lib/data/podcast-requests";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
-import { createClient } from "@/lib/supabase/server";
-import type { PodcastRequestResult } from "@/types/podcast-request";
 
 export interface PodcastRequestFormState {
   success: boolean;
@@ -16,14 +15,28 @@ export interface PodcastRequestFormState {
   };
 }
 
+/**
+ * 番組追加リクエスト Server Action。
+ *
+ * 認証チェックは `getViewer()` に統一している。`authenticated` のみ許可する
+ * (番組リクエストはプロフィール作成済みユーザーに限定するため、`no_profile`
+ * は拒否する)。
+ */
 export async function submitPodcastRequestAction(
   _prevState: PodcastRequestFormState,
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
+  if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
+  }
+  if (viewer.status !== "authenticated") {
+    return { success: false, error: "プロフィール設定が必要です" };
   }
 
   const raw = Object.fromEntries(formData);
@@ -38,7 +51,7 @@ export async function submitPodcastRequestAction(
   }
 
   try {
-    await serverPost<PodcastRequestResult>("/podcasts/request", {
+    await createPodcastRequest({
       title: result.data.title,
       url: result.data.url || undefined,
     });

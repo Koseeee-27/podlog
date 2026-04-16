@@ -1,26 +1,32 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
 import ProfileEditForm from "@/components/profile/ProfileEditPage";
 import type { User, FavoritePodcastItem } from "@/types/user";
 
 interface ProfileEditClientProps {
-  initialProfile: User;
+  /** Server Component (page.tsx) で解決済みのプロフィール。 */
+  profile: User;
   initialFavoritePodcasts: FavoritePodcastItem[];
 }
 
 export default function ProfileEditClient({
-  initialProfile,
+  profile,
   initialFavoritePodcasts,
 }: ProfileEditClientProps) {
-  const auth = useAuth();
   const router = useRouter();
 
-  // 認証・プロフィール存在チェックは Server Component (page.tsx) で完了済み
-  // クライアント側で最新のプロフィールが取れればそちらを使用
-  const profile = auth.status === "authenticated" ? auth.profile : initialProfile;
-  const refreshProfile = auth.status === "authenticated" ? auth.refreshProfile : async () => {};
+  /**
+   * 保存後のプロフィール再取得。
+   * 以前は `useAuth().refreshProfile` で Supabase 経由の再取得を行っていたが、
+   * 3 層 DAL 構造では `router.refresh()` で Server Component ツリーを
+   * 再実行し、`getViewer()` / `getMyProfile()` が新しいデータを拾うようにする。
+   * `router.refresh()` は Promise を返さないため async 関数でラップして
+   * ProfileEditForm の API シグネチャに合わせる。
+   */
+  async function refreshProfile() {
+    router.refresh();
+  }
 
   function handleSaveComplete() {
     router.push(`/users/${profile.username}`);
