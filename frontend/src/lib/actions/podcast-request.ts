@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { podcastRequestFormSchema } from "@/lib/schemas/podcast-request";
 import { createPodcastRequest } from "@/lib/data/podcast-requests";
-import { getViewer } from "@/lib/auth/getViewer";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 export interface PodcastRequestFormState {
@@ -26,7 +26,12 @@ export async function submitPodcastRequestAction(
   _prevState: PodcastRequestFormState,
   formData: FormData,
 ): Promise<PodcastRequestFormState> {
-  const viewer = await getViewer();
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
   if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }

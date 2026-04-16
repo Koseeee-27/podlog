@@ -7,7 +7,7 @@ import {
   updateMyReview,
   deleteMyReview,
 } from "@/lib/data/reviews";
-import { getViewer } from "@/lib/auth/getViewer";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { Review } from "@/types/review";
 
@@ -39,7 +39,12 @@ export async function createReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const viewer = await getViewer();
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
   if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }
@@ -80,7 +85,12 @@ export async function updateReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const viewer = await getViewer();
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
   if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }
@@ -119,7 +129,12 @@ export async function deleteReviewAction(
     return { success: false, error: "無効なエピソードIDです" };
   }
 
-  const viewer = await getViewer();
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
   if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }

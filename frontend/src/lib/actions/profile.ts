@@ -3,7 +3,7 @@
 import { z } from "zod";
 import { createProfileRequestSchema } from "@/lib/schemas/user";
 import { createProfile } from "@/lib/data/me";
-import { getViewer } from "@/lib/auth/getViewer";
+import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
 export interface ProfileFormState {
@@ -29,7 +29,12 @@ export async function createProfileAction(
   _prevState: ProfileFormState,
   formData: FormData,
 ): Promise<ProfileFormState> {
-  const viewer = await getViewer();
+  let viewer: Viewer;
+  try {
+    viewer = await getViewer();
+  } catch {
+    return { success: false, error: "認証情報の取得に失敗しました" };
+  }
   if (viewer.status === "guest") {
     return { success: false, error: "ログインが必要です" };
   }
