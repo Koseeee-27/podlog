@@ -553,7 +553,7 @@ function ListenToggle({
 ポイント:
 - `useOptimistic` で即座に UI を反映し、Server Action の完了を待たない
 - `useTransition` の `isPending` で連打防止
-- Server Action が失敗した場合、自動的に元の値にロールバックされる
+- Server Action が失敗した場合、Transition の終了に伴い optimistic state は元の値に戻る（`startTransition` 内での使用が前提）
 
 ## 禁止事項
 
