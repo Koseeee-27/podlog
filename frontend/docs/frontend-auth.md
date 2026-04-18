@@ -238,13 +238,15 @@ export const getMyProfile = cache(async (): Promise<User> => {
 
 ### 命名規則
 
-| 層 | 命名パターン | 例 |
-|---|---|---|
-| DAL（Server Component 用） | `getXxx` | `getMyProfile`, `getPodcastById` |
-| クライアント API（Client Component 用） | `fetchXxx` | `fetchUserListeningRecords` |
-| mutation（POST/PUT/DELETE） | `createXxx` / `updateXxx` / `deleteXxx` | `createReview`, `deleteMyReview` |
+現在のコードベースでは命名が移行途中のため、既存のクライアント API には `getXxx` 命名が残っている。以下は**新規追加・既存コードの整理時に適用する推奨ルール**として扱う。
 
-**DAL とクライアント API で同名の関数を作らない。** 同名にすると import 切替時に取り違えが起き、シグネチャが異なる場合に静かに壊れる。
+| 層 | 推奨する命名パターン | 例 | 備考 |
+|---|---|---|---|
+| DAL（Server Component 用） | `getXxx` | `getMyProfile`, `getPodcastById` | |
+| クライアント API（Client Component 用） | `fetchXxx` | `fetchUserListeningRecords` | 既存コードに `getXxx` が残っているため段階的に整理 |
+| mutation（POST/PUT/DELETE） | `createXxx` / `updateXxx` / `deleteXxx` | `createReview`, `deleteMyReview` | |
+
+**DAL とクライアント API で同名の関数を作らない。** 同名にすると import 切替時に取り違えが起き、シグネチャが異なる場合に静かに壊れる。既存の命名衝突はこの方針に沿って段階的に解消する。
 
 ## `getViewer()` の使い分け
 
