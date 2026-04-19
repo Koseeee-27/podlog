@@ -20,6 +20,13 @@ import { getViewer } from "@/lib/auth/getViewer";
  *   `console.error` + componentStack を出力するため、ここでは重ねない。
  * - 本体コンテンツ (`main` 要素の children) は Suspense の外側にあるため、
  *   ナビの認証解決を待たずにストリーミング描画される。
+ *
+ * Storybook について:
+ * 本コンポーネントは `getViewer()` (DAL) を呼んで `<Navbar viewer={viewer} />`
+ * に渡すだけの薄いラッパーで独自の描画ロジックを持たないため、専用 story は
+ * 設けていない。viewer の各状態 (guest / no_profile / authenticated) の
+ * 見た目バリエーションは `Navbar` 側で (story 追加時に) カバーする想定。
+ * ローディング / エラー時の fallback は `NavbarShell.stories.tsx` を参照。
  */
 export default async function NavbarWithViewer() {
   const viewer = await getViewer();
