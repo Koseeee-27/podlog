@@ -88,7 +88,7 @@ PR を push する前に、以下を必ずローカルで確認すること。CI
 - **`"use client"` の多用を避ける**: `page.tsx` / `layout.tsx` は Server Component に保ち、`"use client"` 境界は末端のインタラクティブなコンポーネントに限定する。`useState` / `useEffect` を使わないコンポーネントに `"use client"` を付けない
 - **`useTransition`** を積極的に使う: 非同期アクション（追加読み込み、フォーム送信等）のローディング管理には `useTransition` の `isPending` を使い、手動の `loading` state + `useRef` による連打防止を避ける
 - **`useActionState`**: フォーム送信には `useActionState` + Server Actions の利用を検討する
-- **`<button>`** には必ず `type="button"` または `type="submit"` を明示する（デフォルトの `type="submit"` による意図しない送信を防ぐ）
+- **`<button>`** には必ず `type="button"` または `type="submit"` を明示する（デフォルトの `type="submit"` による意図しない送信を防ぐ）。ただし `components/ui/Button.tsx` のラッパーは安全側のデフォルト `type="button"` を出力するため、ラッパー越しの呼び出しでは `type` 省略を許容する。フォーム送信用は `type="submit"` を必ず明示する
 
 ### バックエンド (Go)
 - **レイヤードアーキテクチャ**を採用: handler → usecase → repository
