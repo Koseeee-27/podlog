@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useTransition } from "react";
 import Image from "next/image";
 import { searchPodcasts } from "@/lib/api/podcasts";
 import { XMarkIcon, PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
@@ -103,10 +103,13 @@ interface PodcastSearchDialogProps {
 }
 
 function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDialogProps) {
+  // inputValue: input 要素の制御用（入力中の値を全部保持）
+  // query: 実際に検索した確定クエリ（結果表示や「見つかりませんでした」表示のトリガ）
+  // 2 つを分離することで、入力中に結果が勝手に更新される問題（クエリと結果の不一致）を防ぐ
+  const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PodcastSearchItem[]>([]);
-  const [searching, setSearching] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [isPending, startTransition] = useTransition();
   const dialogRef = useRef<HTMLDialogElement>(null);
 
   const isMountedRef = useRef(true);
@@ -120,41 +123,33 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
 
     return () => {
       isMountedRef.current = false;
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current);
-      }
       // cleanup 時は close() を呼ばない（onClose 発火を防ぐ）
       // React が DOM から除去するので dialog は自然に閉じる
     };
   }, []);
 
-  const performSearch = useCallback(async (q: string) => {
-    if (q.trim().length === 0) {
-      setResults([]);
-      return;
-    }
-    setSearching(true);
-    try {
-      const items = await searchPodcasts(q);
-      setResults(items);
-    } catch {
-      setResults([]);
-    } finally {
-      setSearching(false);
-    }
-  }, []);
-
   function handleInputChange(value: string) {
-    setQuery(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-
+    setInputValue(value);
+    // 入力を空にしたら検索結果もクリア（query と results の整合を保つ）
     if (value.trim().length === 0) {
+      setQuery("");
       setResults([]);
-      setSearching(false);
-      return;
     }
+  }
 
-    debounceRef.current = setTimeout(() => performSearch(value), 300);
+  function handleSearchSubmit() {
+    const trimmed = inputValue.trim();
+    if (trimmed.length === 0) return;
+
+    setQuery(trimmed);
+    startTransition(async () => {
+      try {
+        const items = await searchPodcasts(trimmed);
+        setResults(items);
+      } catch {
+        setResults([]);
+      }
+    });
   }
 
   return (
@@ -185,26 +180,34 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
           <input
             type="text"
-            value={query}
+            value={inputValue}
             onChange={(e) => handleInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              // IME 変換中の Enter（確定キー）は検索を発火させない
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) {
+                e.preventDefault();
+                handleSearchSubmit();
+              }
+            }}
             placeholder="番組名で検索..."
+            aria-label="番組を検索"
             autoFocus
             className="block w-full rounded-lg border border-stone-200 pl-9 pr-3 py-2 text-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
           />
         </div>
 
         <div className="max-h-64 overflow-y-auto">
-          {searching && (
+          {isPending && (
             <p className="text-sm text-stone-500 text-center py-4">検索中...</p>
           )}
 
-          {!searching && query.trim().length > 0 && results.length === 0 && (
+          {!isPending && query.trim().length > 0 && results.length === 0 && (
             <p className="text-sm text-stone-500 text-center py-4">
               検索結果が見つかりませんでした
             </p>
           )}
 
-          {!searching && results.length > 0 && (
+          {!isPending && results.length > 0 && (
             <ul className="divide-y divide-stone-100">
               {results.map((podcast) => {
                 const alreadyAdded = existingIds.includes(podcast.id);
