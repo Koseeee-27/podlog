@@ -7,8 +7,9 @@ import NavbarSearchForm from "./NavbarSearchForm";
  *
  * 目的:
  * - `(main)/layout.tsx` から `getViewer()` の直接 `await` を外すための
- *   プレースホルダー。認証解決が終わるまでの間、もしくは `getViewer()` が
- *   500 等で失敗したときに `Navbar` の代わりに表示される。
+ *   プレースホルダー。認証解決が終わるまでの間 (`mode="loading"`)、もしくは
+ *   `getViewer()` が 500 等で失敗したとき (`mode="error"`) に `Navbar` の
+ *   代わりに表示される。
  * - ロゴ / 検索バーのような「認証状態に依存しない静的部分」は `Navbar` と
  *   同じ位置に描画して、`Navbar` への切り替え時にチラつきを抑える。
  * - 右端のアクションボタン (`ログイン` / `＋ 記録する` / アバター) の代わりに
@@ -28,8 +29,22 @@ import NavbarSearchForm from "./NavbarSearchForm";
  *   (右端はスケルトン表示で、ログインボタンは出さない)。フルリロードで
  *   `getViewer()` が 500 を返したケースは稀なため、明示的な「再試行」UI
  *   は出さずに ErrorBoundary の挙動に任せる。
+ * - `mode` は a11y 文言の切り替え専用。`loading` のとき `role="status"` +
+ *   `aria-live="polite"` でスクリーンリーダーに「読み込み中」と伝える。
+ *   `error` のときはこれらを外す (永続的な状態なので live region は不適切)。
+ *   見た目は `loading` / `error` で同一。
  */
-export default function NavbarShell() {
+interface NavbarShellProps {
+  /**
+   * Suspense fallback (認証解決待ち) と ErrorBoundary fallback (エラー確定)
+   * で a11y 属性を切り替えるためのフラグ。デフォルトは `"loading"`。
+   */
+  mode?: "loading" | "error";
+}
+
+export default function NavbarShell({ mode = "loading" }: NavbarShellProps) {
+  const isLoading = mode === "loading";
+
   return (
     <>
       {/* PC ヘッダー */}
@@ -53,14 +68,19 @@ export default function NavbarShell() {
             {/* 中央: 検索バー (認証非依存、即時描画) */}
             <NavbarSearchForm />
 
-            {/* 右: アクションボタンのスケルトン (認証解決待ち)。
-                `role="status"` + `aria-live="polite"` でスクリーンリーダーに
-                「読み込み中」であることを伝える。 */}
+            {/* 右: アクションボタンのスケルトン。
+                `loading` のときだけ `role="status"` + `aria-live="polite"` を
+                付けてスクリーンリーダーに読み込み中と案内する。`error` のときは
+                永続状態なので live region を外し、誤案内を防ぐ。 */}
             <div
               className="flex items-center gap-2 shrink-0"
-              role="status"
-              aria-live="polite"
-              aria-label="ナビゲーションを読み込み中"
+              {...(isLoading
+                ? {
+                    role: "status",
+                    "aria-live": "polite" as const,
+                    "aria-label": "ナビゲーションを読み込み中",
+                  }
+                : {})}
             >
               <div
                 className="w-20 h-8 rounded-lg bg-stone-200 animate-pulse"

@@ -2,16 +2,16 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import NavbarShell from "./NavbarShell";
 
 /**
- * `NavbarShell` は `(main)/layout.tsx` で `<Navbar />` の認証解決を待つ間に
- * 表示する fallback コンポーネント。PC ヘッダーと SP ボトムナビ双方の
- * プレースホルダーを含む。
+ * `NavbarShell` は `(main)/layout.tsx` で `<Navbar />` の認証解決を待つ間、
+ * もしくは `getViewer()` がエラーになったときに表示する fallback コンポーネント。
+ * PC ヘッダーと SP ボトムナビ双方のプレースホルダーを含む。
  *
- * このストーリーでは viewport を切り替えて PC / SP それぞれのレイアウトを
- * 目視確認する。右端のアクションボタンは `w-20 h-8` のスケルトンが表示され、
- * 実ボタン (「ログイン」等) との幅差が小さいことを確認する。
+ * `mode` prop で a11y 文言を切り替える (見た目は同一):
+ * - `loading`: `role="status" aria-live="polite"` で「読み込み中」と案内
+ * - `error`: live region を外して永続状態として扱う
  */
 const meta = {
-  title: "layout/NavbarShell",
+  title: "Layout/NavbarShell",
   component: NavbarShell,
   tags: ["autodocs"],
   parameters: {
@@ -23,19 +23,45 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 /**
- * デスクトップ幅での表示。ロゴ・検索バー・右端スケルトンが横並びで表示される。
+ * Suspense fallback として使うときのデフォルト状態 (デスクトップ幅)。
+ * 右端スケルトンは `role="status" aria-live="polite"` 付き。
  */
-export const Desktop: Story = {
+export const LoadingDesktop: Story = {
+  args: { mode: "loading" },
   parameters: {
     viewport: { defaultViewport: "desktop" },
   },
 };
 
 /**
- * モバイル幅での表示。PC ヘッダーは `hidden sm:block` で非表示、画面下部の
- * ボトムナビプレースホルダー (`h-14` の空領域) が表示される。
+ * Suspense fallback として使うときのモバイル表示。
+ * PC ヘッダーは `hidden sm:block` で非表示、画面下部の SP ボトムナビ
+ * プレースホルダー (`h-14` の空領域) が表示される。
  */
-export const Mobile: Story = {
+export const LoadingMobile: Story = {
+  args: { mode: "loading" },
+  parameters: {
+    viewport: { defaultViewport: "mobile1" },
+  },
+};
+
+/**
+ * ErrorBoundary fallback として使うときのデスクトップ表示。
+ * 見た目は `loading` と同じだが `role="status"` / `aria-live` / `aria-label`
+ * を外してスクリーンリーダーに「読み込み中」と誤案内しないようにする。
+ */
+export const ErrorDesktop: Story = {
+  args: { mode: "error" },
+  parameters: {
+    viewport: { defaultViewport: "desktop" },
+  },
+};
+
+/**
+ * ErrorBoundary fallback のモバイル表示。
+ */
+export const ErrorMobile: Story = {
+  args: { mode: "error" },
   parameters: {
     viewport: { defaultViewport: "mobile1" },
   },
