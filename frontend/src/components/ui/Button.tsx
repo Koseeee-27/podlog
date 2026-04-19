@@ -23,8 +23,10 @@ const sizeStyles: Record<ButtonSize, string> = {
   lg: "px-6 py-3 text-base",
 };
 
-// HTML の <button> のデフォルト type は "submit" で、フォーム内に置くと意図しない送信が起きる。
-// ラッパー側で "button" をデフォルトにして安全側に倒す。フォーム送信用は type="submit" を明示的に渡す。
+/**
+ * HTML の <button> のデフォルト type は "submit" で、フォーム内に置くと意図しない送信が起きる。
+ * ラッパー側で "button" をデフォルトにして安全側に倒す。フォーム送信用は type="submit" を明示的に渡す。
+ */
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ({ variant = "primary", size = "md", type = "button", loading, disabled, className = "", children, ...props }, ref) => {
     return (
