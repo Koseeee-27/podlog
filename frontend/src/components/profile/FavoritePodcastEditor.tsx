@@ -190,6 +190,7 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
               }
             }}
             placeholder="番組名で検索..."
+            aria-label="番組を検索"
             autoFocus
             className="block w-full rounded-lg border border-stone-200 pl-9 pr-3 py-2 text-sm placeholder:text-stone-300 focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-rose-500"
           />
