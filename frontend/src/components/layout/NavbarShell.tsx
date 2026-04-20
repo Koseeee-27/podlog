@@ -111,18 +111,23 @@ export default function NavbarShell({ mode = "loading" }: NavbarShellProps) {
 
             {/* 右: アクションボタンのスケルトン。
                 `loading` のときだけ `role="status"` + `aria-live="polite"` を
-                付けてスクリーンリーダーに読み込み中と案内する。`error` のときは
-                永続状態なので live region を外し、誤案内を防ぐ。 */}
+                付けてスクリーンリーダーに読み込み中と案内する。live region は
+                **内部のテキストノードの変化** をもとにアナウンスされる仕様なので、
+                `aria-label` ではなく `sr-only` な実テキストを埋め込む (NVDA /
+                JAWS / VoiceOver 全てで確実に通知されるようにするため)。
+                `error` のときは永続状態なので live region を外し、誤案内を防ぐ。 */}
             <div
               className="flex items-center gap-2 shrink-0"
               {...(isLoading
                 ? {
                     role: "status",
                     "aria-live": "polite" as const,
-                    "aria-label": "ナビゲーションを読み込み中",
                   }
                 : {})}
             >
+              {isLoading && (
+                <span className="sr-only">ナビゲーションを読み込み中</span>
+              )}
               <div
                 className="w-20 h-8 rounded-lg bg-stone-200 animate-pulse"
                 aria-hidden="true"
