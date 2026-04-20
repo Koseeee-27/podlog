@@ -241,11 +241,15 @@ func TestFormatProtoDurationJSON(t *testing.T) {
 }
 
 // TestFormatProtoDurationJSON_FormatShape は「任意の Duration に対して
-// 『小数点以下 9 桁 + "s"』の形式を満たす」という構造的不変条件を regex で検証する。
-// テーブルテストに挙がっていない値（負の Duration、巨大な Duration 等）でも
-// 形式が崩れないことを保証する。
+// 『（負号）+ 整数秒 + 小数点以下 9 桁 + "s"』の形式を満たす」という構造的不変条件を
+// regex で検証する。
+//
+// この regex を満たせば定義上 `time.Duration.String()` 由来のサフィックス
+// （`ms` / `µs` / `ns` / `h` / `1m30s` など）は一切混入し得ないため、禁止トークンの
+// 個別列挙は不要。regex 1 本で全ケースを押さえる。
 func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
 	pattern := regexp.MustCompile(`^-?\d+\.\d{9}s$`)
+
 	samples := []time.Duration{
 		0,
 		1 * time.Nanosecond,
@@ -253,18 +257,31 @@ func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
 		1 * time.Second,
 		90 * time.Second,
 		time.Hour,
+		// 負の Duration（regex の `^-?` 分岐を実際に踏むサンプル）
+		-1 * time.Nanosecond,
+		-500 * time.Millisecond,
+		// 大きな値（float64 経由の実装では ns 精度が落ちていた領域。整数実装では保たれる）
+		time.Duration(1 << 62),
 	}
 	for _, d := range samples {
 		got := formatProtoDurationJSON(d)
 		if !pattern.MatchString(got) {
 			t.Errorf("formatProtoDurationJSON(%v)=%q does not match %s", d, got, pattern)
 		}
-		// time.Duration.String() のサフィックス (ms / µs / ns / h / m) が混入していないこと
-		for _, bad := range []string{"ms", "µs", "ns", "h", "m0s", "m1s", "m2s"} {
-			if strings.Contains(got, bad) {
-				t.Errorf("formatProtoDurationJSON(%v)=%q contains forbidden token %q", d, got, bad)
-			}
-		}
+	}
+}
+
+// TestFormatProtoDurationJSON_PrecisionAtLargeValues は float64 経由の実装では
+// 精度が失われていた「大きな Duration」でも ns 精度が完全に保たれることを確認する。
+// 整数演算に切り替えた意図を明示的に固定するための回帰防止テスト。
+func TestFormatProtoDurationJSON_PrecisionAtLargeValues(t *testing.T) {
+	// 2^53 ns は float64 の mantissa 精度境界付近。ここで 1ns の差が消えると精度欠損。
+	base := time.Duration(1 << 53)
+	got1 := formatProtoDurationJSON(base)
+	got2 := formatProtoDurationJSON(base + 1)
+	if got1 == got2 {
+		t.Errorf("1ns difference lost: both %v and %v formatted as %q (precision lost)",
+			base, base+1, got1)
 	}
 }
 

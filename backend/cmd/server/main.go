@@ -147,18 +147,34 @@ func cloudLoggingReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 }
 
 // formatProtoDurationJSON は time.Duration を protobuf Duration の JSON 形式
-// （秒単位 + `s` サフィックス、ナノ秒精度まで保持）に変換する。
+// （秒単位 10 進小数 + `s` サフィックス、負号対応、ナノ秒精度まで保持）に変換する。
 // Cloud Logging の LogEntry.HttpRequest.latency はこの形式を要求しており、
 // `time.Duration.String()` が返す `ms` / `µs` / `ns` サフィックス形式では認識されない。
 //
+// 仕様: protobuf Duration JSON は小数 0/3/6/9 桁のいずれも許容するが、
+// 本実装は常にナノ秒精度の 9 桁固定で出力する（精度情報をフル保持する意図）。
+//
+// 実装メモ: 素直に `fmt.Sprintf("%.9fs", d.Seconds())` と書くと `d.Seconds()` が
+// float64 経由になり、mantissa 52bit の制約で ~104 日を超える Duration から
+// ns 精度が失われる（関数名と挙動が乖離する）。秒と ns を int64 整数として分割し、
+// `%d.%09d` で組み立てることで `math.MaxInt64` まで完全な精度を保つ。
+//
 // 例:
 //
-//	12_345_000 ns → "0.012345000s"
-//	1_500_000_000 ns → "1.500000000s"
+//	12_345_000 ns       → "0.012345000s"
+//	1_500_000_000 ns    → "1.500000000s"
+//	-500 * time.Millisecond → "-0.500000000s"
 //
 // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
 func formatProtoDurationJSON(d time.Duration) string {
-	return fmt.Sprintf("%.9fs", d.Seconds())
+	sign := ""
+	if d < 0 {
+		sign = "-"
+		d = -d
+	}
+	sec := d / time.Second
+	ns := d % time.Second
+	return fmt.Sprintf("%s%d.%09ds", sign, sec, ns)
 }
 
 // setupLogger は環境に応じた slog.Logger を返す。
