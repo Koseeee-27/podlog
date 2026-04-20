@@ -2,18 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { User } from "@/types/user";
+import type { Viewer } from "@/lib/auth/getViewer";
 
 interface BottomNavProps {
-  profile: User | null;
-  isLoggedIn: boolean;
-  isLoading: boolean;
+  viewer: Viewer;
 }
 
 interface NavItem {
   id: string;
   label: string;
-  href: string | null;
+  href: string;
   icon: React.ReactNode;
   isPrimary?: boolean;
   isActive: (pathname: string) => boolean;
@@ -43,16 +41,25 @@ const UserIcon = ({ active }: { active: boolean }) => (
   </svg>
 );
 
-function getLastTab(profile: User | null, isLoggedIn: boolean, isLoading: boolean): { label: string; href: string | null } {
-  if (isLoading) return { label: "マイページ", href: null };
-  if (!isLoggedIn) return { label: "ログイン", href: "/login" };
-  if (!profile) return { label: "プロフィール設定", href: "/profile/setup" };
-  return { label: "マイページ", href: `/users/${profile.username}` };
+/**
+ * 右端タブ (ユーザータブ) のラベルと遷移先を `viewer` の状態から決定する。
+ *
+ * - `guest`         → ログイン画面への導線
+ * - `no_profile`    → プロフィール設定画面への導線 (初回ログイン直後)
+ * - `authenticated` → 自分のマイページ
+ *
+ * `Navbar` (PC ヘッダー) の右側アクションと同じ判別 union を使い、認証状態の
+ * 表現を `viewer: Viewer` に統一している (PR #332 の続き)。
+ */
+function getLastTab(viewer: Viewer): { label: string; href: string } {
+  if (viewer.status === "guest") return { label: "ログイン", href: "/login" };
+  if (viewer.status === "no_profile") return { label: "プロフィール設定", href: "/profile/setup" };
+  return { label: "マイページ", href: `/users/${viewer.profile.username}` };
 }
 
-export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavProps) {
+export default function BottomNav({ viewer }: BottomNavProps) {
   const pathname = usePathname();
-  const lastTab = getLastTab(profile, isLoggedIn, isLoading);
+  const lastTab = getLastTab(viewer);
 
   const navItems: NavItem[] = [
     {
@@ -82,7 +89,7 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
       label: lastTab.label,
       href: lastTab.href,
       icon: <UserIcon active={pathname === lastTab.href} />,
-      isActive: (p) => lastTab.href !== null && p === lastTab.href,
+      isActive: (p) => p === lastTab.href,
     },
   ];
 
@@ -91,8 +98,12 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
       <div className="flex items-center justify-around h-14">
         {navItems.map((item) => {
           const active = item.isActive(pathname);
-          const content = (
-            <>
+          const className = `flex flex-col items-center justify-center gap-0.5 w-full h-full transition-colors ${
+            active ? "text-rose-500" : "text-stone-400"
+          }`;
+
+          return (
+            <Link key={item.id} href={item.href} className={className} aria-current={active ? "page" : undefined}>
               {item.isPrimary ? (
                 <span className="flex items-center justify-center w-8 h-8 rounded-full bg-rose-500 text-white">
                   {item.icon}
@@ -101,20 +112,7 @@ export default function BottomNav({ profile, isLoggedIn, isLoading }: BottomNavP
                 item.icon
               )}
               <span className="text-[10px] font-medium">{item.label}</span>
-            </>
-          );
-          const className = `flex flex-col items-center justify-center gap-0.5 w-full h-full transition-colors ${
-            active ? "text-rose-500" : "text-stone-400"
-          }`;
-
-          return item.href ? (
-            <Link key={item.id} href={item.href} className={className} aria-current={active ? "page" : undefined}>
-              {content}
             </Link>
-          ) : (
-            <button type="button" key={item.id} className={`${className} opacity-50`} disabled aria-disabled="true">
-              {content}
-            </button>
           );
         })}
       </div>

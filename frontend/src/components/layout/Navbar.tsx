@@ -19,7 +19,6 @@ interface NavbarProps {
  */
 export default function Navbar({ viewer }: NavbarProps) {
   const profile = viewer.status === "authenticated" ? viewer.profile : null;
-  const isLoggedIn = viewer.status !== "guest";
 
   return (
     <>
@@ -94,7 +93,7 @@ export default function Navbar({ viewer }: NavbarProps) {
       </nav>
 
       {/* SP ボトムナビ */}
-      <BottomNav profile={profile} isLoggedIn={isLoggedIn} isLoading={false} />
+      <BottomNav viewer={viewer} />
     </>
   );
 }
