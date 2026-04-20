@@ -170,6 +170,12 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 			// iTunes API のエラーはログに記録するが、DB の結果だけ返す（ユーザーには影響させない）
 			log.Printf("iTunes API フォールバック検索でエラー: %v", itunesErr)
 		} else {
+			// existingIDsToFill には「DB 既存だが今回の検索にヒットしていない」既存番組の ID を集めます。
+			// ループ後に GetByIDsWithStats で集計値を 1 クエリでまとめて取得し、
+			// items に積んだプレースホルダ（集計値ゼロ）を上書きします。
+			// これにより N 件分の番組を 1 回の DB 呼び出しで補えます（N+1 回避）。
+			var existingIDsToFill []uuid.UUID
+
 			// DB に既存の itunes_id を集めて、重複チェックに使う
 			// （DB 検索結果の番組は itunes_id を持っていない場合もあるため、
 			//   iTunes の結果ごとに DB を確認する）
@@ -193,12 +199,15 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 						continue
 					}
 					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加
+					// この時点では集計値（average_rating 等）は不明のため、後続の
+					// GetByIDsWithStats で取得して上書きします。
 					items = append(items, PodcastSearchItem{
 						ID:         existing.ID,
 						Title:      existing.Title,
 						Author:     existing.Author,
 						ArtworkURL: existing.ArtworkURL,
 					})
+					existingIDsToFill = append(existingIDsToFill, existing.ID)
 					continue
 				}
 
@@ -221,6 +230,28 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					FavoriteCount: 0,
 				})
 			}
+
+			// 既存番組（DB 検索にヒットしなかった分）の集計値を 1 クエリで取得して埋める。
+			// 該当 ID が無い場合は呼び出さず、無駄な DB アクセスを避けます。
+			if len(existingIDsToFill) > 0 {
+				statsByID, statsErr := u.podcastRepo.GetByIDsWithStats(ctx, existingIDsToFill)
+				if statsErr != nil {
+					// 集計値の取得失敗は致命的ではないため、ログのみ出してプレースホルダ（0）のまま続行します。
+					// API の応答自体は維持し、ユーザー体験を守る判断です。
+					log.Printf("iTunes フォールバック: GetByIDsWithStats エラー: %v", statsErr)
+				} else {
+					// 取得できた集計値で items を上書き。
+					// items は append 順なので、ID で突き合わせて更新します。
+					for i := range items {
+						if row, ok := statsByID[items[i].ID]; ok {
+							items[i].AverageRating = roundToOneDecimal(row.AverageRating)
+							items[i].TotalReviews = row.TotalReviews
+							items[i].FavoriteCount = row.FavoriteCount
+						}
+					}
+				}
+			}
+
 			// total を更新（DB の件数 + iTunes から追加した件数）
 			total = len(items)
 		}
