@@ -12,7 +12,7 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -64,13 +64,15 @@ func RunMigrations(databaseDSN string) error {
 	}
 	// defer m.Close() でリソースを解放
 	// Close() は (sourceErr, databaseErr) の2つのエラーを返す
+	// Up() 自体は既に成否決定済みのため、Close 失敗は WARN に留める
+	// （プロセスは続行されるがリソース解放の異常は記録する）
 	defer func() {
 		sourceErr, dbErr := m.Close()
 		if sourceErr != nil {
-			log.Printf("マイグレーションソースのクローズに失敗: %v", sourceErr)
+			slog.Warn("migration source close failed", "error", sourceErr)
 		}
 		if dbErr != nil {
-			log.Printf("マイグレーションDB接続のクローズに失敗: %v", dbErr)
+			slog.Warn("migration database close failed", "error", dbErr)
 		}
 	}()
 
@@ -82,7 +84,8 @@ func RunMigrations(databaseDSN string) error {
 	if err != nil {
 		// errors.Is で特定のエラー型かどうかを判定する（Go のエラー比較のベストプラクティス）
 		if errors.Is(err, migrate.ErrNoChange) {
-			log.Println("マイグレーション: 全て適用済み（変更なし）")
+			// ErrNoChange は「既に全て適用済み」を意味する正常系なので INFO レベル
+			slog.Info("migrations already up to date (no change)")
 			return nil
 		}
 		return fmt.Errorf("マイグレーションの実行に失敗: %w", err)
@@ -91,9 +94,10 @@ func RunMigrations(databaseDSN string) error {
 	// 適用後のバージョンをログに出力
 	version, dirty, verErr := m.Version()
 	if verErr != nil {
-		log.Printf("マイグレーション完了（バージョン取得失敗: %v）", verErr)
+		// 適用自体は成功しているが、バージョン情報が取れない異常を WARN で記録
+		slog.Warn("migrations applied but version lookup failed", "error", verErr)
 	} else {
-		log.Printf("マイグレーション完了: バージョン %d (dirty: %v)", version, dirty)
+		slog.Info("migrations applied", "version", version, "dirty", dirty)
 	}
 
 	return nil
