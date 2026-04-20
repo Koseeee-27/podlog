@@ -17,7 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -52,25 +52,187 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
+// 環境名の定数。typo による設定ミスを防ぐため、文字列リテラルを直接書かず定数で比較する。
+const (
+	envDevelopment = "development"
+	envProduction  = "production"
+)
+
+// Cloud Error Reporting が「エラー」として取り込むための @type フィールドの値。
+// severity=ERROR だけでは Error Reporting に検知されないことがあるため、
+// ERROR 以上のログにはこの @type を付けて自動検知を確実にする。
+// https://cloud.google.com/error-reporting/docs/formatting-error-messages
+const errorReportingType = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
+
 // main は run() を呼び出し、エラーがあればログ出力して終了するだけの薄い関数。
 // os.Exit() は main() でのみ呼ぶことで、run() 内の defer が確実に実行される。
-// （run() 内で log.Fatalf を使うと、defer をスキップして即座にプロセスが終了してしまう）
+// （slog には Fatal がないが、run() 内で os.Exit() を呼ぶと defer をスキップして
+// 即座にプロセスが終了してしまうため、エラーを返して main() で os.Exit する）
 func main() {
 	if err := run(); err != nil {
-		log.Printf("error: %v", err)
+		slog.Error("application failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// errorReportingHandler は ERROR 以上のログに Cloud Error Reporting が必要とする
+// @type フィールドを自動付与する slog.Handler ラッパー。
+// Cloud Error Reporting は「severity=ERROR」だけでは検知せず、@type もしくは
+// スタックトレース形式のメッセージが必要。本実装では最もシンプルな @type 付与を採用する。
+type errorReportingHandler struct {
+	slog.Handler
+}
+
+// Handle は slog.Handler インターフェースの実装。
+// 各ログ出力時にレベルをチェックし、ERROR 以上なら @type 属性を追加してから
+// ラップ先のハンドラ（JSONHandler）に委譲する。
+func (h *errorReportingHandler) Handle(ctx context.Context, r slog.Record) error {
+	if r.Level >= slog.LevelError {
+		r.AddAttrs(slog.String("@type", errorReportingType))
+	}
+	return h.Handler.Handle(ctx, r)
+}
+
+// WithAttrs / WithGroup は slog.Handler のインターフェースを満たすために必要。
+// ラップ先の戻り値を再度 errorReportingHandler で包んで返すことで、
+// Logger.With(...) で派生させたロガーにも ERROR → @type 付与が引き継がれる。
+func (h *errorReportingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &errorReportingHandler{Handler: h.Handler.WithAttrs(attrs)}
+}
+
+func (h *errorReportingHandler) WithGroup(name string) slog.Handler {
+	return &errorReportingHandler{Handler: h.Handler.WithGroup(name)}
+}
+
+// cloudLoggingReplaceAttr は slog.HandlerOptions.ReplaceAttr 用の関数。
+// Cloud Logging の構造化ログ規約（https://cloud.google.com/logging/docs/structured-logging）
+// に合わせて、slog の組み込みキーを Cloud Logging が「特別フィールド」として
+// 認識する名前にリネームする。
+//   - level   → severity （Cloud Logging UI でレベル別フィルタに使われる）
+//   - time    → timestamp（LogEntry.timestamp の慣用名）
+//   - msg     → message  （Cloud Logging UI のサマリー欄に昇格表示される）
+//
+// グループ配下の属性（例: httpRequest グループの requestMethod 等）は
+// リネーム対象外。Cloud Logging 側の規約名をそのまま使うため。
+func cloudLoggingReplaceAttr(groups []string, a slog.Attr) slog.Attr {
+	if len(groups) > 0 {
+		return a
+	}
+	switch a.Key {
+	case slog.LevelKey:
+		// 型アサーション失敗時にパニックしないようガードする。
+		// 将来 slog の内部仕様が変わって Value が Level でなくなっても
+		// ログ全体が落ちないようにする。
+		level, ok := a.Value.Any().(slog.Level)
+		if !ok {
+			return a
+		}
+		a.Key = "severity"
+		switch {
+		case level >= slog.LevelError:
+			a.Value = slog.StringValue("ERROR")
+		case level >= slog.LevelWarn:
+			a.Value = slog.StringValue("WARNING")
+		case level >= slog.LevelInfo:
+			a.Value = slog.StringValue("INFO")
+		default:
+			a.Value = slog.StringValue("DEBUG")
+		}
+	case slog.TimeKey:
+		a.Key = "timestamp"
+	case slog.MessageKey:
+		a.Key = "message"
+	}
+	return a
+}
+
+// formatProtoDurationJSON は time.Duration を protobuf Duration の JSON 形式
+// （秒単位 10 進小数 + `s` サフィックス、負号対応、ナノ秒精度まで保持）に変換する。
+// Cloud Logging の LogEntry.HttpRequest.latency はこの形式を要求しており、
+// `time.Duration.String()` が返す `ms` / `µs` / `ns` サフィックス形式では認識されない。
+//
+// 仕様: protobuf Duration JSON は小数 0/3/6/9 桁のいずれも許容するが、
+// 本実装は常にナノ秒精度の 9 桁固定で出力する（精度情報をフル保持する意図）。
+//
+// 実装メモ:
+//
+//  1. 素直に `fmt.Sprintf("%.9fs", d.Seconds())` と書くと `d.Seconds()` が float64
+//     経由になり、mantissa 52bit の制約で ~104 日を超える Duration から ns 精度が
+//     失われる（関数名と挙動が乖離する）。
+//  2. 単純な `d = -d` による絶対値取得は `math.MinInt64` で signed overflow を
+//     起こす（`-math.MinInt64` は int64 の範囲外のため、ラップアラウンドで再び
+//     MinInt64 に戻り、malformed な "--N.-Ms" 形式を出してしまう）。
+//
+// 上記 2 点を回避するため、絶対値は two's complement で uint64 に変換してから
+// 秒・ns を分割する（`^d + 1` は `-d` と同じビット表現だが uint64 計算なので
+// オーバーフローしない）。これにより `math.MinInt64` から `math.MaxInt64` まで
+// 完全な精度で出力できる。
+//
+// 例:
+//
+//	12_345_000 ns            → "0.012345000s"
+//	1_500_000_000 ns         → "1.500000000s"
+//	-500 * time.Millisecond  → "-0.500000000s"
+//	time.Duration(math.MinInt64) → "-9223372036.854775808s"
+//
+// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
+func formatProtoDurationJSON(d time.Duration) string {
+	sign := ""
+	var abs uint64
+	if d < 0 {
+		sign = "-"
+		// two's complement で絶対値を取得。`^d` は全 bit 反転、それに +1 することで
+		// `-d` と同じビット列になる。uint64 で計算するため、d == math.MinInt64 でも
+		// signed overflow が発生しない。
+		abs = uint64(^d) + 1
+	} else {
+		abs = uint64(d)
+	}
+	sec := abs / uint64(time.Second)
+	ns := abs % uint64(time.Second)
+	return fmt.Sprintf("%s%d.%09ds", sign, sec, ns)
+}
+
+// setupLogger は環境に応じた slog.Logger を返す。
+//   - envDevelopment: TextHandler（人間が読みやすい形式・DEBUG 以上）
+//   - それ以外:       JSONHandler + errorReportingHandler（Cloud Logging 互換・INFO 以上）
+//
+// 本番 JSON Handler は Cloud Logging の構造化ログ規約に合わせてフィールドをリネームし、
+// ERROR 以上には Cloud Error Reporting 用の @type を自動付与する。
+// これにより Cloud Run の stdout に JSON を流すだけで、Cloud Logging がレベル別に
+// 集約し、Cloud Error Reporting が ERROR を自動検知してくれる。
+func setupLogger(env string) *slog.Logger {
+	if env == envDevelopment {
+		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		}))
+	}
+	// 本番（envProduction）、またはそれ以外の未知値（envProduction 相当として扱う）。
+	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level:       slog.LevelInfo,
+		ReplaceAttr: cloudLoggingReplaceAttr,
+	})
+	return slog.New(&errorReportingHandler{Handler: base})
 }
 
 // run はアプリケーションの実際の起動処理を行う。
 // エラーを返すことで、この関数内の defer（db.Close() 等）が
 // 確実に実行されてからプロセスが終了する。
 func run() error {
-	// 0. .env ファイルから環境変数を読み込み（存在しなくても OK）
+	// 0a. ロガーを暫定初期化（本番相当の JSON Handler）。
+	// この時点では cfg.Environment がまだ取得できないため、まず本番同等のハンドラを
+	// グローバル既定に設定しておき、config 読み込み後に development なら差し替える。
+	// こうすることで godotenv.Load 失敗時・config 読み込み失敗時のログも slog に乗せられる。
+	//
+	// NOTE: この SetDefault より前に発生する致命エラー（pre-main の init 失敗等）は
+	// slog パッケージの組み込みデフォルト（TextHandler to stderr）に流れる。
+	slog.SetDefault(setupLogger(envProduction))
+
+	// 0b. .env ファイルから環境変数を読み込み（存在しなくても OK）
 	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
 	// ファイルが存在しない場合（Docker 環境等）はエラーを無視する。
 	if err := godotenv.Load(); err != nil {
-		log.Println(".env ファイルが見つかりません（環境変数から設定を読み込みます）")
+		slog.Info(".env file not found, loading config from environment variables")
 	}
 
 	// 1. 設定を環境変数から読み込み
@@ -83,6 +245,11 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
+
+	// 1.5. ロガーを環境に応じたものに差し替える
+	// development なら TextHandler（DEBUG 以上）、それ以外は JSONHandler（INFO 以上）。
+	// ここ以降のすべての slog.* 呼び出しがこのロガー経由で出力される。
+	slog.SetDefault(setupLogger(cfg.Environment))
 
 	// 2. データベースに接続（リトライあり）
 	// Neon（サーバーレス PostgreSQL）はアイドル時にスリープするため、
@@ -99,7 +266,12 @@ func run() error {
 		if i == maxRetries-1 {
 			return fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
 		}
-		log.Printf("database connection attempt %d/%d failed, retrying in %ds: %v", i+1, maxRetries, (i+1)*2, err)
+		slog.Warn("database connection failed, retrying",
+			"attempt", i+1,
+			"max_retries", maxRetries,
+			"retry_in_seconds", (i+1)*2,
+			"error", err,
+		)
 		time.Sleep(time.Duration((i+1)*2) * time.Second)
 	}
 	defer db.Close()
@@ -124,7 +296,7 @@ func run() error {
 	db.SetConnMaxLifetime(10 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	log.Println("Connected to database successfully")
+	slog.Info("connected to database successfully")
 
 	// 2.5. データベースマイグレーションを自動実行
 	// サーバー起動前に未適用のマイグレーションを全て適用する。
@@ -140,7 +312,7 @@ func run() error {
 	// 4. カスタムエラーハンドラーを設定
 	// ハンドラーから返されたエラーを型に応じて適切な HTTP レスポンスに変換する。
 	// 開発環境では 500 エラーの詳細をレスポンスに含め、本番では隠す。
-	e.HTTPErrorHandler = mw.NewHTTPErrorHandler(cfg.Environment == "development")
+	e.HTTPErrorHandler = mw.NewHTTPErrorHandler(cfg.Environment == envDevelopment)
 
 	// 5. 基本ミドルウェアを登録
 	e.Use(middleware.Recover())
@@ -157,7 +329,28 @@ func run() error {
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			// エラー詳細は HTTPErrorHandler 側でログ出力するため、
 			// ここではリクエスト概要（メソッド・パス・ステータス・レイテンシ）のみ記録する。
-			log.Printf("%s %s %d %v", v.Method, v.URIPath, v.Status, v.Latency)
+			//
+			// Cloud Logging の特別フィールド `httpRequest` に揃えてグループ化することで、
+			// Cloud Logging UI の「HTTP リクエスト」カラムに自動で表示され、ログ行単位の
+			// 検索・集計がしやすくなる。
+			// https://cloud.google.com/logging/docs/structured-logging
+			// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
+			//
+			// `latency` は LogEntry.HttpRequest.latency の規約（protobuf Duration JSON 形式）に
+			// 従い、必ず「秒単位の 10 進小数 + `s` サフィックス」で入れる。
+			// （例: 12.345ms → "0.012345000s"、1.5s → "1.500000000s"）
+			//
+			// NOTE: time.Duration.String() は使わない。1 秒未満で "12.345ms" / "500µs" / "50ns" を
+			// 返すため規約違反になり、Cloud Logging が HTTP リクエストフィールドとして
+			// 認識しなくなる。%.9f でナノ秒精度まで保持する。
+			slog.InfoContext(c.Request().Context(), "http_request",
+				slog.Group("httpRequest",
+					slog.String("requestMethod", v.Method),
+					slog.String("requestUrl", v.URIPath),
+					slog.Int("status", v.Status),
+					slog.String("latency", formatProtoDurationJSON(v.Latency)),
+				),
+			)
 			return nil
 		},
 	}))
@@ -166,7 +359,7 @@ func run() error {
 	// 6. Swagger UIを登録（開発環境のみ）
 	// 本番環境では API の内部構造が外部に露出するのを防ぐため、
 	// Swagger UI のルートを登録しない。
-	if cfg.Environment == "development" {
+	if cfg.Environment == envDevelopment {
 		e.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 
@@ -200,9 +393,9 @@ func run() error {
 
 	adminUserIDs := cfg.GetAdminUserIDs()
 	if len(adminUserIDs) > 0 {
-		log.Printf("管理者ユーザー: %d 人設定済み", len(adminUserIDs))
+		slog.Info("admin users configured", "count", len(adminUserIDs))
 	} else {
-		log.Println("警告: ADMIN_USER_IDS が未設定です。管理用 API には誰もアクセスできません")
+		slog.Warn("ADMIN_USER_IDS is not set; admin API is not accessible")
 	}
 
 	handlers := router.Handlers{
@@ -230,11 +423,13 @@ func run() error {
 	//   2. バックグラウンド goroutine（RSS フェッチ等）の完了を待機（bgWg.Wait）
 	//   3. サーバーを終了
 	addr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
 
 	// シャットダウンシグナルを受信するための context を作成
+	// 起動ログ以降の slog.*Context 系はこの ctx を引き継げるよう、先に ctx を組み立ててから起動ログを出す。
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	slog.InfoContext(ctx, "starting server", "addr", addr, "env", cfg.Environment)
 
 	// サーバーを別 goroutine で起動し、エラーはチャネルで通知する。
 	// goroutine 内でプロセスを終了させず、チャネル経由で run() に返すことで
@@ -250,7 +445,7 @@ func run() error {
 	// シャットダウンシグナル or サーバーエラーを待機
 	select {
 	case <-ctx.Done():
-		log.Println("シャットダウンシグナルを受信しました")
+		slog.Info("shutdown signal received")
 	case err := <-serverErr:
 		if err != nil {
 			return fmt.Errorf("failed to start server: %w", err)
@@ -265,14 +460,14 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
-		log.Printf("サーバーの graceful shutdown に失敗: %v", err)
-		errs = append(errs, fmt.Errorf("サーバーの graceful shutdown に失敗: %w", err))
+		slog.Error("server graceful shutdown failed", "error", err)
+		errs = append(errs, fmt.Errorf("server graceful shutdown failed: %w", err))
 	}
 
 	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
 	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
 	const bgWaitTimeout = 65 * time.Second
-	log.Println("バックグラウンドタスクの完了を待機中...")
+	slog.Info("waiting for background tasks to complete")
 	bgDone := make(chan struct{})
 	go func() {
 		bgWg.Wait()
@@ -280,10 +475,13 @@ func run() error {
 	}()
 	select {
 	case <-bgDone:
-		log.Println("全タスク完了。サーバーを終了します")
+		slog.Info("all background tasks completed, exiting")
 	case <-time.After(bgWaitTimeout):
-		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました")
-		errs = append(errs, fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（%v経過）", bgWaitTimeout))
+		// タイムアウトは errs に追加されるため（非ゼロ exit code になる）、ERROR レベルで出力する。
+		// timeout 属性は Duration のまま渡すと JSONHandler が ns 値で出力して読みにくいため、
+		// .String() で "65s" のような人間に読みやすい表記にする。
+		slog.Error("background task wait timed out", "timeout", bgWaitTimeout.String())
+		errs = append(errs, fmt.Errorf("background task wait timed out (%v elapsed)", bgWaitTimeout))
 	}
 
 	// errors.Join はスライスが空（エラーなし）なら nil を返す。
