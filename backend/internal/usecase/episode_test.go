@@ -130,6 +130,9 @@ func (m *mockPodcastRepoForEpisode) UpdateFeedLastFetchedAt(ctx context.Context,
 	m.updateFeedLastFetchedAtCalled = true
 	return nil
 }
+func (m *mockPodcastRepoForEpisode) GetByIDsWithStats(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]repository.PodcastSearchRow, error) {
+	return nil, nil
+}
 
 // mockRSSFetcher は rss.Fetcher のモックです。
 type mockRSSFetcher struct {

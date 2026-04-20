@@ -53,6 +53,14 @@ type PodcastRepository interface {
 	// 存在しない ID がある場合、存在しなかった ID のリストを返します。
 	ExistsByIDs(ctx context.Context, ids []uuid.UUID) (missingIDs []uuid.UUID, err error)
 
+	// GetByIDsWithStats は指定された podcast_id のリストに対して、Search と同じ集計値
+	// （平均評価・レビュー件数・お気に入り件数）込みのレコードを一括取得します。
+	// 戻り値は ID で引けるよう map で返します。
+	// IN 句を使うため 1 クエリで完結し、N+1 問題を回避できます。
+	// iTunes フォールバック経路で「DB 既存だが今回の検索にヒットしていない」既存番組の
+	// 集計値を補うために使います。
+	GetByIDsWithStats(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]PodcastSearchRow, error)
+
 	// UpdateGenre は指定したポッドキャストの genre カラムを更新します。
 	// バッチ処理や iTunes API からのデータ取得時にジャンルを後から埋める用途で使います。
 	UpdateGenre(ctx context.Context, id uuid.UUID, genre string) error
@@ -160,6 +168,65 @@ func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([
 	}
 
 	return missing, nil
+}
+
+// GetByIDsWithStats は指定された podcast_id のリストに対して、Search と同じ集計値込みで
+// 番組レコードを一括取得します。N+1 を避けるため IN 句で 1 クエリにまとめます。
+//
+// 集計値（average_rating / total_reviews / favorite_count）の計算ロジックは
+// Search のデータ取得 SQL と完全に一致させています。
+// 同じ番組が「DB キーワード検索ヒット経路」と「iTunes フォールバック経由の既存番組経路」の
+// どちらで返ってきても集計値が同一になるよう、JOIN 条件もすべて揃えます。
+//
+// 空スライスを渡した場合は無駄な DB クエリを発行せず、空 map を即時返します。
+// （ExistsByIDs と同じ挙動）
+func (r *podcastRepository) GetByIDsWithStats(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]PodcastSearchRow, error) {
+	if len(ids) == 0 {
+		return map[uuid.UUID]PodcastSearchRow{}, nil
+	}
+
+	// sqlx.In で IN 句のプレースホルダを展開（IN (?) → IN (?, ?, ?)）。
+	// その後 Rebind で PostgreSQL 用の $1, $2, ... に変換します。
+	// Search の DATA 取得部と同じ JOIN 構造（users.deleted_at IS NULL の絞り込み、
+	// favorite_podcasts のサブクエリ）を維持し、WHERE のみ p.id IN (?) に差し替えています。
+	query, args, err := sqlx.In(`
+		SELECT
+			p.id,
+			p.title,
+			p.author,
+			p.artwork_url,
+			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			COALESCE(fav.cnt, 0)::int AS favorite_count
+		FROM podcasts p
+		LEFT JOIN episodes e ON p.id = e.podcast_id
+		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
+		LEFT JOIN (
+			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
+			FROM favorite_podcasts fp
+			INNER JOIN users fu ON fp.user_id = fu.id AND fu.deleted_at IS NULL
+			GROUP BY fp.podcast_id
+		) fav ON p.id = fav.podcast_id
+		WHERE p.id IN (?)
+		GROUP BY p.id, p.title, p.author, p.artwork_url, fav.cnt
+	`, ids)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build IN query: %w", err)
+	}
+	query = r.db.Rebind(query)
+
+	var rows []PodcastSearchRow
+	if err := r.db.SelectContext(ctx, &rows, query, args...); err != nil {
+		return nil, fmt.Errorf("failed to get podcasts with stats by ids: %w", err)
+	}
+
+	// 呼び出し側で ID 引きできるよう map に詰め替えて返します。
+	result := make(map[uuid.UUID]PodcastSearchRow, len(rows))
+	for _, row := range rows {
+		result[row.ID] = row
+	}
+	return result, nil
 }
 
 // Search はアプリ内 DB の番組をキーワードで部分一致検索します。

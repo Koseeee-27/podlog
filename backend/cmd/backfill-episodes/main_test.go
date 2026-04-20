@@ -55,6 +55,9 @@ func (m *mockPodcastRepo) ListWithoutEpisodes(ctx context.Context) ([]model.Podc
 func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
+func (m *mockPodcastRepo) GetByIDsWithStats(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]repository.PodcastSearchRow, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // ── モック: EpisodeUsecase ──
 
