@@ -66,8 +66,8 @@ func (m *mockPodcastRepo) GetByIDsWithStats(_ context.Context, _ []uuid.UUID) (m
 	return nil, fmt.Errorf("not implemented")
 }
 
-// TestRun_NoPodcastsToUpdate はジャンル未設定の番組がない場合のテストです。
-func TestRun_NoPodcastsToUpdate(t *testing.T) {
+// TestBackfill_NoPodcastsToUpdate はジャンル未設定の番組がない場合のテストです。
+func TestBackfill_NoPodcastsToUpdate(t *testing.T) {
 	repo := &mockPodcastRepo{
 		listWithoutGenreFn: func(_ context.Context) ([]model.Podcast, error) {
 			return []model.Podcast{}, nil
@@ -84,14 +84,14 @@ func TestRun_NoPodcastsToUpdate(t *testing.T) {
 	client := itunes.NewClient()
 	// baseURL は差し替えない（呼ばれないはずだから）
 
-	err := run(repo, client)
+	err := backfill(repo, client)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-// TestRun_UpdatesGenreSuccessfully はジャンルが正常に更新されるケースのテストです。
-func TestRun_UpdatesGenreSuccessfully(t *testing.T) {
+// TestBackfill_UpdatesGenreSuccessfully はジャンルが正常に更新されるケースのテストです。
+func TestBackfill_UpdatesGenreSuccessfully(t *testing.T) {
 	podcastID := uuid.New()
 	itunesID := int64(12345)
 
@@ -139,7 +139,7 @@ func TestRun_UpdatesGenreSuccessfully(t *testing.T) {
 	client := itunes.NewClient()
 	client.SetBaseURL(server.URL)
 
-	err := run(repo, client)
+	err := backfill(repo, client)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -152,8 +152,8 @@ func TestRun_UpdatesGenreSuccessfully(t *testing.T) {
 	}
 }
 
-// TestRun_SkipsWhenItunesReturnsNotFound は iTunes API で見つからない場合のテストです。
-func TestRun_SkipsWhenItunesReturnsNotFound(t *testing.T) {
+// TestBackfill_SkipsWhenItunesReturnsNotFound は iTunes API で見つからない場合のテストです。
+func TestBackfill_SkipsWhenItunesReturnsNotFound(t *testing.T) {
 	itunesID := int64(99999)
 
 	repo := &mockPodcastRepo{
@@ -190,7 +190,7 @@ func TestRun_SkipsWhenItunesReturnsNotFound(t *testing.T) {
 	client := itunes.NewClient()
 	client.SetBaseURL(server.URL)
 
-	err := run(repo, client)
+	err := backfill(repo, client)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
