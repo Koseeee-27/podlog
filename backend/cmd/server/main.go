@@ -17,7 +17,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -54,23 +54,76 @@ import (
 
 // main は run() を呼び出し、エラーがあればログ出力して終了するだけの薄い関数。
 // os.Exit() は main() でのみ呼ぶことで、run() 内の defer が確実に実行される。
-// （run() 内で log.Fatalf を使うと、defer をスキップして即座にプロセスが終了してしまう）
+// （slog には Fatal がないが、run() 内で os.Exit() を呼ぶと defer をスキップして
+// 即座にプロセスが終了してしまうため、エラーを返して main() で os.Exit する）
 func main() {
 	if err := run(); err != nil {
-		log.Printf("error: %v", err)
+		slog.Error("application failed", "error", err)
 		os.Exit(1)
 	}
+}
+
+// setupLogger は環境に応じた slog.Logger を返す。
+//   - development: TextHandler（人間が読みやすい形式・DEBUG 以上）
+//   - それ以外: JSONHandler（Cloud Logging 互換・INFO 以上）
+//
+// Cloud Logging の構造化ログ規約（https://cloud.google.com/logging/docs/structured-logging）に
+// 合わせて、`level` → `severity`、`time` → `timestamp` にフィールド名を変換する。
+// これにより Cloud Run の stdout に JSON を流すだけで、Cloud Logging がレベル別に
+// 集約し、Cloud Error Reporting が ERROR を自動検知してくれる。
+func setupLogger(env string) *slog.Logger {
+	var handler slog.Handler
+	if env == "development" {
+		handler = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelDebug,
+		})
+	} else {
+		handler = slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+			Level: slog.LevelInfo,
+			ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+				// slog のデフォルトキー "level" を Cloud Logging が認識する "severity" に変換。
+				// 値も slog.Level ("INFO", "WARN" 等) から Cloud Logging の severity 文字列
+				// ("INFO", "WARNING", "ERROR", "DEBUG") に揃える。
+				if a.Key == slog.LevelKey {
+					level := a.Value.Any().(slog.Level)
+					a.Key = "severity"
+					switch {
+					case level >= slog.LevelError:
+						a.Value = slog.StringValue("ERROR")
+					case level >= slog.LevelWarn:
+						a.Value = slog.StringValue("WARNING")
+					case level >= slog.LevelInfo:
+						a.Value = slog.StringValue("INFO")
+					default:
+						a.Value = slog.StringValue("DEBUG")
+					}
+				}
+				// slog のデフォルトキー "time" を Cloud Logging が認識する "timestamp" に変換。
+				if a.Key == slog.TimeKey {
+					a.Key = "timestamp"
+				}
+				return a
+			},
+		})
+	}
+	return slog.New(handler)
 }
 
 // run はアプリケーションの実際の起動処理を行う。
 // エラーを返すことで、この関数内の defer（db.Close() 等）が
 // 確実に実行されてからプロセスが終了する。
 func run() error {
-	// 0. .env ファイルから環境変数を読み込み（存在しなくても OK）
+	// 0a. ロガーを暫定初期化（production 想定の JSON Handler）。
+	// この時点では cfg.Environment がまだ取得できないため、まず本番同等のハンドラを
+	// グローバル既定に設定しておき、config 読み込み後に development なら差し替える。
+	// こうすることで godotenv.Load 失敗時・config 読み込み失敗時のログも slog に乗せられる。
+	slog.SetDefault(setupLogger(""))
+
+	// 0b. .env ファイルから環境変数を読み込み（存在しなくても OK）
 	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
 	// ファイルが存在しない場合（Docker 環境等）はエラーを無視する。
 	if err := godotenv.Load(); err != nil {
-		log.Println(".env ファイルが見つかりません（環境変数から設定を読み込みます）")
+		slog.Info(".env ファイルが見つかりません（環境変数から設定を読み込みます）")
 	}
 
 	// 1. 設定を環境変数から読み込み
@@ -83,6 +136,11 @@ func run() error {
 	if err := cfg.Validate(); err != nil {
 		return fmt.Errorf("config validation failed: %w", err)
 	}
+
+	// 1.5. ロガーを環境に応じたものに差し替える
+	// development なら TextHandler（DEBUG 以上）、それ以外は JSONHandler（INFO 以上）。
+	// ここ以降のすべての slog.* 呼び出しがこのロガー経由で出力される。
+	slog.SetDefault(setupLogger(cfg.Environment))
 
 	// 2. データベースに接続（リトライあり）
 	// Neon（サーバーレス PostgreSQL）はアイドル時にスリープするため、
@@ -99,7 +157,12 @@ func run() error {
 		if i == maxRetries-1 {
 			return fmt.Errorf("failed to connect to database after %d attempts: %w", maxRetries, err)
 		}
-		log.Printf("database connection attempt %d/%d failed, retrying in %ds: %v", i+1, maxRetries, (i+1)*2, err)
+		slog.Warn("database connection failed, retrying",
+			"attempt", i+1,
+			"max_retries", maxRetries,
+			"retry_in_seconds", (i+1)*2,
+			"error", err,
+		)
 		time.Sleep(time.Duration((i+1)*2) * time.Second)
 	}
 	defer db.Close()
@@ -124,7 +187,7 @@ func run() error {
 	db.SetConnMaxLifetime(10 * time.Minute)
 	db.SetConnMaxIdleTime(5 * time.Minute)
 
-	log.Println("Connected to database successfully")
+	slog.Info("connected to database successfully")
 
 	// 2.5. データベースマイグレーションを自動実行
 	// サーバー起動前に未適用のマイグレーションを全て適用する。
@@ -157,7 +220,13 @@ func run() error {
 		LogValuesFunc: func(c echo.Context, v middleware.RequestLoggerValues) error {
 			// エラー詳細は HTTPErrorHandler 側でログ出力するため、
 			// ここではリクエスト概要（メソッド・パス・ステータス・レイテンシ）のみ記録する。
-			log.Printf("%s %s %d %v", v.Method, v.URIPath, v.Status, v.Latency)
+			// フィールドごとに属性化することで、Cloud Logging 上でクエリ・集計しやすくする。
+			slog.InfoContext(c.Request().Context(), "http_request",
+				"method", v.Method,
+				"path", v.URIPath,
+				"status", v.Status,
+				"latency_ms", v.Latency.Milliseconds(),
+			)
 			return nil
 		},
 	}))
@@ -200,9 +269,9 @@ func run() error {
 
 	adminUserIDs := cfg.GetAdminUserIDs()
 	if len(adminUserIDs) > 0 {
-		log.Printf("管理者ユーザー: %d 人設定済み", len(adminUserIDs))
+		slog.Info("admin users configured", "count", len(adminUserIDs))
 	} else {
-		log.Println("警告: ADMIN_USER_IDS が未設定です。管理用 API には誰もアクセスできません")
+		slog.Warn("ADMIN_USER_IDS が未設定です。管理用 API には誰もアクセスできません")
 	}
 
 	handlers := router.Handlers{
@@ -230,7 +299,7 @@ func run() error {
 	//   2. バックグラウンド goroutine（RSS フェッチ等）の完了を待機（bgWg.Wait）
 	//   3. サーバーを終了
 	addr := fmt.Sprintf(":%s", cfg.Port)
-	log.Printf("Starting server on %s (env: %s)", addr, cfg.Environment)
+	slog.Info("starting server", "addr", addr, "env", cfg.Environment)
 
 	// シャットダウンシグナルを受信するための context を作成
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -250,7 +319,7 @@ func run() error {
 	// シャットダウンシグナル or サーバーエラーを待機
 	select {
 	case <-ctx.Done():
-		log.Println("シャットダウンシグナルを受信しました")
+		slog.Info("シャットダウンシグナルを受信しました")
 	case err := <-serverErr:
 		if err != nil {
 			return fmt.Errorf("failed to start server: %w", err)
@@ -265,14 +334,14 @@ func run() error {
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 	if err := e.Shutdown(shutdownCtx); err != nil {
-		log.Printf("サーバーの graceful shutdown に失敗: %v", err)
+		slog.Error("サーバーの graceful shutdown に失敗", "error", err)
 		errs = append(errs, fmt.Errorf("サーバーの graceful shutdown に失敗: %w", err))
 	}
 
 	// バックグラウンド goroutine の完了を待機（RSS フェッチ等）
 	// RSS フェッチのタイムアウトが60秒なので、余裕を持って65秒で打ち切る
 	const bgWaitTimeout = 65 * time.Second
-	log.Println("バックグラウンドタスクの完了を待機中...")
+	slog.Info("バックグラウンドタスクの完了を待機中...")
 	bgDone := make(chan struct{})
 	go func() {
 		bgWg.Wait()
@@ -280,9 +349,10 @@ func run() error {
 	}()
 	select {
 	case <-bgDone:
-		log.Println("全タスク完了。サーバーを終了します")
+		slog.Info("全タスク完了。サーバーを終了します")
 	case <-time.After(bgWaitTimeout):
-		log.Println("警告: バックグラウンドタスクの待機がタイムアウトしました")
+		// タイムアウトは errs に追加されるため（非ゼロ exit code になる）、ERROR レベルで出力する
+		slog.Error("バックグラウンドタスクの待機がタイムアウトしました", "timeout", bgWaitTimeout)
 		errs = append(errs, fmt.Errorf("バックグラウンドタスクの待機がタイムアウトしました（%v経過）", bgWaitTimeout))
 	}
 
