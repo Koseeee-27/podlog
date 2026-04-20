@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState, useTransition } from "react";
+import { Suspense, useState, useTransition, useRef } from "react";
 import { searchPodcasts } from "@/lib/api/podcasts";
 import { getEpisodesByPodcast } from "@/lib/api/episodes";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -35,12 +35,20 @@ export default function PodcastSearchSection() {
   const [episodesPromise, setEpisodesPromise] =
     useState<Promise<EpisodeListResult> | null>(null);
 
+  // race 対策: 発行したリクエストに通し番号を振り、応答到着時に最新と一致するか判定する。
+  // useTransition は応答順を保証しないため、「A → AB」連打や「応答待ち中のクリア」で
+  // 古い応答が新しい結果を上書きする race condition が発生しうる
+  // （React 公式 useTransition の "out of order" トラブルシューティング参照）。
+  const requestIdRef = useRef(0);
+
   const isSearching = query.trim().length > 0;
 
   const handleSearchSubmit = () => {
     const trimmed = inputValue.trim();
     if (!trimmed) return;
 
+    // 自分のリクエスト番号を発行（事前インクリメントで値を取得）
+    const requestId = ++requestIdRef.current;
     setQuery(trimmed);
     setSelectedPodcast(null);
     setEpisodesPromise(null);
@@ -49,8 +57,12 @@ export default function PodcastSearchSection() {
     startSearchTransition(async () => {
       try {
         const data = await searchPodcasts(trimmed);
+        if (requestId !== requestIdRef.current) return; // stale 応答は破棄
         setSearchResults(data);
       } catch (err) {
+        // 早いリクエストが成功してから遅いリクエストがエラーになるケースで
+        // setSearchError が不適切に上書きされないよう、catch 側も stale を破棄する
+        if (requestId !== requestIdRef.current) return;
         setSearchError(
           getUserFriendlyErrorMessage(err, "検索に失敗しました"),
         );
@@ -64,6 +76,8 @@ export default function PodcastSearchSection() {
     setSelectedPodcast(null);
     setEpisodesPromise(null);
     if (!value.trim()) {
+      // 新しい操作として番号を進め、遅れて届く stale 応答の上書きを無効化する
+      requestIdRef.current += 1;
       setQuery("");
       setSearchResults([]);
       setSearchError(null);
