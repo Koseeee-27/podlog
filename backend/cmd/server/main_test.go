@@ -9,6 +9,7 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"math"
 	"regexp"
 	"strings"
 	"testing"
@@ -229,6 +230,12 @@ func TestFormatProtoDurationJSON(t *testing.T) {
 		{"one_second", time.Second, "1.000000000s"},
 		{"seconds_fractional", 1500 * time.Millisecond, "1.500000000s"},
 		{"multi_second", 12 * time.Second, "12.000000000s"},
+		// 境界値: math.MinInt64 (-9223372036854775808 ns)。
+		// 素朴な `d = -d` では signed overflow を起こして malformed になるため、
+		// two's complement による絶対値取得が正しく機能していることを固定する。
+		{"min_int64", time.Duration(math.MinInt64), "-9223372036.854775808s"},
+		// 境界値: math.MaxInt64 (9223372036854775807 ns)。正方向の最大値。
+		{"max_int64", time.Duration(math.MaxInt64), "9223372036.854775807s"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -262,6 +269,9 @@ func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
 		-500 * time.Millisecond,
 		// 大きな値（float64 経由の実装では ns 精度が落ちていた領域。整数実装では保たれる）
 		time.Duration(1 << 62),
+		// int64 境界値（`d = -d` 方式では signed overflow で malformed になっていた領域）
+		time.Duration(math.MinInt64),
+		time.Duration(math.MaxInt64),
 	}
 	for _, d := range samples {
 		got := formatProtoDurationJSON(d)

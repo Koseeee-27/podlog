@@ -154,26 +154,42 @@ func cloudLoggingReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 // 仕様: protobuf Duration JSON は小数 0/3/6/9 桁のいずれも許容するが、
 // 本実装は常にナノ秒精度の 9 桁固定で出力する（精度情報をフル保持する意図）。
 //
-// 実装メモ: 素直に `fmt.Sprintf("%.9fs", d.Seconds())` と書くと `d.Seconds()` が
-// float64 経由になり、mantissa 52bit の制約で ~104 日を超える Duration から
-// ns 精度が失われる（関数名と挙動が乖離する）。秒と ns を int64 整数として分割し、
-// `%d.%09d` で組み立てることで `math.MaxInt64` まで完全な精度を保つ。
+// 実装メモ:
+//
+//  1. 素直に `fmt.Sprintf("%.9fs", d.Seconds())` と書くと `d.Seconds()` が float64
+//     経由になり、mantissa 52bit の制約で ~104 日を超える Duration から ns 精度が
+//     失われる（関数名と挙動が乖離する）。
+//  2. 単純な `d = -d` による絶対値取得は `math.MinInt64` で signed overflow を
+//     起こす（`-math.MinInt64` は int64 の範囲外のため、ラップアラウンドで再び
+//     MinInt64 に戻り、malformed な "--N.-Ms" 形式を出してしまう）。
+//
+// 上記 2 点を回避するため、絶対値は two's complement で uint64 に変換してから
+// 秒・ns を分割する（`^d + 1` は `-d` と同じビット表現だが uint64 計算なので
+// オーバーフローしない）。これにより `math.MinInt64` から `math.MaxInt64` まで
+// 完全な精度で出力できる。
 //
 // 例:
 //
-//	12_345_000 ns       → "0.012345000s"
-//	1_500_000_000 ns    → "1.500000000s"
-//	-500 * time.Millisecond → "-0.500000000s"
+//	12_345_000 ns            → "0.012345000s"
+//	1_500_000_000 ns         → "1.500000000s"
+//	-500 * time.Millisecond  → "-0.500000000s"
+//	time.Duration(math.MinInt64) → "-9223372036.854775808s"
 //
 // https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
 func formatProtoDurationJSON(d time.Duration) string {
 	sign := ""
+	var abs uint64
 	if d < 0 {
 		sign = "-"
-		d = -d
+		// two's complement で絶対値を取得。`^d` は全 bit 反転、それに +1 することで
+		// `-d` と同じビット列になる。uint64 で計算するため、d == math.MinInt64 でも
+		// signed overflow が発生しない。
+		abs = uint64(^d) + 1
+	} else {
+		abs = uint64(d)
 	}
-	sec := d / time.Second
-	ns := d % time.Second
+	sec := abs / uint64(time.Second)
+	ns := abs % uint64(time.Second)
 	return fmt.Sprintf("%s%d.%09ds", sign, sec, ns)
 }
 
