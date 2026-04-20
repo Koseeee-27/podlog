@@ -29,10 +29,11 @@ import Link from "next/link";
  *   (右端はスケルトン表示で、ログインボタンは出さない)。フルリロードで
  *   `getViewer()` が 500 を返したケースは稀なため、明示的な「再試行」UI
  *   は出さずに ErrorBoundary の挙動に任せる。
- * - `mode` は a11y 文言の切り替え専用。`loading` のとき `role="status"` +
- *   `aria-live="polite"` でスクリーンリーダーに「読み込み中」と伝える。
- *   `error` のときはこれらを外す (永続的な状態なので live region は不適切)。
- *   見た目は `loading` / `error` で同一。
+ * - `mode` は「読み込み中 / エラー確定」の切り替え用。
+ *   - `loading`: `role="status"` + `aria-live="polite"` で SR に「読み込み中」を
+ *     通知し、右端スケルトンを `animate-pulse` で揺らす。
+ *   - `error`: live region を外し (永続状態での誤案内を防ぐ)、`animate-pulse`
+ *     も止めて視覚的にも「読み込み中感」を出さない。a11y と視覚の挙動を揃える。
  *
  * 検索バーの扱い:
  * fallback と本体 (`Navbar`) の両方で同じ Client Component (`NavbarSearchForm`)
@@ -128,8 +129,14 @@ export default function NavbarShell({ mode = "loading" }: NavbarShellProps) {
               {isLoading && (
                 <span className="sr-only">ナビゲーションを読み込み中</span>
               )}
+              {/* `error` のときはアニメーションも止める。永続状態で
+                  `animate-pulse` を続けるとユーザーに「まだ読み込み中」と
+                  誤認させるため。`mode` prop の意味論を a11y (live region)
+                  と視覚 (pulse) で揃える。 */}
               <div
-                className="w-20 h-8 rounded-lg bg-stone-200 animate-pulse"
+                className={`w-20 h-8 rounded-lg bg-stone-200${
+                  isLoading ? " animate-pulse" : ""
+                }`}
                 aria-hidden="true"
               />
             </div>

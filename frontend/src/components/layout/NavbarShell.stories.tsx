@@ -6,9 +6,11 @@ import NavbarShell from "./NavbarShell";
  * もしくは `getViewer()` がエラーになったときに表示する fallback コンポーネント。
  * PC ヘッダーと SP ボトムナビ双方のプレースホルダーを含む。
  *
- * `mode` prop で a11y 文言を切り替える (見た目は同一):
- * - `loading`: `role="status" aria-live="polite"` で「読み込み中」と案内
- * - `error`: live region を外して永続状態として扱う
+ * `mode` prop で a11y と視覚挙動を切り替える:
+ * - `loading`: `role="status" aria-live="polite"` で「読み込み中」と案内し、
+ *   右端スケルトンを `animate-pulse` で揺らす
+ * - `error`: live region を外し、アニメーションも停止 (永続状態で「読み込み中」
+ *   に見せないため)
  */
 const meta = {
   title: "Layout/NavbarShell",
@@ -47,8 +49,9 @@ export const LoadingMobile: Story = {
 
 /**
  * ErrorBoundary fallback として使うときのデスクトップ表示。
- * 見た目は `loading` と同じだが `role="status"` / `aria-live` / `aria-label`
- * を外してスクリーンリーダーに「読み込み中」と誤案内しないようにする。
+ * 右端スケルトンのアニメーションを止め (永続状態なので「読み込み中」に見せ
+ * ない)、`role="status"` / `aria-live` も外してスクリーンリーダーに誤案内
+ * しないようにする。
  */
 export const ErrorDesktop: Story = {
   args: { mode: "error" },
