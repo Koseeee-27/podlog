@@ -214,7 +214,7 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
         <div className="max-h-64 overflow-y-auto">
           {searchError && <ErrorMessage message={searchError} className="mb-2" />}
 
-          {isPending && !searchError && (
+          {isPending && !searchError && query.trim().length > 0 && (
             <p className="text-sm text-stone-500 text-center py-4">検索中...</p>
           )}
 
