@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useRef } from "react";
 import Image from "next/image";
 import { searchPodcasts } from "@/lib/api/podcasts";
+import { getUserFriendlyErrorMessage } from "@/lib/utils";
+import ErrorMessage from "@/components/ui/ErrorMessage";
 import { XMarkIcon, PlusIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import type { FavoritePodcastItem } from "@/types/user";
 import type { PodcastSearchItem } from "@/types/podcast";
@@ -115,14 +117,27 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
   const [inputValue, setInputValue] = useState("");
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PodcastSearchItem[]>([]);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // race 対策: 発行したリクエストに通し番号を振り、応答到着時に最新と一致するか判定する。
+  // useTransition は応答順を保証しないため、「A → AB」連打や「応答待ち中のクリア」で
+  // 古い応答が新しい結果を上書きする race condition が発生しうる
+  // （React 公式 useTransition の "out of order" トラブルシューティング参照）。
+  //
+  // useState ではなく useRef を使うのは、非同期コールバック内から常に最新値を読む
+  // 必要があるため。useState だとクロージャで古い値が固定される。
+  const requestIdRef = useRef(0);
 
   function handleInputChange(value: string) {
     setInputValue(value);
     // 入力を空にしたら検索結果もクリア（query と results の整合を保つ）
     if (value.trim().length === 0) {
+      // 新しい操作として番号を進め、遅れて届く stale 応答の上書きを無効化する
+      requestIdRef.current += 1;
       setQuery("");
       setResults([]);
+      setSearchError(null);
     }
   }
 
@@ -130,12 +145,20 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
     const trimmed = inputValue.trim();
     if (trimmed.length === 0) return;
 
+    // 自分のリクエスト番号を発行（事前インクリメントで値を取得）
+    const requestId = ++requestIdRef.current;
     setQuery(trimmed);
+    setSearchError(null);
     startTransition(async () => {
       try {
         const items = await searchPodcasts(trimmed);
+        if (requestId !== requestIdRef.current) return; // stale 応答は破棄
         setResults(items);
-      } catch {
+      } catch (err) {
+        // 早いリクエストが成功してから遅いリクエストがエラーになるケースで
+        // setSearchError が不適切に上書きされないよう、catch 側も stale を破棄する
+        if (requestId !== requestIdRef.current) return;
+        setSearchError(getUserFriendlyErrorMessage(err, "検索に失敗しました"));
         setResults([]);
       }
     });
@@ -189,17 +212,19 @@ function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDi
         </div>
 
         <div className="max-h-64 overflow-y-auto">
-          {isPending && (
+          {searchError && <ErrorMessage message={searchError} className="mb-2" />}
+
+          {isPending && !searchError && (
             <p className="text-sm text-stone-500 text-center py-4">検索中...</p>
           )}
 
-          {!isPending && query.trim().length > 0 && results.length === 0 && (
+          {!isPending && !searchError && query.trim().length > 0 && results.length === 0 && (
             <p className="text-sm text-stone-500 text-center py-4">
               検索結果が見つかりませんでした
             </p>
           )}
 
-          {!isPending && results.length > 0 && (
+          {!isPending && !searchError && results.length > 0 && (
             <ul className="divide-y divide-stone-100">
               {results.map((podcast) => {
                 const alreadyAdded = existingIds.includes(podcast.id);
