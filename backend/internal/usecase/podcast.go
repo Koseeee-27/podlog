@@ -198,9 +198,10 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					if alreadyInResults {
 						continue
 					}
-					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加
-					// この時点では集計値（average_rating 等）は不明のため、後続の
-					// GetByIDsWithStats で取得して上書きします。
+					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加。
+					// AverageRating / TotalReviews / FavoriteCount は意図的に省略し
+					// （Go のゼロ値 0 がプレースホルダ）、後続の GetByIDsWithStats で
+					// 取得した DB 集計値で上書きします。
 					items = append(items, PodcastSearchItem{
 						ID:         existing.ID,
 						Title:      existing.Title,
@@ -240,8 +241,12 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					// API の応答自体は維持し、ユーザー体験を守る判断です。
 					log.Printf("iTunes フォールバック: GetByIDsWithStats エラー: %v", statsErr)
 				} else {
-					// 取得できた集計値で items を上書き。
-					// items は append 順なので、ID で突き合わせて更新します。
+					// 取得できた集計値で items を上書きします。
+					// items 全件をスキャンし、statsByID に該当 ID があるレコードのみ更新します。
+					// items の最大長は「DB ヒット 3 + iTunes 10 = 13 件」と小さいため、
+					// O(N×1) の lookup で十分（map 参照は O(1)）。
+					// なお DB 検索ヒット経路で取得済みの番組（roundToOneDecimal 適用済み）は
+					// statsByID に含まれないため、上書きされず元の値が保持されます。
 					for i := range items {
 						if row, ok := statsByID[items[i].ID]; ok {
 							items[i].AverageRating = roundToOneDecimal(row.AverageRating)

@@ -189,6 +189,8 @@ func (r *podcastRepository) GetByIDsWithStats(ctx context.Context, ids []uuid.UU
 	// その後 Rebind で PostgreSQL 用の $1, $2, ... に変換します。
 	// Search の DATA 取得部と同じ JOIN 構造（users.deleted_at IS NULL の絞り込み、
 	// favorite_podcasts のサブクエリ）を維持し、WHERE のみ p.id IN (?) に差し替えています。
+	// GROUP BY も Search と完全一致させているのは、PostgreSQL では p.id だけでも
+	// 動きますが、Search 側との視覚的な対称性を保ちレビュー時に差分を取りやすくするためです。
 	query, args, err := sqlx.In(`
 		SELECT
 			p.id,
