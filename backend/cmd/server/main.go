@@ -371,11 +371,13 @@ func run() error {
 	//   2. バックグラウンド goroutine（RSS フェッチ等）の完了を待機（bgWg.Wait）
 	//   3. サーバーを終了
 	addr := fmt.Sprintf(":%s", cfg.Port)
-	slog.Info("starting server", "addr", addr, "env", cfg.Environment)
 
 	// シャットダウンシグナルを受信するための context を作成
+	// 起動ログ以降の slog.*Context 系はこの ctx を引き継げるよう、先に ctx を組み立ててから起動ログを出す。
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
+
+	slog.InfoContext(ctx, "starting server", "addr", addr, "env", cfg.Environment)
 
 	// サーバーを別 goroutine で起動し、エラーはチャネルで通知する。
 	// goroutine 内でプロセスを終了させず、チャネル経由で run() に返すことで
