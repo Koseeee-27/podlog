@@ -115,10 +115,18 @@ func backfill(podcastRepo repository.PodcastRepository, episodeUC usecase.Episod
 	for i, podcast := range podcasts {
 		// feed_url が nil または空文字の場合はスキップ
 		if podcast.FeedURL == nil || *podcast.FeedURL == "" {
+			// nil と空文字を ログの feed_url_state 属性で区別する
+			// （運用上「データ登録ミス (空文字)」と「未設定 (nil)」の切り分けがしやすくなる）
+			feedURLState := "empty"
+			if podcast.FeedURL == nil {
+				feedURLState = "nil"
+			}
 			slog.Warn("skipping podcast without feed_url",
 				"index", i+1,
 				"total", len(podcasts),
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
+				"feed_url_state", feedURLState,
 			)
 			skipCount++
 			continue
@@ -128,6 +136,7 @@ func backfill(podcastRepo repository.PodcastRepository, episodeUC usecase.Episod
 		slog.Info("fetching episodes from feed",
 			"index", i+1,
 			"total", len(podcasts),
+			"podcast_id", podcast.ID,
 			"title", podcast.Title,
 		)
 
@@ -137,9 +146,12 @@ func backfill(podcastRepo repository.PodcastRepository, episodeUC usecase.Episod
 		if err != nil {
 			// 1 件の失敗で全体を止めないため、WARN にして continue する
 			// （ERROR にすると Cloud Error Reporting に通知されてしまう）
+			// feed_url はフェッチ失敗の原因調査（不正 URL / タイムアウト等）に必須なので必ず含める
 			slog.Warn("failed to fetch episodes; skipping and continuing",
 				"index", i+1,
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
+				"feed_url", feedURL,
 				"error", err,
 			)
 			failCount++
@@ -150,6 +162,7 @@ func backfill(podcastRepo repository.PodcastRepository, episodeUC usecase.Episod
 
 		slog.Info("fetched episodes",
 			"index", i+1,
+			"podcast_id", podcast.ID,
 			"title", podcast.Title,
 			"new", result.NewCount,
 			"skipped", result.SkippedCount,

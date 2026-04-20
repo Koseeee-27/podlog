@@ -112,6 +112,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 			slog.Warn("skipping podcast without itunes_id",
 				"index", i+1,
 				"total", len(podcasts),
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
 			)
 			skipCount++
@@ -122,6 +123,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 		slog.Info("fetching genre from iTunes",
 			"index", i+1,
 			"total", len(podcasts),
+			"podcast_id", podcast.ID,
 			"title", podcast.Title,
 			"itunes_id", itunesID,
 		)
@@ -133,6 +135,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 			// （ERROR にすると Cloud Error Reporting に通知されてしまう）
 			slog.Warn("iTunes lookup failed",
 				"index", i+1,
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
 				"itunes_id", itunesID,
 				"error", err,
@@ -146,6 +149,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 		if result == nil {
 			slog.Info("iTunes lookup returned no match; skipping",
 				"index", i+1,
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
 				"itunes_id", itunesID,
 			)
@@ -157,6 +161,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 		if result.PrimaryGenre == "" {
 			slog.Info("iTunes returned empty genre; skipping",
 				"index", i+1,
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
 				"itunes_id", itunesID,
 			)
@@ -169,6 +174,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 		if err := podcastRepo.UpdateGenre(ctx, podcast.ID, result.PrimaryGenre); err != nil {
 			slog.Warn("failed to update genre in database",
 				"index", i+1,
+				"podcast_id", podcast.ID,
 				"title", podcast.Title,
 				"itunes_id", itunesID,
 				"error", err,
@@ -180,6 +186,7 @@ func backfill(podcastRepo repository.PodcastRepository, itunesClient *itunes.Cli
 
 		slog.Info("updated podcast genre",
 			"index", i+1,
+			"podcast_id", podcast.ID,
 			"title", podcast.Title,
 			"genre", result.PrimaryGenre,
 		)
