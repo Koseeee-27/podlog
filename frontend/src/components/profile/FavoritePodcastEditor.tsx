@@ -102,6 +102,12 @@ interface PodcastSearchDialogProps {
   onClose: () => void;
 }
 
+/**
+ * 好きな番組を検索して選択するモーダルダイアログ。
+ * HTML の <dialog> 要素を使い、アクセシビリティ（フォーカス管理・ESC 閉じ）を自動的に確保する。
+ * 開閉は親の条件付きレンダリングで制御し、ref callback で showModal() を呼ぶ
+ * （PodcastRequestDialog.tsx と同じパターン）。バックドロップクリックでも閉じる。
+ */
 function PodcastSearchDialog({ existingIds, onSelect, onClose }: PodcastSearchDialogProps) {
   // inputValue: input 要素の制御用（入力中の値を全部保持）
   // query: 実際に検索した確定クエリ（結果表示や「見つかりませんでした」表示のトリガ）
