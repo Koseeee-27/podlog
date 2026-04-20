@@ -62,6 +62,9 @@ func (m *mockPodcastRepo) ListWithoutEpisodes(_ context.Context) ([]model.Podcas
 func (m *mockPodcastRepo) UpdateFeedLastFetchedAt(_ context.Context, _ uuid.UUID) error {
 	return nil
 }
+func (m *mockPodcastRepo) GetByIDsWithStats(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]repository.PodcastSearchRow, error) {
+	return nil, fmt.Errorf("not implemented")
+}
 
 // TestRun_NoPodcastsToUpdate はジャンル未設定の番組がない場合のテストです。
 func TestRun_NoPodcastsToUpdate(t *testing.T) {
