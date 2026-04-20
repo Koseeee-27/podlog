@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -737,8 +738,10 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		if got.ID != existingID {
 			t.Errorf("podcast ID = %v, want %v", got.ID, existingID)
 		}
-		// podlog#351 の検証ポイント: 集計値が DB の実値で埋まっていること
-		if got.AverageRating != 4.3 {
+		// podlog#351 の検証ポイント: 集計値が DB の実値で埋まっていること。
+		// roundToOneDecimal を通した結果との比較は浮動小数の表現誤差で
+		// 不安定になりうるため、許容誤差で比較します（review_test.go と同様）。
+		if math.Abs(got.AverageRating-4.3) > 1e-9 {
 			t.Errorf("AverageRating = %v, want 4.3 (rounded from 4.25)", got.AverageRating)
 		}
 		if got.TotalReviews != 12 {
@@ -836,9 +839,14 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 		uc := NewPodcastUsecase(repo, itunesClient)
 
-		_, err := uc.Search(ctx, "テスト", "", 20, 0)
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		// フォールバック自体が動いていることの担保として結果件数も確認。
+		// 「呼び出し回数 0」だけだとフォールバック処理全体が壊れていても通ってしまうため。
+		if len(result.Podcasts) != 1 {
+			t.Fatalf("podcasts count = %d, want 1 (新規登録された 1 件が返るはず)", len(result.Podcasts))
 		}
 		if repo.getByIDsWithStatsCallCount != 0 {
 			t.Errorf("GetByIDsWithStats call count = %d, want 0 (no existing podcasts to fill)", repo.getByIDsWithStatsCallCount)
