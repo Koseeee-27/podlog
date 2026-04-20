@@ -69,8 +69,11 @@ func (m *mockPodcastRepoForSearch) ExistsByIDs(_ context.Context, _ []uuid.UUID)
 func (m *mockPodcastRepoForSearch) GetByIDsWithStats(ctx context.Context, ids []uuid.UUID) (map[uuid.UUID]repository.PodcastSearchRow, error) {
 	m.getByIDsWithStatsCallCount++
 	if m.getByIDsWithStatsFn == nil {
-		// デフォルト: 集計値が一切ない空マップを返す（既存テストの期待値 0 と整合）
-		return map[uuid.UUID]repository.PodcastSearchRow{}, nil
+		// 想定外呼び出しを静かに通さないようエラー返却にします。
+		// mockPodcastRepoForSearch の他メソッド（Create, Search, GetPopular 等）と
+		// 同じ "not implemented" 返却パターンに揃えています。
+		// 呼び出し回数カウンタは事前にインクリメント済みのため、回数 assert は引き続き機能します。
+		return nil, fmt.Errorf("mockPodcastRepoForSearch.GetByIDsWithStats: not implemented")
 	}
 	return m.getByIDsWithStatsFn(ctx, ids)
 }
@@ -850,6 +853,61 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 		if repo.getByIDsWithStatsCallCount != 0 {
 			t.Errorf("GetByIDsWithStats call count = %d, want 0 (no existing podcasts to fill)", repo.getByIDsWithStatsCallCount)
+		}
+	})
+
+	t.Run("GetByIDsWithStats が失敗してもプレースホルダのまま応答を返す", func(t *testing.T) {
+		// podlog#351 のフェイルセーフ動作の検証:
+		// 集計値の取得（GetByIDsWithStats）が失敗した場合でも、API は 5xx を返さず
+		// 番組自体は返ってくる（集計値はゼロ値のまま）ことを確認する。
+		// 実装計画書の設計判断「補助的データの取得失敗で API 全体を 5xx にせず、
+		// ユーザー体験を守る」のリグレッション防止。
+		server := newTestItunesServer(t, itunes.SearchResponse{
+			ResultCount: 1,
+			Results: []itunes.SearchResult{
+				{CollectionID: 99999, CollectionName: "既存番組"},
+			},
+		})
+		defer server.Close()
+
+		itunesClient := itunes.NewClient()
+		itunesClient.SetBaseURL(server.URL)
+
+		existingID := uuid.New()
+		repo := &mockPodcastRepoForSearch{
+			searchFn: func(_ context.Context, _ string, _ []string, _, _ int) ([]repository.PodcastSearchRow, int, error) {
+				return []repository.PodcastSearchRow{}, 0, nil
+			},
+			getByItunesIDFn: func(_ context.Context, itunesID int64) (*model.Podcast, error) {
+				if itunesID == 99999 {
+					return &model.Podcast{ID: existingID, Title: "既存番組"}, nil
+				}
+				return nil, nil
+			},
+			getByIDsWithStatsFn: func(_ context.Context, _ []uuid.UUID) (map[uuid.UUID]repository.PodcastSearchRow, error) {
+				// 集計値取得が失敗するケースを意図的にシミュレート
+				return nil, fmt.Errorf("stats fetch failed")
+			},
+		}
+
+		uc := NewPodcastUsecase(repo, itunesClient)
+		result, err := uc.Search(ctx, "テスト", "", 20, 0)
+		// フェイルセーフ: 集計値取得失敗でも API はエラーにせず継続する
+		if err != nil {
+			t.Fatalf("unexpected error: %v (集計値取得が失敗してもエラーにせず応答を返す設計)", err)
+		}
+		// 番組自体は返ってくる
+		if len(result.Podcasts) != 1 {
+			t.Fatalf("podcasts count = %d, want 1 (集計値取得失敗でも番組は返るはず)", len(result.Podcasts))
+		}
+		// 集計値はプレースホルダ（ゼロ値）のままになる
+		got := result.Podcasts[0]
+		if got.AverageRating != 0 || got.TotalReviews != 0 || got.FavoriteCount != 0 {
+			t.Errorf("stats = %+v, want all zero (プレースホルダのまま返るべき)", got)
+		}
+		// GetByIDsWithStats は 1 回呼ばれている（呼ばれた上で失敗）
+		if repo.getByIDsWithStatsCallCount != 1 {
+			t.Errorf("GetByIDsWithStats call count = %d, want 1", repo.getByIDsWithStatsCallCount)
 		}
 	})
 
