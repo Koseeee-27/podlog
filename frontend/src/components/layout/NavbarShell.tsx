@@ -1,6 +1,5 @@
 import Image from "next/image";
 import Link from "next/link";
-import NavbarSearchForm from "./NavbarSearchForm";
 
 /**
  * `Navbar` の Suspense fallback 兼 ErrorBoundary fallback。
@@ -10,15 +9,16 @@ import NavbarSearchForm from "./NavbarSearchForm";
  *   プレースホルダー。認証解決が終わるまでの間 (`mode="loading"`)、もしくは
  *   `getViewer()` が 500 等で失敗したとき (`mode="error"`) に `Navbar` の
  *   代わりに表示される。
- * - ロゴ / 検索バーのような「認証状態に依存しない静的部分」は `Navbar` と
- *   同じ位置に描画して、`Navbar` への切り替え時にチラつきを抑える。
+ * - ロゴは `Navbar` と同じ位置に描画して、`Navbar` への切り替え時にチラつきを
+ *   抑える。検索バーは **非インタラクティブなプレースホルダー** (disabled
+ *   input) で見た目だけ再現する (詳細は下記「検索バーの扱い」を参照)。
  * - 右端のアクションボタン (`ログイン` / `＋ 記録する` / アバター) の代わりに
  *   固定幅のスケルトンを置き、レイアウトシフト (CLS) を防ぐ。
  *
  * 注意:
  * - **Server Component として提供する** (`"use client"` を付けない)。
- *   内部で使っている `NavbarSearchForm` は Client Component だが、
- *   Server Component の JSX に Client Component を埋めるのは問題ない。
+ *   子要素もすべて静的な HTML で、Client Component は含めない
+ *   (下記「検索バーの扱い」参照)。
  * - スケルトン幅は `w-20 h-8` (80×32px)。guest 時のログインボタン
  *   (`px-4 py-1.5 text-sm` ≒ 70-80px) とほぼ一致する一方、ログイン済み時の
  *   「＋ 記録する」+ アバター (合計約 140px) とは 60px ほどズレる。つまり
@@ -33,6 +33,19 @@ import NavbarSearchForm from "./NavbarSearchForm";
  *   `aria-live="polite"` でスクリーンリーダーに「読み込み中」と伝える。
  *   `error` のときはこれらを外す (永続的な状態なので live region は不適切)。
  *   見た目は `loading` / `error` で同一。
+ *
+ * 検索バーの扱い:
+ * fallback と本体 (`Navbar`) の両方で同じ Client Component (`NavbarSearchForm`)
+ * を描画すると、React は **別ツリーのインスタンス** として扱うため、Suspense
+ * 解決時に fallback がアンマウント → 本体がマウントされる瞬間に `useState` の
+ * 入力値とフォーカスが失われる (認証解決を待たずに入力したユーザーの文字列が
+ * 消える UX バグになる)。これを防ぐため `NavbarShell` では `NavbarSearchForm`
+ * を使わず、**disabled な input** で見た目だけを再現する。副次効果として:
+ * - 認証解決中は検索できないが、通常 100〜500ms で解決するため影響は軽微
+ * - `aria-hidden="true"` でスクリーンリーダーからも隠し、`Navbar` 解決後に
+ *   本物の検索フォームが登場したことをユーザーに知らせる
+ * - 本質的な解決 (ロゴ / 検索バーを Suspense の外に出してインスタンスを
+ *   共有する構造変更) は別 Issue で検討する
  */
 interface NavbarShellProps {
   /**
@@ -65,8 +78,36 @@ export default function NavbarShell({ mode = "loading" }: NavbarShellProps) {
               />
             </Link>
 
-            {/* 中央: 検索バー (認証非依存、即時描画) */}
-            <NavbarSearchForm />
+            {/* 中央: 検索バーのプレースホルダー (非インタラクティブ)。
+                本体の `NavbarSearchForm` (Client Component, useState) と**別の**
+                React インスタンスになるため、Suspense 解決時にユーザー入力・
+                フォーカスが失われる問題を避けるため、ここでは disabled な
+                input で見た目だけ再現する。`aria-hidden="true"` で SR からも
+                隠し、`Navbar` 解決後の本物の検索フォーム登場時に改めて案内する。 */}
+            <div className="flex-1 max-w-md" aria-hidden="true">
+              <div className="relative">
+                <svg
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <input
+                  type="search"
+                  placeholder="番組を検索..."
+                  disabled
+                  tabIndex={-1}
+                  className="w-full rounded-lg border border-stone-200 bg-stone-100 py-1.5 pl-9 pr-3 text-sm text-stone-400 placeholder:text-stone-400 cursor-not-allowed"
+                />
+              </div>
+            </div>
 
             {/* 右: アクションボタンのスケルトン。
                 `loading` のときだけ `role="status"` + `aria-live="polite"` を
