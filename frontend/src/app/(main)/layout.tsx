@@ -1,44 +1,46 @@
-import Navbar from "@/components/layout/Navbar";
-import { getViewer, type Viewer } from "@/lib/auth/getViewer";
+import { Suspense } from "react";
+import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import NavbarShell from "@/components/layout/NavbarShell";
+import NavbarWithViewer from "@/components/layout/NavbarWithViewer";
 
 /**
  * `(main)` グループ全体のレイアウト。
  *
- * Server Component として `getViewer()` を 1 回だけ呼び、Navbar に
- * viewer を props で渡す。これにより子の page.tsx が同じリクエスト内で
- * `getViewer()` を呼んでも React の `cache()` により重複リクエストは発生
- * しない (同一リクエストスコープでメモ化される)。
- *
- * エラー処理について:
- * `getViewer()` は 500 等の予期しないエラーを throw する設計だが、
- * レイアウトで throw すると配下の **全ページ** が error.tsx に飛んでしまう
- * (公開ページのコンテンツまで巻き込まれる)。公開ページではナビゲーションが
- * 未ログイン扱いになるだけで本体は表示したいため、レイアウト側で catch
- * して `guest` にフォールバックする。
- *
- * 保護ページはそれぞれの `page.tsx` で `getMyProfile()` 等を呼んで
- * 401/403/404 を独自に扱う (保護ページ統一テンプレート) ため、ここで
- * guest にフォールバックしても最終的にリダイレクトされる。
+ * 設計の要点:
+ * - **layout 自身は同期 Server Component** に保つ。ここで `await getViewer()` を
+ *   直接呼ぶと、`getViewer()` が内部で `cookies()` を使うため配下の全ルートが
+ *   Dynamic に強制される。結果として `(main)/page.tsx` (トップページ) を
+ *   Static 化する、といった最適化ができなくなる。
+ * - 認証依存のナビは `<NavbarWithViewer />` (async SC) に切り出し、
+ *   `<Suspense fallback={<NavbarShell mode="loading" />}>` で囲む。これにより:
+ *     - layout からの Dynamic 伝播が止まる
+ *     - 認証解決中はロゴ・検索バーが即座に描画され、右端だけスケルトン
+ *     - 本体コンテンツ (`main` 配下) は認証解決を待たずにストリーミング
+ * - `getViewer()` が 500 を throw した場合に layout 配下の全ページが
+ *   `error.tsx` に飛ぶのを防ぐため、さらに `<ErrorBoundary>` で囲む。
+ *   fallback は `<NavbarShell mode="error" />` (guest 相当の見た目) を再利用し、
+ *   本体の描画を継続させる。`mode="error"` では a11y の live region を外して
+ *   「読み込み中」の誤案内を防ぐ。保護ページでは `page.tsx` 側の
+ *   `getMyProfile()` catch (保護ページ統一テンプレート) が 401/403/404 を
+ *   個別に処理する。
+ * - `ErrorBoundary` は `"use client"` の Client Component だが、`fallback`
+ *   prop に Server Component (`<NavbarShell />`) の JSX を渡すのは Next.js の
+ *   標準パターンで問題ない (SC は RSC ペイロードとしてシリアライズされて渡る)。
+ *   ただし `NavbarShell` 内部で Server Action を直接呼ぶ実装を追加するのは
+ *   避けること (Client 境界を越えた呼び出しになる)。
  */
-export default async function MainLayout({
+export default function MainLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  let viewer: Viewer;
-  try {
-    viewer = await getViewer();
-  } catch (err) {
-    // 500 等のサーバーエラー時はナビだけ未ログイン扱いにして本体の描画を続行。
-    // 保護ページ側では page.tsx の `getMyProfile()` で再度エラーが投げられる
-    // ため、認証必須画面でも適切なリダイレクト/エラーハンドリングが効く。
-    console.error("[MainLayout] getViewer failed, falling back to guest:", err);
-    viewer = { status: "guest" };
-  }
-
   return (
     <div className="min-h-screen bg-stone-50">
-      <Navbar viewer={viewer} />
+      <ErrorBoundary fallback={<NavbarShell mode="error" />}>
+        <Suspense fallback={<NavbarShell mode="loading" />}>
+          <NavbarWithViewer />
+        </Suspense>
+      </ErrorBoundary>
       <main className="max-w-5xl mx-auto px-4 py-6 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-6">
         {children}
       </main>
