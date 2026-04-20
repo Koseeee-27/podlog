@@ -146,6 +146,21 @@ func cloudLoggingReplaceAttr(groups []string, a slog.Attr) slog.Attr {
 	return a
 }
 
+// formatProtoDurationJSON は time.Duration を protobuf Duration の JSON 形式
+// （秒単位 + `s` サフィックス、ナノ秒精度まで保持）に変換する。
+// Cloud Logging の LogEntry.HttpRequest.latency はこの形式を要求しており、
+// `time.Duration.String()` が返す `ms` / `µs` / `ns` サフィックス形式では認識されない。
+//
+// 例:
+//
+//	12_345_000 ns → "0.012345000s"
+//	1_500_000_000 ns → "1.500000000s"
+//
+// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
+func formatProtoDurationJSON(d time.Duration) string {
+	return fmt.Sprintf("%.9fs", d.Seconds())
+}
+
 // setupLogger は環境に応じた slog.Logger を返す。
 //   - envDevelopment: TextHandler（人間が読みやすい形式・DEBUG 以上）
 //   - それ以外:       JSONHandler + errorReportingHandler（Cloud Logging 互換・INFO 以上）
@@ -287,16 +302,21 @@ func run() error {
 			// Cloud Logging UI の「HTTP リクエスト」カラムに自動で表示され、ログ行単位の
 			// 検索・集計がしやすくなる。
 			// https://cloud.google.com/logging/docs/structured-logging
+			// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
 			//
-			// `latency` は "1.234s" 形式の文字列で入れる（LogEntry.HttpRequest.latency の規約）。
-			// Milliseconds() だと 1ms 未満のリクエストがすべて 0 になってしまうため、
-			// time.Duration.String() で人間・機械ともに扱いやすい形式にする。
+			// `latency` は LogEntry.HttpRequest.latency の規約（protobuf Duration JSON 形式）に
+			// 従い、必ず「秒単位の 10 進小数 + `s` サフィックス」で入れる。
+			// （例: 12.345ms → "0.012345000s"、1.5s → "1.500000000s"）
+			//
+			// NOTE: time.Duration.String() は使わない。1 秒未満で "12.345ms" / "500µs" / "50ns" を
+			// 返すため規約違反になり、Cloud Logging が HTTP リクエストフィールドとして
+			// 認識しなくなる。%.9f でナノ秒精度まで保持する。
 			slog.InfoContext(c.Request().Context(), "http_request",
 				slog.Group("httpRequest",
 					slog.String("requestMethod", v.Method),
 					slog.String("requestUrl", v.URIPath),
 					slog.Int("status", v.Status),
-					slog.String("latency", v.Latency.String()),
+					slog.String("latency", formatProtoDurationJSON(v.Latency)),
 				),
 			)
 			return nil

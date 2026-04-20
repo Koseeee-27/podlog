@@ -42,10 +42,12 @@ Cloud Run は stdout の JSON を Cloud Logging に自動取り込みし、`seve
     "requestMethod": "GET",
     "requestUrl": "/api/v1/podcasts",
     "status": 200,
-    "latency": "12.345ms"
+    "latency": "0.012345000s"
   }
 }
 ```
+
+> **重要**: `latency` は protobuf Duration JSON 形式（秒単位 + `s` サフィックス、ナノ秒精度まで小数 9 桁）で出力する必要がある。`time.Duration.String()` は 1 秒未満で `"12.345ms"` / `"500µs"` / `"50ns"` を返すため規約違反になり、Cloud Logging が HTTP リクエストフィールドとして認識しなくなる。podlog バックエンドは `formatProtoDurationJSON` ヘルパーで `fmt.Sprintf("%.9fs", d.Seconds())` を使って規約通りに出力している。
 
 ### Cloud Logging での確認手順
 
@@ -55,7 +57,7 @@ Cloud Run は stdout の JSON を Cloud Logging に自動取り込みし、`seve
 2. 出力されたログを展開し、`severity` フィールドが `INFO` / `WARNING` / `ERROR` いずれかで埋まっていることを確認
 3. UI のサマリー行に `message` の内容が表示されていることを確認（`jsonPayload.msg` として隠れていないこと）
 4. 検索バーで以下のクエリを試す:
-   ```
+   ```text
    resource.type="cloud_run_revision"
    resource.labels.service_name="<サービス名>"
    severity="ERROR"

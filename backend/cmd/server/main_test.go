@@ -9,8 +9,10 @@ import (
 	"context"
 	"encoding/json"
 	"log/slog"
+	"regexp"
 	"strings"
 	"testing"
+	"time"
 )
 
 // newTestHandler はテスト用に ReplaceAttr + errorReportingHandler でラップした
@@ -204,6 +206,65 @@ func TestSetupLogger_DevelopmentUsesTextHandler(t *testing.T) {
 	prodLogger := setupLogger(envProduction)
 	if prodLogger.Handler().Enabled(context.Background(), slog.LevelDebug) {
 		t.Errorf("production logger should NOT accept Debug level (Info threshold)")
+	}
+}
+
+// TestFormatProtoDurationJSON は HTTP リクエストログの latency が Cloud Logging の
+// LogEntry.HttpRequest.latency 規約（protobuf Duration JSON 形式: 秒 + `s` サフィックス）
+// に適合することを固定する。
+//
+// time.Duration.String() は 1 秒未満で "12.345ms" / "500µs" / "50ns" を返し、
+// Cloud Logging が HTTP リクエストフィールドとして認識しなくなるため、
+// 将来 formatProtoDurationJSON 内部を `.String()` に戻す変更が入らないようにする。
+func TestFormatProtoDurationJSON(t *testing.T) {
+	tests := []struct {
+		name string
+		in   time.Duration
+		want string
+	}{
+		{"zero", 0, "0.000000000s"},
+		{"nanoseconds", 50 * time.Nanosecond, "0.000000050s"},
+		{"microseconds", 500 * time.Microsecond, "0.000500000s"},
+		{"milliseconds_fractional", 12345 * time.Microsecond, "0.012345000s"},
+		{"one_second", time.Second, "1.000000000s"},
+		{"seconds_fractional", 1500 * time.Millisecond, "1.500000000s"},
+		{"multi_second", 12 * time.Second, "12.000000000s"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := formatProtoDurationJSON(tt.in)
+			if got != tt.want {
+				t.Errorf("formatProtoDurationJSON(%v): want=%q got=%q", tt.in, tt.want, got)
+			}
+		})
+	}
+}
+
+// TestFormatProtoDurationJSON_FormatShape は「任意の Duration に対して
+// 『小数点以下 9 桁 + "s"』の形式を満たす」という構造的不変条件を regex で検証する。
+// テーブルテストに挙がっていない値（負の Duration、巨大な Duration 等）でも
+// 形式が崩れないことを保証する。
+func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
+	pattern := regexp.MustCompile(`^-?\d+\.\d{9}s$`)
+	samples := []time.Duration{
+		0,
+		1 * time.Nanosecond,
+		999 * time.Microsecond,
+		1 * time.Second,
+		90 * time.Second,
+		time.Hour,
+	}
+	for _, d := range samples {
+		got := formatProtoDurationJSON(d)
+		if !pattern.MatchString(got) {
+			t.Errorf("formatProtoDurationJSON(%v)=%q does not match %s", d, got, pattern)
+		}
+		// time.Duration.String() のサフィックス (ms / µs / ns / h / m) が混入していないこと
+		for _, bad := range []string{"ms", "µs", "ns", "h", "m0s", "m1s", "m2s"} {
+			if strings.Contains(got, bad) {
+				t.Errorf("formatProtoDurationJSON(%v)=%q contains forbidden token %q", d, got, bad)
+			}
+		}
 	}
 }
 
