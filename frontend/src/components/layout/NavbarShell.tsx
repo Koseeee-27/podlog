@@ -150,7 +150,7 @@ export default function NavbarShell({ mode = "loading" }: NavbarShellProps) {
           合わせた空白を維持する。アイコン表示はしない (認証状態によって
           最後のタブが「ログイン / プロフィール設定 / マイページ」と変わる
           ため、確定していない状態では何も出さない方が誤誘導を防げる)。
-          なお `BottomNav` 側の `isLoading` 廃止・`viewer` props 化と合わせて、
+          `BottomNav` は `viewer: Viewer` props ベースに統一済みだが (Issue #349)、
           SP/PC のスケルトン方針統一は別 Issue で再検討予定。 */}
       <nav
         aria-hidden="true"

@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import BottomNav from "./BottomNav";
+import type { User } from "@/types/user";
 
 const meta = {
   title: "Layout/BottomNav",
@@ -24,7 +25,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-const mockProfile = {
+const mockProfile: User = {
   id: "u1",
   username: "tanaka",
   display_name: "田中太郎",
@@ -35,34 +36,20 @@ const mockProfile = {
   is_admin: false,
 };
 
-export const LoggedIn: Story = {
+export const Authenticated: Story = {
   args: {
-    profile: mockProfile,
-    isLoggedIn: true,
-    isLoading: false,
+    viewer: { status: "authenticated", profile: mockProfile },
   },
 };
 
-export const NotLoggedIn: Story = {
+export const Guest: Story = {
   args: {
-    profile: null,
-    isLoggedIn: false,
-    isLoading: false,
+    viewer: { status: "guest" },
   },
 };
 
 export const NoProfile: Story = {
   args: {
-    profile: null,
-    isLoggedIn: true,
-    isLoading: false,
-  },
-};
-
-export const Loading: Story = {
-  args: {
-    profile: null,
-    isLoggedIn: false,
-    isLoading: true,
+    viewer: { status: "no_profile" },
   },
 };
