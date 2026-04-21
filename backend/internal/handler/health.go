@@ -5,7 +5,7 @@ package handler
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -55,7 +55,8 @@ func (h *HealthHandler) Check(c echo.Context) error {
 	defer cancel()
 
 	if err := h.db.PingContext(ctx); err != nil {
-		log.Printf("[HEALTH] DB ping failed: %v", err)
+		// DB 障害なので ERROR で Cloud Error Reporting に通知する。
+		slog.ErrorContext(ctx, "health check db ping failed", "error", err)
 		return response.Error(c, http.StatusServiceUnavailable, "service unavailable")
 	}
 

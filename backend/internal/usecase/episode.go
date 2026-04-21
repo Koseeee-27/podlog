@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"sort"
 	"strings"
 	"sync"
@@ -350,8 +350,12 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 		// feed_last_fetched_at が新しい場合はスキップする（空フィードを何度も取りに行くのを防ぐ）
 		_, fetchErr := u.FetchFromFeed(ctx, podcastID, feedURL)
 		if fetchErr != nil {
-			log.Printf("[GetByPodcastIDWithAutoFetch] failed to fetch feed for podcast %s: %v", podcastID, fetchErr)
-			// フェッチ失敗でも空のレスポンスを返す（エラーにはしない）
+			// フェッチ失敗でも空のレスポンスを返す（エラーにはしない）→ ユーザー影響は限定的なので WARN
+			slog.WarnContext(ctx, "synchronous feed fetch failed (returning empty episode list)",
+				"podcast_id", podcastID.String(),
+				"feed_url", feedURL,
+				"error", fetchErr,
+			)
 			return result, nil
 		}
 		// フェッチ成功 → DB から改めてエピソードを取得して返す
@@ -364,7 +368,10 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 		// goroutine を起動せずスキップする。これにより 1 podcastID につき最大1つの goroutine のみ動く。
 		key := podcastID.String()
 		if _, alreadyRunning := u.fetchInFlight.LoadOrStore(key, struct{}{}); alreadyRunning {
-			log.Printf("[GetByPodcastIDWithAutoFetch] background refresh already in progress for podcast %s, skipping", podcastID)
+			// 重複起動の抑制は通常運用イベント → INFO
+			slog.InfoContext(ctx, "background feed refresh already in progress, skipping",
+				"podcast_id", podcastID.String(),
+			)
 		} else {
 			// リクエストの context はレスポンス送信後にキャンセルされるため、
 			// バックグラウンドタスク用に新しい context を生成する（最大60秒のタイムアウト付き）
@@ -373,7 +380,12 @@ func (u *episodeUsecase) GetByPodcastIDWithAutoFetch(ctx context.Context, podcas
 				bgCtx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 				defer cancel()
 				if _, err := u.FetchFromFeed(bgCtx, podcastID, feedURL); err != nil {
-					log.Printf("[GetByPodcastIDWithAutoFetch] background refresh failed for podcast %s: %v", podcastID, err)
+					// バックグラウンド処理失敗、ユーザー影響なし → WARN
+					slog.WarnContext(bgCtx, "background feed refresh failed",
+						"podcast_id", podcastID.String(),
+						"feed_url", feedURL,
+						"error", err,
+					)
 				}
 			}
 			// bgWg がある場合は wg.Go() で goroutine を起動し、シャットダウン時に待機可能にする。
@@ -461,11 +473,21 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 		// GUID で既存チェック
 		existing, err := u.episodeRepo.GetByGUID(ctx, podcastID, item.GUID)
 		if err != nil {
-			log.Printf("[FetchFromFeed] failed to check GUID %q for podcast %s: %v", item.GUID, podcastID, err)
+			// 1 件のチェック失敗で全体を止めない（continue）→ WARN
+			// ループ内ログには podcast_id を統一付与（backend.md 「バッチ処理・ループ内ログ」のルール）
+			slog.WarnContext(ctx, "fetch feed: check episode by guid failed",
+				"podcast_id", podcastID.String(),
+				"guid", item.GUID,
+				"error", err,
+			)
 			result.FailedCount++
 			consecutiveFailures++
 			if consecutiveFailures >= maxConsecutiveFailures {
-				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				// 連続 DB 失敗で打ち切り → DB 障害の兆候なので ERROR
+				slog.ErrorContext(ctx, "fetch feed: aborting due to consecutive db failures",
+					"podcast_id", podcastID.String(),
+					"consecutive_failures", consecutiveFailures,
+				)
 				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
 			}
 			continue
@@ -504,11 +526,22 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 				consecutiveFailures = 0
 				continue
 			}
-			log.Printf("[FetchFromFeed] failed to create episode %q (GUID: %s) for podcast %s: %v", title, item.GUID, podcastID, err)
+			// 1 件の保存失敗で全体を止めない（continue）→ WARN
+			// title は人間可読フィールドのため識別子として使わず、podcast_id + guid で追跡可能にする
+			slog.WarnContext(ctx, "fetch feed: create episode failed",
+				"podcast_id", podcastID.String(),
+				"guid", item.GUID,
+				"title", title,
+				"error", err,
+			)
 			result.FailedCount++
 			consecutiveFailures++
 			if consecutiveFailures >= maxConsecutiveFailures {
-				log.Printf("[FetchFromFeed] aborting: %d consecutive DB failures for podcast %s", consecutiveFailures, podcastID)
+				// 連続 DB 失敗で打ち切り → DB 障害の兆候なので ERROR
+				slog.ErrorContext(ctx, "fetch feed: aborting due to consecutive db failures",
+					"podcast_id", podcastID.String(),
+					"consecutive_failures", consecutiveFailures,
+				)
 				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
 			}
 			continue
@@ -521,9 +554,12 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 	}
 
 	// RSS フィード取得が完了したので、feed_last_fetched_at を更新する。
-	// エラーが起きてもエピソードの取得自体は成功しているのでログだけ出して無視する。
+	// エラーが起きてもエピソードの取得自体は成功しているのでログだけ出して無視する → WARN
 	if err := u.podcastRepo.UpdateFeedLastFetchedAt(ctx, podcastID); err != nil {
-		log.Printf("[FetchFromFeed] failed to update feed_last_fetched_at for podcast %s: %v", podcastID, err)
+		slog.WarnContext(ctx, "fetch feed: update feed_last_fetched_at failed",
+			"podcast_id", podcastID.String(),
+			"error", err,
+		)
 	}
 
 	return result, nil
