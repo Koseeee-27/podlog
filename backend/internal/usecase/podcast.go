@@ -3,7 +3,7 @@ package usecase
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"strings"
 
 	"github.com/google/uuid"
@@ -168,7 +168,11 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 		itunesResults, itunesErr := u.itunesClient.SearchPodcasts(ctx, query, 10)
 		if itunesErr != nil {
 			// iTunes API のエラーはログに記録するが、DB の結果だけ返す（ユーザーには影響させない）
-			log.Printf("iTunes API フォールバック検索でエラー: %v", itunesErr)
+			// ユーザー影響なしの外部 API 失敗は WARN（ERROR にすると Cloud Error Reporting がノイズになる）
+			slog.WarnContext(ctx, "itunes fallback search failed, returning db results only",
+				"query", query,
+				"error", itunesErr,
+			)
 		} else {
 			// existingIDsToFill には「DB 既存だが今回の検索にヒットしていない」既存番組の ID を集めます。
 			// ループ後に GetByIDsWithStats で集計値を 1 クエリでまとめて取得し、
@@ -183,7 +187,12 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 				// DB に同じ itunes_id の番組が既に存在するか確認
 				existing, getErr := u.podcastRepo.GetByItunesID(ctx, result.CollectionID)
 				if getErr != nil {
-					log.Printf("iTunes フォールバック: GetByItunesID エラー (itunesID=%d): %v", result.CollectionID, getErr)
+					// continue で処理を続けるためユーザー影響なし → WARN
+					slog.WarnContext(ctx, "itunes fallback: get podcast by itunes_id failed",
+						"itunes_id", result.CollectionID,
+						"title", result.CollectionName,
+						"error", getErr,
+					)
 					continue
 				}
 				if existing != nil {
@@ -215,7 +224,12 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 				// iTunes の検索結果から Podcast モデルを構築して DB に保存
 				newPodcast := itunesResultToPodcast(result)
 				if createErr := u.podcastRepo.Create(ctx, newPodcast); createErr != nil {
-					log.Printf("iTunes フォールバック: 番組保存エラー (title=%q): %v", result.CollectionName, createErr)
+					// 1 件の保存失敗で全体を止めない（continue）→ WARN
+					slog.WarnContext(ctx, "itunes fallback: create podcast failed",
+						"itunes_id", result.CollectionID,
+						"title", result.CollectionName,
+						"error", createErr,
+					)
 					continue
 				}
 
@@ -238,8 +252,11 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 				statsByID, statsErr := u.podcastRepo.GetByIDsWithStats(ctx, existingIDsToFill)
 				if statsErr != nil {
 					// 集計値の取得失敗は致命的ではないため、ログのみ出してプレースホルダ（0）のまま続行します。
-					// API の応答自体は維持し、ユーザー体験を守る判断です。
-					log.Printf("iTunes フォールバック: GetByIDsWithStats エラー: %v", statsErr)
+					// API の応答自体は維持し、ユーザー体験を守る判断 → WARN
+					slog.WarnContext(ctx, "itunes fallback: get podcasts stats failed (using placeholder zeros)",
+						"podcast_count", len(existingIDsToFill),
+						"error", statsErr,
+					)
 				} else {
 					// 取得できた集計値で items を上書きします。
 					// items 全件をスキャンし、statsByID に該当 ID があるレコードのみ更新します。

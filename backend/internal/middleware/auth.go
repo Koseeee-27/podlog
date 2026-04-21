@@ -5,7 +5,7 @@ package middleware
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"strings"
 
@@ -150,22 +150,39 @@ func extractBearerToken(c echo.Context) (string, bearerTokenResult) {
 func JWTAuth(k keyfunc.Keyfunc) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			ctx := c.Request().Context()
+			method := c.Request().Method
+			path := c.Request().URL.Path
+
 			// 1. Authorization ヘッダーからトークンを取得
 			tokenString, result := extractBearerToken(c)
 			if result != tokenOK {
+				// 認証失敗はクライアント起因で想定内のため WARN。
+				// ERROR にすると Cloud Error Reporting に通知されてノイズになる。
 				if result == tokenMissing {
-					log.Printf("[AUTH] No Authorization header for %s %s", c.Request().Method, c.Request().URL.Path)
+					slog.WarnContext(ctx, "missing authorization header",
+						"method", method,
+						"path", path,
+					)
 					return response.Error(c, http.StatusUnauthorized, "missing authorization header")
 				}
-				log.Printf("[AUTH] Invalid header format for %s %s", c.Request().Method, c.Request().URL.Path)
+				slog.WarnContext(ctx, "invalid authorization header format",
+					"method", method,
+					"path", path,
+				)
 				return response.Error(c, http.StatusUnauthorized, "invalid authorization header format")
 			}
 
 			// 2. JWT トークンを検証し、ユーザーIDを取得
 			// c.Request().Context() を渡すことで、リクエストのタイムアウトが検証処理にも適用される
-			userID, err := parseAndValidateToken(c.Request().Context(), tokenString, k)
+			userID, err := parseAndValidateToken(ctx, tokenString, k)
 			if err != nil {
-				log.Printf("[AUTH] Token validation failed for %s %s: %v", c.Request().Method, c.Request().URL.Path, err)
+				// JWT 期限切れ等は日常的に発生するため WARN。
+				slog.WarnContext(ctx, "jwt validation failed",
+					"method", method,
+					"path", path,
+					"error", err,
+				)
 				return response.Error(c, http.StatusUnauthorized, "invalid or expired token")
 			}
 
@@ -203,11 +220,18 @@ func OptionalJWTAuth(k keyfunc.Keyfunc) echo.MiddlewareFunc {
 				return next(c)
 			}
 
+			ctx := c.Request().Context()
+
 			// JWT トークンを検証
-			userID, err := parseAndValidateToken(c.Request().Context(), tokenString, k)
+			userID, err := parseAndValidateToken(ctx, tokenString, k)
 			if err != nil {
 				// 検証エラー時はログを残してスキップ（エラーにはしない）
-				log.Printf("[OPTIONAL_AUTH] Token validation failed for %s %s: %v", c.Request().Method, c.Request().URL.Path, err)
+				// OptionalJWTAuth は未認証でも通過するため、トークン不正は通常運用で起き得る → WARN
+				slog.WarnContext(ctx, "optional jwt validation failed, continuing as unauthenticated",
+					"method", c.Request().Method,
+					"path", c.Request().URL.Path,
+					"error", err,
+				)
 				return next(c)
 			}
 

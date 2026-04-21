@@ -2,7 +2,7 @@ package handler
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -149,7 +149,13 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 	if userID != nil {
 		listened, err := h.episodeUsecase.IsListened(ctx, *userID, id)
 		if err != nil {
-			log.Printf("[GetByID] failed to check listened status: episode_id=%s user_id=%s err=%v", id.String(), userID.String(), err)
+			// 付加情報の取得失敗のためユーザー体験への影響はない → WARN
+			// （ERROR にすると Cloud Error Reporting に通知され、運用ノイズになる）
+			slog.WarnContext(ctx, "failed to check listened status (returning detail without listened)",
+				"episode_id", id.String(),
+				"user_id", userID.String(),
+				"error", err,
+			)
 		} else {
 			result.Listened = &listened
 		}

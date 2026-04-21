@@ -2,7 +2,7 @@
 package middleware
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -32,17 +32,31 @@ func AdminAuth(adminUserIDs []string) echo.MiddlewareFunc {
 
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
+			ctx := c.Request().Context()
+			method := c.Request().Method
+			path := c.Request().URL.Path
+
 			// JWTAuth がセットした user_id を取得
 			userID, err := GetUserID(c)
 			if err != nil {
-				log.Printf("[ADMIN] user_id not found in context for %s %s", c.Request().Method, c.Request().URL.Path)
+				// JWTAuth の後で user_id が取れないのは設定ミス（middleware 順序ミス等）の可能性。
+				// クライアント起因ではないが、レスポンス上は 401 を返すため WARN（運用調査の手がかり）。
+				slog.WarnContext(ctx, "user_id not found in context for admin check",
+					"method", method,
+					"path", path,
+				)
 				return response.Error(c, http.StatusUnauthorized, "unauthorized")
 			}
 
 			// 管理者 ID リストに含まれるかチェック
 			// uuid.UUID を文字列に変換して比較する
 			if _, ok := adminSet[userID.String()]; !ok {
-				log.Printf("[ADMIN] Access denied for user %s to %s %s", userID.String(), c.Request().Method, c.Request().URL.Path)
+				// 認証済みだが権限不足。クライアント起因なので WARN。
+				slog.WarnContext(ctx, "admin access denied",
+					"user_id", userID.String(),
+					"method", method,
+					"path", path,
+				)
 				return response.Error(c, http.StatusForbidden, "admin access required")
 			}
 

@@ -2,7 +2,7 @@ package middleware
 
 import (
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/Koseeee-27/podlog/backend/internal/response"
@@ -24,24 +24,41 @@ func NewHTTPErrorHandler(isDev bool) func(err error, c echo.Context) {
 			return
 		}
 
+		ctx := c.Request().Context()
 		code, message := classifyError(err, isDev)
 
-		// サーバーエラーはログに残す
+		// サーバーエラーはログに残す（5xx は要調査なので ERROR で Cloud Error Reporting に通知）
 		if code >= 500 {
-			log.Printf("HTTP %d: %v", code, err)
+			slog.ErrorContext(ctx, "http server error",
+				"status", code,
+				"method", c.Request().Method,
+				"path", c.Request().URL.Path,
+				"error", err,
+			)
 		}
 
 		// HEAD リクエストではボディを返さない（HTTP 仕様）
 		if c.Request().Method == http.MethodHead {
 			if err := c.NoContent(code); err != nil {
-				log.Printf("failed to send error response: %v", err)
+				// レスポンス送信失敗はサーバー側の問題なので ERROR
+				slog.ErrorContext(ctx, "failed to send empty error response",
+					"status", code,
+					"method", c.Request().Method,
+					"path", c.Request().URL.Path,
+					"error", err,
+				)
 			}
 			return
 		}
 
 		// 共通ヘルパーで統一フォーマットのエラーレスポンスを返す
 		if err := response.Error(c, code, message); err != nil {
-			log.Printf("failed to send error response: %v", err)
+			slog.ErrorContext(ctx, "failed to send error response",
+				"status", code,
+				"method", c.Request().Method,
+				"path", c.Request().URL.Path,
+				"error", err,
+			)
 		}
 	}
 }
