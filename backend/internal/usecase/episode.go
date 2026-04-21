@@ -484,9 +484,13 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 			consecutiveFailures++
 			if consecutiveFailures >= maxConsecutiveFailures {
 				// 連続 DB 失敗で打ち切り → DB 障害の兆候なので ERROR
+				// 打ち切りトリガーとなった直近の err も "error" に渡す。
+				// Cloud Error Reporting はこの ERROR を集約するので、原因エラーに辿れるようにしておく
+				// （直前の WARN N 回には個別エラーが入っているが、ERROR 単体からも調査開始できる必要がある）。
 				slog.ErrorContext(ctx, "fetch feed: aborting due to consecutive db failures",
 					"podcast_id", podcastID.String(),
 					"consecutive_failures", consecutiveFailures,
+					"error", err,
 				)
 				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
 			}
@@ -538,9 +542,12 @@ func (u *episodeUsecase) FetchFromFeed(ctx context.Context, podcastID uuid.UUID,
 			consecutiveFailures++
 			if consecutiveFailures >= maxConsecutiveFailures {
 				// 連続 DB 失敗で打ち切り → DB 障害の兆候なので ERROR
+				// 打ち切りトリガーとなった直近の err も "error" に渡し、Cloud Error Reporting から
+				// 原因に辿れるようにする（GetByGUID 失敗側と対称）
 				slog.ErrorContext(ctx, "fetch feed: aborting due to consecutive db failures",
 					"podcast_id", podcastID.String(),
 					"consecutive_failures", consecutiveFailures,
+					"error", err,
 				)
 				return result, fmt.Errorf("aborting fetch: %d consecutive database failures", consecutiveFailures)
 			}
