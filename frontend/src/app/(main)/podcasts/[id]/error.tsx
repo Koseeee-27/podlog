@@ -18,7 +18,8 @@ interface PodcastErrorProps {
  * router.refresh() でサーバー側のキャッシュを破棄してから reset() を呼ぶ。
  */
 export default function PodcastError({ error, reset }: PodcastErrorProps) {
-  // エラー監視サービス（Sentry 等）への送信ポイント。
+  // Server 側で発生したエラーは instrumentation.ts の onRequestError が
+  // 自動で Sentry に送信するため、このファイルでは再送信しない。
   console.error("[PodcastError]", error);
 
   const router = useRouter();
