@@ -33,6 +33,7 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/external/ogp"
 	"github.com/Koseeee-27/podlog/backend/internal/external/rss"
 	"github.com/Koseeee-27/podlog/backend/internal/handler"
+	"github.com/Koseeee-27/podlog/backend/internal/logging"
 	mw "github.com/Koseeee-27/podlog/backend/internal/middleware"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 	"github.com/Koseeee-27/podlog/backend/internal/router"
@@ -52,18 +53,6 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 )
 
-// 環境名の定数。typo による設定ミスを防ぐため、文字列リテラルを直接書かず定数で比較する。
-const (
-	envDevelopment = "development"
-	envProduction  = "production"
-)
-
-// Cloud Error Reporting が「エラー」として取り込むための @type フィールドの値。
-// severity=ERROR だけでは Error Reporting に検知されないことがあるため、
-// ERROR 以上のログにはこの @type を付けて自動検知を確実にする。
-// https://cloud.google.com/error-reporting/docs/formatting-error-messages
-const errorReportingType = "type.googleapis.com/google.devtools.clouderrorreporting.v1beta1.ReportedErrorEvent"
-
 // main は run() を呼び出し、エラーがあればログ出力して終了するだけの薄い関数。
 // os.Exit() は main() でのみ呼ぶことで、run() 内の defer が確実に実行される。
 // （slog には Fatal がないが、run() 内で os.Exit() を呼ぶと defer をスキップして
@@ -73,146 +62,6 @@ func main() {
 		slog.Error("application failed", "error", err)
 		os.Exit(1)
 	}
-}
-
-// errorReportingHandler は ERROR 以上のログに Cloud Error Reporting が必要とする
-// @type フィールドを自動付与する slog.Handler ラッパー。
-// Cloud Error Reporting は「severity=ERROR」だけでは検知せず、@type もしくは
-// スタックトレース形式のメッセージが必要。本実装では最もシンプルな @type 付与を採用する。
-type errorReportingHandler struct {
-	slog.Handler
-}
-
-// Handle は slog.Handler インターフェースの実装。
-// 各ログ出力時にレベルをチェックし、ERROR 以上なら @type 属性を追加してから
-// ラップ先のハンドラ（JSONHandler）に委譲する。
-func (h *errorReportingHandler) Handle(ctx context.Context, r slog.Record) error {
-	if r.Level >= slog.LevelError {
-		r.AddAttrs(slog.String("@type", errorReportingType))
-	}
-	return h.Handler.Handle(ctx, r)
-}
-
-// WithAttrs / WithGroup は slog.Handler のインターフェースを満たすために必要。
-// ラップ先の戻り値を再度 errorReportingHandler で包んで返すことで、
-// Logger.With(...) で派生させたロガーにも ERROR → @type 付与が引き継がれる。
-func (h *errorReportingHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &errorReportingHandler{Handler: h.Handler.WithAttrs(attrs)}
-}
-
-func (h *errorReportingHandler) WithGroup(name string) slog.Handler {
-	return &errorReportingHandler{Handler: h.Handler.WithGroup(name)}
-}
-
-// cloudLoggingReplaceAttr は slog.HandlerOptions.ReplaceAttr 用の関数。
-// Cloud Logging の構造化ログ規約（https://cloud.google.com/logging/docs/structured-logging）
-// に合わせて、slog の組み込みキーを Cloud Logging が「特別フィールド」として
-// 認識する名前にリネームする。
-//   - level   → severity （Cloud Logging UI でレベル別フィルタに使われる）
-//   - time    → timestamp（LogEntry.timestamp の慣用名）
-//   - msg     → message  （Cloud Logging UI のサマリー欄に昇格表示される）
-//
-// グループ配下の属性（例: httpRequest グループの requestMethod 等）は
-// リネーム対象外。Cloud Logging 側の規約名をそのまま使うため。
-func cloudLoggingReplaceAttr(groups []string, a slog.Attr) slog.Attr {
-	if len(groups) > 0 {
-		return a
-	}
-	switch a.Key {
-	case slog.LevelKey:
-		// 型アサーション失敗時にパニックしないようガードする。
-		// 将来 slog の内部仕様が変わって Value が Level でなくなっても
-		// ログ全体が落ちないようにする。
-		level, ok := a.Value.Any().(slog.Level)
-		if !ok {
-			return a
-		}
-		a.Key = "severity"
-		switch {
-		case level >= slog.LevelError:
-			a.Value = slog.StringValue("ERROR")
-		case level >= slog.LevelWarn:
-			a.Value = slog.StringValue("WARNING")
-		case level >= slog.LevelInfo:
-			a.Value = slog.StringValue("INFO")
-		default:
-			a.Value = slog.StringValue("DEBUG")
-		}
-	case slog.TimeKey:
-		a.Key = "timestamp"
-	case slog.MessageKey:
-		a.Key = "message"
-	}
-	return a
-}
-
-// formatProtoDurationJSON は time.Duration を protobuf Duration の JSON 形式
-// （秒単位 10 進小数 + `s` サフィックス、負号対応、ナノ秒精度まで保持）に変換する。
-// Cloud Logging の LogEntry.HttpRequest.latency はこの形式を要求しており、
-// `time.Duration.String()` が返す `ms` / `µs` / `ns` サフィックス形式では認識されない。
-//
-// 仕様: protobuf Duration JSON は小数 0/3/6/9 桁のいずれも許容するが、
-// 本実装は常にナノ秒精度の 9 桁固定で出力する（精度情報をフル保持する意図）。
-//
-// 実装メモ:
-//
-//  1. 素直に `fmt.Sprintf("%.9fs", d.Seconds())` と書くと `d.Seconds()` が float64
-//     経由になり、mantissa 52bit の制約で ~104 日を超える Duration から ns 精度が
-//     失われる（関数名と挙動が乖離する）。
-//  2. 単純な `d = -d` による絶対値取得は `math.MinInt64` で signed overflow を
-//     起こす（`-math.MinInt64` は int64 の範囲外のため、ラップアラウンドで再び
-//     MinInt64 に戻り、malformed な "--N.-Ms" 形式を出してしまう）。
-//
-// 上記 2 点を回避するため、絶対値は two's complement で uint64 に変換してから
-// 秒・ns を分割する（`^d + 1` は `-d` と同じビット表現だが uint64 計算なので
-// オーバーフローしない）。これにより `math.MinInt64` から `math.MaxInt64` まで
-// 完全な精度で出力できる。
-//
-// 例:
-//
-//	12_345_000 ns            → "0.012345000s"
-//	1_500_000_000 ns         → "1.500000000s"
-//	-500 * time.Millisecond  → "-0.500000000s"
-//	time.Duration(math.MinInt64) → "-9223372036.854775808s"
-//
-// https://cloud.google.com/logging/docs/reference/v2/rest/v2/LogEntry#httprequest
-func formatProtoDurationJSON(d time.Duration) string {
-	sign := ""
-	var abs uint64
-	if d < 0 {
-		sign = "-"
-		// two's complement で絶対値を取得。`^d` は全 bit 反転、それに +1 することで
-		// `-d` と同じビット列になる。uint64 で計算するため、d == math.MinInt64 でも
-		// signed overflow が発生しない。
-		abs = uint64(^d) + 1
-	} else {
-		abs = uint64(d)
-	}
-	sec := abs / uint64(time.Second)
-	ns := abs % uint64(time.Second)
-	return fmt.Sprintf("%s%d.%09ds", sign, sec, ns)
-}
-
-// setupLogger は環境に応じた slog.Logger を返す。
-//   - envDevelopment: TextHandler（人間が読みやすい形式・DEBUG 以上）
-//   - それ以外:       JSONHandler + errorReportingHandler（Cloud Logging 互換・INFO 以上）
-//
-// 本番 JSON Handler は Cloud Logging の構造化ログ規約に合わせてフィールドをリネームし、
-// ERROR 以上には Cloud Error Reporting 用の @type を自動付与する。
-// これにより Cloud Run の stdout に JSON を流すだけで、Cloud Logging がレベル別に
-// 集約し、Cloud Error Reporting が ERROR を自動検知してくれる。
-func setupLogger(env string) *slog.Logger {
-	if env == envDevelopment {
-		return slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelDebug,
-		}))
-	}
-	// 本番（envProduction）、またはそれ以外の未知値（envProduction 相当として扱う）。
-	base := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level:       slog.LevelInfo,
-		ReplaceAttr: cloudLoggingReplaceAttr,
-	})
-	return slog.New(&errorReportingHandler{Handler: base})
 }
 
 // run はアプリケーションの実際の起動処理を行う。
@@ -226,7 +75,7 @@ func run() error {
 	//
 	// NOTE: この SetDefault より前に発生する致命エラー（pre-main の init 失敗等）は
 	// slog パッケージの組み込みデフォルト（TextHandler to stderr）に流れる。
-	slog.SetDefault(setupLogger(envProduction))
+	slog.SetDefault(logging.NewLogger(logging.EnvProduction))
 
 	// 0b. .env ファイルから環境変数を読み込み（存在しなくても OK）
 	// godotenv.Load は .env ファイルの内容を OS の環境変数にセットする。
@@ -249,7 +98,7 @@ func run() error {
 	// 1.5. ロガーを環境に応じたものに差し替える
 	// development なら TextHandler（DEBUG 以上）、それ以外は JSONHandler（INFO 以上）。
 	// ここ以降のすべての slog.* 呼び出しがこのロガー経由で出力される。
-	slog.SetDefault(setupLogger(cfg.Environment))
+	slog.SetDefault(logging.NewLogger(cfg.Environment))
 
 	// 2. データベースに接続（リトライあり）
 	// Neon（サーバーレス PostgreSQL）はアイドル時にスリープするため、
@@ -312,7 +161,7 @@ func run() error {
 	// 4. カスタムエラーハンドラーを設定
 	// ハンドラーから返されたエラーを型に応じて適切な HTTP レスポンスに変換する。
 	// 開発環境では 500 エラーの詳細をレスポンスに含め、本番では隠す。
-	e.HTTPErrorHandler = mw.NewHTTPErrorHandler(cfg.Environment == envDevelopment)
+	e.HTTPErrorHandler = mw.NewHTTPErrorHandler(cfg.Environment == logging.EnvDevelopment)
 
 	// 5. 基本ミドルウェアを登録
 	e.Use(middleware.Recover())
@@ -342,13 +191,13 @@ func run() error {
 			//
 			// NOTE: time.Duration.String() は使わない。1 秒未満で "12.345ms" / "500µs" / "50ns" を
 			// 返すため規約違反になり、Cloud Logging が HTTP リクエストフィールドとして
-			// 認識しなくなる。%.9f でナノ秒精度まで保持する。
+			// 認識しなくなる。ナノ秒精度まで保持する FormatProtoDurationJSON を使う。
 			slog.InfoContext(c.Request().Context(), "http_request",
 				slog.Group("httpRequest",
 					slog.String("requestMethod", v.Method),
 					slog.String("requestUrl", v.URIPath),
 					slog.Int("status", v.Status),
-					slog.String("latency", formatProtoDurationJSON(v.Latency)),
+					slog.String("latency", logging.FormatProtoDurationJSON(v.Latency)),
 				),
 			)
 			return nil
@@ -359,7 +208,7 @@ func run() error {
 	// 6. Swagger UIを登録（開発環境のみ）
 	// 本番環境では API の内部構造が外部に露出するのを防ぐため、
 	// Swagger UI のルートを登録しない。
-	if cfg.Environment == envDevelopment {
+	if cfg.Environment == logging.EnvDevelopment {
 		e.GET("/swagger/*", echoSwagger.WrapHandler)
 	}
 

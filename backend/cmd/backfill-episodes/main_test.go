@@ -97,9 +97,9 @@ func (m *mockEpisodeUC) IsListened(_ context.Context, _ uuid.UUID, _ uuid.UUID) 
 
 // ── テストケース ──
 
-// TestRun_NoPodcastsToProcess はエピソード未取得の番組がない場合のテストです。
+// TestBackfill_NoPodcastsToProcess はエピソード未取得の番組がない場合のテストです。
 // FetchFromFeed が呼ばれないことを確認します。
-func TestRun_NoPodcastsToProcess(t *testing.T) {
+func TestBackfill_NoPodcastsToProcess(t *testing.T) {
 	repo := &mockPodcastRepo{
 		listWithoutEpisodesFn: func(_ context.Context) ([]model.Podcast, error) {
 			return []model.Podcast{}, nil
@@ -113,15 +113,15 @@ func TestRun_NoPodcastsToProcess(t *testing.T) {
 		},
 	}
 
-	err := run(repo, uc)
+	err := backfill(repo, uc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-// TestRun_FetchesEpisodesSuccessfully はエピソードが正常に取得されるケースのテストです。
+// TestBackfill_FetchesEpisodesSuccessfully はエピソードが正常に取得されるケースのテストです。
 // FetchFromFeed が正しい podcast ID と feed URL で呼ばれることを確認します。
-func TestRun_FetchesEpisodesSuccessfully(t *testing.T) {
+func TestBackfill_FetchesEpisodesSuccessfully(t *testing.T) {
 	podcastID := uuid.New()
 	feedURL := "https://example.com/feed.xml"
 
@@ -153,7 +153,7 @@ func TestRun_FetchesEpisodesSuccessfully(t *testing.T) {
 		},
 	}
 
-	err := run(repo, uc)
+	err := backfill(repo, uc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -166,9 +166,9 @@ func TestRun_FetchesEpisodesSuccessfully(t *testing.T) {
 	}
 }
 
-// TestRun_SkipsOnFetchError は FetchFromFeed がエラーを返した場合にスキップして続行するテストです。
+// TestBackfill_SkipsOnFetchError は FetchFromFeed がエラーを返した場合にスキップして続行するテストです。
 // 1件目がエラーでも2件目は正常に処理されることを確認します。
-func TestRun_SkipsOnFetchError(t *testing.T) {
+func TestBackfill_SkipsOnFetchError(t *testing.T) {
 	podcast1ID := uuid.New()
 	podcast2ID := uuid.New()
 	feedURL1 := "https://example.com/feed1.xml"
@@ -202,7 +202,7 @@ func TestRun_SkipsOnFetchError(t *testing.T) {
 		},
 	}
 
-	err := run(repo, uc)
+	err := backfill(repo, uc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -213,8 +213,8 @@ func TestRun_SkipsOnFetchError(t *testing.T) {
 	}
 }
 
-// TestRun_SkipsNilFeedURL は feed_url が nil の番組をスキップするテストです。
-func TestRun_SkipsNilFeedURL(t *testing.T) {
+// TestBackfill_SkipsNilFeedURL は feed_url が nil の番組をスキップするテストです。
+func TestBackfill_SkipsNilFeedURL(t *testing.T) {
 	repo := &mockPodcastRepo{
 		listWithoutEpisodesFn: func(_ context.Context) ([]model.Podcast, error) {
 			return []model.Podcast{
@@ -234,14 +234,14 @@ func TestRun_SkipsNilFeedURL(t *testing.T) {
 		},
 	}
 
-	err := run(repo, uc)
+	err := backfill(repo, uc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
-// TestRun_SkipsEmptyFeedURL は feed_url が空文字の番組をスキップするテストです。
-func TestRun_SkipsEmptyFeedURL(t *testing.T) {
+// TestBackfill_SkipsEmptyFeedURL は feed_url が空文字の番組をスキップするテストです。
+func TestBackfill_SkipsEmptyFeedURL(t *testing.T) {
 	emptyURL := ""
 	repo := &mockPodcastRepo{
 		listWithoutEpisodesFn: func(_ context.Context) ([]model.Podcast, error) {
@@ -262,7 +262,7 @@ func TestRun_SkipsEmptyFeedURL(t *testing.T) {
 		},
 	}
 
-	err := run(repo, uc)
+	err := backfill(repo, uc)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

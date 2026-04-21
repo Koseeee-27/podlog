@@ -1,8 +1,8 @@
-// Package main のテスト。
-// slog 初期化まわり（setupLogger / cloudLoggingReplaceAttr / errorReportingHandler）は
+// Package logging のテスト。
+// slog 初期化まわり（NewLogger / cloudLoggingReplaceAttr / errorReportingHandler）は
 // Cloud Logging / Cloud Error Reporting 互換性の要。将来の変更で互換性が壊れるのを
 // 防ぐため、JSON 出力をキー単位でアサートする。
-package main
+package logging
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 )
 
 // newTestHandler はテスト用に ReplaceAttr + errorReportingHandler でラップした
-// JSONHandler を返す。setupLogger の本番分岐と同一設定にする。
+// JSONHandler を返す。NewLogger の本番分岐と同一設定にする。
 // time / timestamp のアサートを簡単にするため、io.Writer はバッファを受け取る形にしている。
 func newTestHandler(buf *bytes.Buffer) slog.Handler {
 	base := slog.NewJSONHandler(buf, &slog.HandlerOptions{
@@ -187,14 +187,14 @@ func TestErrorReportingHandler_WithGroupPreservesWrapping(t *testing.T) {
 	}
 }
 
-// TestSetupLogger_DevelopmentUsesTextHandler は development 環境では
+// TestNewLogger_DevelopmentUsesTextHandler は development 環境では
 // TextHandler（非 JSON）が使われることを間接的に確認する。
 // JSON としてパースできないことと、severity ではなく level キーが現れることを
 // チェックする。
-func TestSetupLogger_DevelopmentUsesTextHandler(t *testing.T) {
-	// setupLogger は os.Stdout に書き込むため、出力先を差し替えるのが面倒。
+func TestNewLogger_DevelopmentUsesTextHandler(t *testing.T) {
+	// NewLogger は os.Stdout に書き込むため、出力先を差し替えるのが面倒。
 	// ここでは development 分岐の判定ロジックだけを検証する（出力バイト検査は production 側で済ませている）。
-	devLogger := setupLogger(envDevelopment)
+	devLogger := NewLogger(EnvDevelopment)
 	if devLogger == nil {
 		t.Fatal("development logger must not be nil")
 	}
@@ -204,7 +204,7 @@ func TestSetupLogger_DevelopmentUsesTextHandler(t *testing.T) {
 		t.Errorf("development logger should accept Debug level")
 	}
 
-	prodLogger := setupLogger(envProduction)
+	prodLogger := NewLogger(EnvProduction)
 	if prodLogger.Handler().Enabled(context.Background(), slog.LevelDebug) {
 		t.Errorf("production logger should NOT accept Debug level (Info threshold)")
 	}
@@ -216,7 +216,7 @@ func TestSetupLogger_DevelopmentUsesTextHandler(t *testing.T) {
 //
 // time.Duration.String() は 1 秒未満で "12.345ms" / "500µs" / "50ns" を返し、
 // Cloud Logging が HTTP リクエストフィールドとして認識しなくなるため、
-// 将来 formatProtoDurationJSON 内部を `.String()` に戻す変更が入らないようにする。
+// 将来 FormatProtoDurationJSON 内部を `.String()` に戻す変更が入らないようにする。
 func TestFormatProtoDurationJSON(t *testing.T) {
 	tests := []struct {
 		name string
@@ -239,9 +239,9 @@ func TestFormatProtoDurationJSON(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := formatProtoDurationJSON(tt.in)
+			got := FormatProtoDurationJSON(tt.in)
 			if got != tt.want {
-				t.Errorf("formatProtoDurationJSON(%v): want=%q got=%q", tt.in, tt.want, got)
+				t.Errorf("FormatProtoDurationJSON(%v): want=%q got=%q", tt.in, tt.want, got)
 			}
 		})
 	}
@@ -274,9 +274,9 @@ func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
 		time.Duration(math.MaxInt64),
 	}
 	for _, d := range samples {
-		got := formatProtoDurationJSON(d)
+		got := FormatProtoDurationJSON(d)
 		if !pattern.MatchString(got) {
-			t.Errorf("formatProtoDurationJSON(%v)=%q does not match %s", d, got, pattern)
+			t.Errorf("FormatProtoDurationJSON(%v)=%q does not match %s", d, got, pattern)
 		}
 	}
 }
@@ -287,8 +287,8 @@ func TestFormatProtoDurationJSON_FormatShape(t *testing.T) {
 func TestFormatProtoDurationJSON_PrecisionAtLargeValues(t *testing.T) {
 	// 2^53 ns は float64 の mantissa 精度境界付近。ここで 1ns の差が消えると精度欠損。
 	base := time.Duration(1 << 53)
-	got1 := formatProtoDurationJSON(base)
-	got2 := formatProtoDurationJSON(base + 1)
+	got1 := FormatProtoDurationJSON(base)
+	got2 := FormatProtoDurationJSON(base + 1)
 	if got1 == got2 {
 		t.Errorf("1ns difference lost: both %v and %v formatted as %q (precision lost)",
 			base, base+1, got1)
