@@ -1,5 +1,15 @@
 "use client";
 
+import * as Sentry from "@sentry/nextjs";
+import type { useRouter } from "next/navigation";
+import { createClient } from "@/lib/supabase/client";
+
+/**
+ * `useRouter()` の戻り値型。Next.js の公式 API から導出する
+ * (`next/dist/*` の内部モジュールを直接参照しないため)。
+ */
+type AppRouter = ReturnType<typeof useRouter>;
+
 /**
  * 共通のログアウト処理。
  *
@@ -23,17 +33,10 @@
  * signOut の内部エラー（ネットワーク断・Supabase 障害）はユーザーには
  * 対処のしようがないため、Sentry に通知して後追いできるようにしつつ、画面遷移は
  * 進める（セッションが端末に残り続けて「ログアウトできない」状態を避ける）。
+ *
+ * TODO: 共有端末でログアウト失敗時にユーザーが気づけないリスクがある。
+ * Toast で「ログアウト処理に失敗しました」を表示する UX 改善は別 Issue で対応する。
  */
-import * as Sentry from "@sentry/nextjs";
-import type { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
-/**
- * `useRouter()` の戻り値型。Next.js の公式 API から導出する
- * (`next/dist/*` の内部モジュールを直接参照しないため)。
- */
-type AppRouter = ReturnType<typeof useRouter>;
-
 export async function signOut(router: AppRouter): Promise<void> {
   const supabase = createClient();
   try {
