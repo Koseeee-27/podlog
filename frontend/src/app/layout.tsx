@@ -27,9 +27,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
-  alternates: {
-    canonical: "/",
-  },
+  // alternates は **layout には設定しない**。Next.js metadata は shallow merge
+  // のため、layout に canonical を置くと子ページが alternates を上書きしない限り
+  // 親の値を継承してしまい、動的ページ（/podcasts/[id] 等）が canonical="/" を
+  // 出力するという SEO 事故につながる。canonical は各 page.tsx で個別に設定する
+  // （ホームは app/(main)/page.tsx 側で設定）。
   openGraph: {
     ...defaultOpenGraph,
     title: SITE_TITLE,
