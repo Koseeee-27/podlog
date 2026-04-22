@@ -17,7 +17,11 @@
 | 通常エンドポイント | **60 req/min/IP** | 20 | `/podcasts/:id`, `/episodes/:id`, `/timeline`, 認証系 API 全般 |
 | 外部通信を含むエンドポイント | **20 req/min/IP** | 5 | `/podcasts/search`（iTunes フォールバック有）, `/podcasts/fetch-url`, `/podcasts/:id/episodes/fetch` |
 
-- **識別子**: `echo.Context.RealIP()` で取得する IP アドレス（Cloud Run 前段の Google Front End が付与する `X-Forwarded-For` の先頭要素）
+- **識別子**: `echo.Context.RealIP()` で取得する IP アドレス
+  - `cmd/server/main.go` で `e.IPExtractor = echo.ExtractIPFromXFFHeader(echo.TrustLoopback(true), echo.TrustPrivateNet(true))` を設定している
+  - これにより `X-Forwarded-For` の **右端から trust 対象（loopback / プライベート IP）をスキップして、最初に現れた untrusted なクライアント IP** を返す
+  - Cloud Run 前段の Google Front End / LB のプライベート IP は自動的に trust されるため、**クライアントが XFF の先頭に偽装値を入れてもバケット回避はできない**
+  - Echo のデフォルト (IPExtractor 未設定) の `RealIP()` は XFF の先頭をそのまま返す legacy behavior に落ちるため、**必ず IPExtractor を明示設定する**
 - **アルゴリズム**: トークンバケット（`golang.org/x/time/rate.Limiter`）。平均レート（req/sec）でトークンが補充され、バケット容量（バースト）まで貯められる
 - **ストア**: プロセスメモリ（in-memory）。非アクティブな IP エントリは 3 分で自動削除
 - **除外**: `/health`（ヘルスチェックは `/api/v1` 外にあるため対象外）
@@ -26,19 +30,40 @@
 
 ```
 HTTP/1.1 429 Too Many Requests
-Retry-After: 60
+Retry-After: <秒数>
 Content-Type: application/json
 
 { "error": "rate limit exceeded" }
 ```
 
-クライアントは `Retry-After` ヘッダの秒数（60 秒）待機してから再試行すること。
+- `Retry-After` は「次のトークンが補充されるまでの秒数」を `ceil(60 / reqPerMin)` で算出した整数秒（最小 1 秒）
+  - 通常エンドポイント（60 req/min）→ **`Retry-After: 1`**
+  - 外部通信エンドポイント（20 req/min）→ **`Retry-After: 3`**
+- クライアントは `Retry-After` ヘッダの秒数を待機してから再試行すること
+
+#### 拒否時のログ
+
+レート超過時は `slog` の **WARN レベル**で以下の構造化ログを出力する:
+
+| キー | 内容 |
+|---|---|
+| `method` | HTTP メソッド |
+| `path` | ルートパターン（例: `/podcasts/:id`） |
+| `identifier_hash` | クライアント IP の SHA-256 先頭 8 文字。PII (生 IP) を残さず、同一クライアントかの同定は可能にする折衷 |
+| `retry_after` | Retry-After に返した秒数 |
+
+運用中に同じ `identifier_hash` で WARN が頻発する場合、DoS / 自動化スクリプトの可能性がある。Cloud Logging のフィルタ (`jsonPayload.identifier_hash="..."`) で追跡できる。
+
+#### IP が抽出できなかった場合
+
+`c.RealIP()` が空文字を返すケース（`RemoteAddr` も XFF も両方空、等の異常系）では `IdentifierExtractor` がエラーを返し、`400 Bad Request` が返される。全リクエストが「空文字キー」という単一バケットに集約される副作用を防ぐため。
 
 #### 設計上の注意（運用者向け）
 
 - **Cloud Run の autoscale 時は実効レートが「設定値 × インスタンス数」になる**。in-memory ストアはインスタンスごとに独立するため、複数インスタンス稼働時は同一 IP でもインスタンスごとに別バケットが割り当てられる。MVP 段階のトラフィック規模では許容するが、運用で問題が顕在化したら Redis / Cloud Memorystore などの分散ストア化を検討する
 - **認証必須ルート（`auth` グループ）も `v1` / `v1Ext` を親に持つため自動的にレート制限対象**。JWT 検証が通るリクエストは 1 ユーザーあたり少数なので実害はない想定
-- ミドルウェアの適用順序は **レート制限 → タイムアウト → JWT 検証** の順。拒否されたリクエストで不要なコスト（タイムアウトコンテキストの生成・JWT 検証）を払わないようにしている
+- 認証必須ルートでのミドルウェアの適用順序は **レート制限 → タイムアウト → JWT 検証** の順。拒否されたリクエストで不要なコスト（タイムアウトコンテキストの生成・JWT 検証）を払わないようにしている
+- **外部 LB（パブリック IP を持つ構成）を挟む場合は要追加設定**: `echo.ExtractIPFromXFFHeader` の `TrustIPRange` で LB の IP レンジを明示的に trust する必要がある。さもないと LB 自身が untrusted な IP として識別子になり、全リクエストが同一バケットに集約される
 
 ---
 
