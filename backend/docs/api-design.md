@@ -22,6 +22,7 @@
   - これにより `X-Forwarded-For` の **右端から trust 対象（loopback / プライベート IP）をスキップして、最初に現れた untrusted なクライアント IP** を返す
   - Cloud Run 前段の Google Front End / LB のプライベート IP は自動的に trust されるため、**クライアントが XFF の先頭に偽装値を入れてもバケット回避はできない**
   - Echo のデフォルト (IPExtractor 未設定) の `RealIP()` は XFF の先頭をそのまま返す legacy behavior に落ちるため、**必ず IPExtractor を明示設定する**
+  - **例外ケース**: XFF チェーン上の全要素が trust 対象（全てプライベート IP / loopback）のとき、`ExtractIPFromXFFHeader` は XFF の **先頭要素**をフォールバックで返す。Cloud Run 本番では通常パブリック IP を介するため発生しないが、内部ネットワーク経由の負荷試験・社内プロキシ・VPN 経由のアクセスでは先頭要素（偽装可能）が識別子になる可能性がある
 - **アルゴリズム**: トークンバケット（`golang.org/x/time/rate.Limiter`）。平均レート（req/sec）でトークンが補充され、バケット容量（バースト）まで貯められる
 - **ストア**: プロセスメモリ（in-memory）。非アクティブな IP エントリは 3 分で自動削除
 - **除外**: `/health`（ヘルスチェックは `/api/v1` 外にあるため対象外）

@@ -42,14 +42,19 @@ import (
 // NewRateLimiter を適用した /test エンドポイントを登録します。
 // 本物の HTTP サーバーは立てず、e.ServeHTTP(rec, req) で直接リクエストを流します。
 //
-// 本番 (cmd/server/main.go) と同じ IPExtractor を設定することで、
-// c.RealIP() の挙動を実環境と揃えています。
+// 本番 (cmd/server/main.go) と同じ IPExtractor および HTTPErrorHandler を設定することで、
+// 本番とテストの挙動差を無くします。特に後者は重要で、Echo のデフォルト
+// HTTPErrorHandler (DefaultHTTPErrorHandler) は *echo.HTTPError.Internal を
+// 優先採用するため、RateLimiter 内部で Internal に詰められたエラーを拾って通ってしまう。
+// 本番の NewHTTPErrorHandler は errors.As で「最外層」を取るので、テストだけで
+// 通る現象を防ぐには本番と同じ handler を使う必要がある。
 func newRateLimiterTestEcho(reqPerMin, burst int) *echo.Echo {
 	e := echo.New()
 	e.IPExtractor = echo.ExtractIPFromXFFHeader(
 		echo.TrustLoopback(true),
 		echo.TrustPrivateNet(true),
 	)
+	e.HTTPErrorHandler = NewHTTPErrorHandler(false) // 本番相当（isDev=false）
 	e.GET("/test", func(c echo.Context) error {
 		return c.String(http.StatusOK, "ok")
 	}, NewRateLimiter(reqPerMin, burst))
@@ -311,14 +316,49 @@ func TestNewRateLimiter_ConfigVariants(t *testing.T) {
 func TestRateLimiter_EmptyIPReturnsError(t *testing.T) {
 	e := newRateLimiterTestEcho(60, 2)
 
-	// RemoteAddr を空白だけにすると net.SplitHostPort が失敗し c.RealIP() が "" になる。
-	// (httptest.NewRequest は req.RemoteAddr を上書きしない限りデフォルト値が入るので、
-	//  明示的に空白を指定する。)
-	rec := sendRequest(e, requestOptions{remoteAddr: " "})
-	// IdentifierExtractor が返したエラー → Echo のデフォルト ErrorHandler が
-	// HTTP ステータスに変換してレスポンス。echo.NewHTTPError(400, ...) なら 400。
+	// RemoteAddr を "invalid" にすると net.SplitHostPort が失敗し、
+	// さらに net.ParseIP も失敗するため c.RealIP() は "" を返す。
+	// 空白だけを指定する方法もあるが、意図が伝わりにくいのでパース不能な固定文字列にする。
+	rec := sendRequest(e, requestOptions{remoteAddr: "invalid"})
+	// IdentifierExtractor が *echo.HTTPError(400, "client ip unavailable") を返し、
+	// RateLimiterConfig.ErrorHandler でそのままパススルー → 本番の HTTPErrorHandler が
+	// 400 Bad Request を返す。
+	//
+	// 注意: ErrorHandler を明示設定していないと、Echo のデフォルト ErrorHandler が
+	//       *echo.HTTPError(403 ErrExtractorError) で wrap してしまい、本プロジェクトの
+	//       HTTPErrorHandler (errors.As で最外層を取る) が 403 を返す回帰につながる。
+	//       ここで 400 が出ていれば ErrorHandler のパススルーが効いている証拠。
 	if rec.Code != http.StatusBadRequest {
-		t.Errorf("status = %d, want %d (empty identifier must be rejected)", rec.Code, http.StatusBadRequest)
+		t.Errorf("status = %d, want %d (empty identifier must be rejected with 400, not 403)", rec.Code, http.StatusBadRequest)
+	}
+}
+
+// TestNewRateLimiter_PanicsOnInvalidArgs は reqPerMin / burst が 0 以下の場合に
+// 起動時 panic することを検証します。
+//
+// 背景: rate.Limit(0) は全拒否、60/0 は +Inf → Retry-After に異常値が入る等、
+// ランタイム事故の原因になるため、起動時に落として誤設定を早期検出する。
+func TestNewRateLimiter_PanicsOnInvalidArgs(t *testing.T) {
+	tests := []struct {
+		name      string
+		reqPerMin int
+		burst     int
+	}{
+		{"reqPerMin が 0", 0, 10},
+		{"reqPerMin が負", -5, 10},
+		{"burst が 0", 60, 0},
+		{"burst が負", 60, -1},
+		{"両方 0", 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			defer func() {
+				if r := recover(); r == nil {
+					t.Errorf("expected panic for reqPerMin=%d, burst=%d, but did not panic", tt.reqPerMin, tt.burst)
+				}
+			}()
+			_ = NewRateLimiter(tt.reqPerMin, tt.burst)
+		})
 	}
 }
 

@@ -28,6 +28,14 @@ const rateLimiterExpiresIn = 3 * time.Minute
 // 短すぎると衝突確率が上がり「どのクライアントか」の区別がつかず、
 // 長すぎると IP の復元リスクが上がります。運用調査の粒度として 8 文字
 // (= 16 進 4 バイト、約 40 億通り) にしています。
+//
+// 衝突確率の目安（誕生日パラドックス）:
+//   - 同時に観測される異なる IP が 1,000 個なら衝突率は約 0.01%
+//   - 約 77,000 個で 50% (sqrt(2^32))
+//
+// 個人開発の現状トラフィック規模なら運用調査で困らない。大規模な DDoS で
+// 数万 IP が同時に観測される段階に入ったら、このビット長を増やす
+// （例: 12 文字 = 48bit）または生の IP を記録する運用に切り替えることを検討する。
 const identifierHashLen = 8
 
 // NewRateLimiter は IP アドレスごとにレート制限を行う Echo ミドルウェアを返します。
@@ -66,7 +74,15 @@ const identifierHashLen = 8
 //
 //	rate.Limit は req/sec（1 秒あたり）なので、reqPerMin を 60 で割って渡します。
 //	例: reqPerMin=60 なら 1 req/sec、burst=20 なら瞬間的に 20 リクエストまで許容。
+//
+// reqPerMin / burst が 0 以下の場合、起動時に panic して誤設定を早期検出します。
+// rate.Limit(0) は全拒否になり、60/0 は +Inf で Retry-After が異常値になるため、
+// ランタイム事故を防ぐには起動時に落とすのが安全。
 func NewRateLimiter(reqPerMin int, burst int) echo.MiddlewareFunc {
+	if reqPerMin <= 0 || burst <= 0 {
+		panic("middleware.NewRateLimiter: reqPerMin and burst must be > 0")
+	}
+
 	// Retry-After ヘッダに返す秒数を事前計算する。
 	// 「次の 1 トークンが補充されるまでの秒数」の整数切り上げ。
 	// reqPerMin=60 なら 1 秒、reqPerMin=20 なら 3 秒。
@@ -86,7 +102,7 @@ func NewRateLimiter(reqPerMin int, burst int) echo.MiddlewareFunc {
 		// IdentifierExtractor は「同じクライアントからのリクエスト」を束ねるキーを返します。
 		// c.RealIP() が空になる異常ケース (IPExtractor が IP を特定できない等) では
 		// 全ユーザーが「空文字キー」という単一バケットに集約されて冗長な巻き添え 429 が
-		// 発生するため、エラーを返して ErrorHandler (デフォルトで 403) に委ねます。
+		// 発生するため、エラーを返して下の ErrorHandler で 400 Bad Request として扱います。
 		IdentifierExtractor: func(c echo.Context) (string, error) {
 			ip := c.RealIP()
 			if ip == "" {
@@ -94,19 +110,33 @@ func NewRateLimiter(reqPerMin int, burst int) echo.MiddlewareFunc {
 			}
 			return ip, nil
 		},
+		// ErrorHandler は IdentifierExtractor がエラーを返したときに呼ばれます。
+		// Echo のデフォルト実装は返されたエラーを *echo.HTTPError(403 ErrExtractorError) で
+		// wrap してしまうため、本プロジェクトの HTTPErrorHandler (errors.As で最外層を取る)
+		// が内側の 400 を拾えなくなり、本番で 403 "error while extracting identifier" に
+		// すり替わる問題がある。これを避けるため、IdentifierExtractor が返したエラーを
+		// そのままパススルーして、本来の 400 "client ip unavailable" を出す。
+		ErrorHandler: func(_ echo.Context, err error) error {
+			return err
+		},
 		// DenyHandler はレート超過時の応答を組み立てます。
 		// Retry-After ヘッダは「何秒後に再試行してよいか」をクライアントに伝える標準ヘッダ。
 		//
 		// WARN レベルで拒否イベントを残すのは運用調査のため。
 		// 頻発する ERROR を Cloud Error Reporting に通知させたくないので WARN に抑える。
 		// identifier (IP) 自体は PII リスクを避けるためハッシュの頭数文字だけ記録する。
+		//
+		// path はプロジェクト内の他のログ (errorhandler.go 等) と揃えて URL.Path (実パス)
+		// を使う。Cloud Logging で `jsonPayload.path="/podcasts/42"` のフィルタが一貫して
+		// 効くようにするため。ルートパターンが欲しい場合は別キー `route` に分ける。
 		DenyHandler: func(c echo.Context, identifier string, _ error) error {
 			c.Response().Header().Set("Retry-After", retryAfterHeader)
 
 			req := c.Request()
 			slog.WarnContext(req.Context(), "rate limit exceeded",
 				"method", req.Method,
-				"path", c.Path(),
+				"path", req.URL.Path,
+				"route", c.Path(),
 				"identifier_hash", hashIdentifier(identifier),
 				"retry_after", retryAfterSec,
 			)
