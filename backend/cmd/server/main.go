@@ -158,6 +158,33 @@ func run() error {
 	// 3. Echo インスタンスを作成
 	e := echo.New()
 
+	// 3.5. クライアント IP 抽出戦略を明示設定する。
+	//
+	// 目的: レート制限 (IP ベース) が X-Forwarded-For の偽装でバイパスされるのを防ぐ。
+	//
+	// 背景:
+	//   Echo のデフォルト (IPExtractor 未設定) では c.RealIP() は
+	//   「X-Forwarded-For の **先頭要素**をそのまま信じて返す」という
+	//   legacy behavior に落ちる。Cloud Run 前段の Google Front End は
+	//   クライアント送信の XFF を検証せずに追記するだけなので、
+	//   攻撃者が `X-Forwarded-For: <毎回違う値>` を送れば
+	//   1 リクエストごとに別バケット扱いになりレート制限が無効化される。
+	//
+	// ExtractIPFromXFFHeader は XFF の **右端** から trust 対象 (プライベート IP 等)
+	// をスキップし、最初に現れた untrusted な IP を返す。
+	// Cloud Run の XFF は `<client>, <GFE/LB>` の形で GFE が末尾に追記されるため、
+	// LB のプライベート IP を trust できれば、先頭の偽装値を無視して真のクライアント
+	// IP を取得できる。
+	//
+	// TrustLoopback(true) / TrustPrivateNet(true) はデフォルト値と同じだが、
+	// 「意図して設定している」ことを明示するため明記する。
+	// 将来、外部 LB (パブリック IP) を挟む構成に変える場合は TrustIPRange で
+	// その LB の IP レンジを追加で trust する必要がある。
+	e.IPExtractor = echo.ExtractIPFromXFFHeader(
+		echo.TrustLoopback(true),
+		echo.TrustPrivateNet(true),
+	)
+
 	// 4. カスタムエラーハンドラーを設定
 	// ハンドラーから返されたエラーを型に応じて適切な HTTP レスポンスに変換する。
 	// 開発環境では 500 エラーの詳細をレスポンスに含め、本番では隠す。

@@ -40,8 +40,23 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	// タイムアウトが異なるため、同じプレフィックスで2つのグループを作成する。
 	// context.WithTimeout は親コンテキストのデッドラインを超えられないため、
 	// 外部通信を含むエンドポイントは別グループに分離する必要がある。
-	v1 := e.Group("/api/v1", mw.Timeout(mw.DefaultTimeout))
-	v1Ext := e.Group("/api/v1", mw.Timeout(mw.ExternalTimeout))
+	//
+	// ミドルウェアの適用順序: レート制限 → タイムアウト の順で評価する。
+	// Echo のグループミドルウェアは Group(prefix, mw1, mw2, ...) で渡した順に
+	// 外側から適用されるため、先頭に RateLimiter を置くことで
+	// 拒否されたリクエストに対してタイムアウトコンテキスト生成のコストを払わずに済む。
+	//
+	// 公開エンドポイント: 60 req/min/IP（平均 1 req/sec）、burst 20 まで許容
+	v1 := e.Group("/api/v1",
+		mw.NewRateLimiter(60, 20),
+		mw.Timeout(mw.DefaultTimeout),
+	)
+	// 外部通信を含む公開エンドポイント: 20 req/min/IP、burst 5 まで許容（厳しめ）
+	// iTunes API のレート制限や外部サービスへの負荷を考慮して絞る
+	v1Ext := e.Group("/api/v1",
+		mw.NewRateLimiter(20, 5),
+		mw.Timeout(mw.ExternalTimeout),
+	)
 
 	// ── ヘルスチェック（ルート直下） ──
 	// /api/v1 プレフィックスの外に配置する理由:
