@@ -16,11 +16,23 @@
  */
 import * as Sentry from "@sentry/nextjs";
 
+const isProd = process.env.NODE_ENV === "production";
+const sentryEnv = process.env.NEXT_PUBLIC_SENTRY_ENV;
+
+// Production ビルドで NEXT_PUBLIC_SENTRY_ENV が "production" 以外のとき、Sentry は
+// サイレントに無効化される。運用上の設定漏れ（Netlify 環境変数の入れ忘れ等）に
+// ログストリームで気づけるよう、警告を 1 回だけ出す。preview コンテキストでの
+// 意図的な無効化では警告を出さない（`NEXT_PUBLIC_SENTRY_ENV=preview` は OK）。
+if (isProd && !sentryEnv) {
+  console.warn(
+    "[sentry] NEXT_PUBLIC_SENTRY_ENV is not set in a production build. " +
+      "Sentry will be disabled. Check deploy environment variables."
+  );
+}
+
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-  environment: process.env.NEXT_PUBLIC_SENTRY_ENV || "production",
-  enabled:
-    process.env.NODE_ENV === "production" &&
-    process.env.NEXT_PUBLIC_SENTRY_ENV === "production",
+  environment: sentryEnv || "production",
+  enabled: isProd && sentryEnv === "production",
   tracesSampleRate: 0,
 });
