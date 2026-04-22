@@ -15,7 +15,27 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+const DEFAULT_SITE_URL = "http://localhost:3000";
+
+/**
+ * `NEXT_PUBLIC_SITE_URL` を安全に URL に変換する。
+ *
+ * `??` だけでは空文字や scheme なしの typo（例: `"example.com"`）を拾えず、
+ * `new URL()` が例外を投げてメタデータ生成モジュール全体がクラッシュする。
+ * Netlify の環境変数を typo したときにビルドが原因不明で落ちるのを防ぐため、
+ * trim + try/catch でフォールバックさせる（詳細は PR #380 レビュー指摘参照）。
+ */
+function resolveMetadataBase(raw: string | undefined): URL {
+  const value = raw?.trim();
+  if (!value) return new URL(DEFAULT_SITE_URL);
+  try {
+    return new URL(value);
+  } catch {
+    return new URL(DEFAULT_SITE_URL);
+  }
+}
+
+const metadataBase = resolveMetadataBase(process.env.NEXT_PUBLIC_SITE_URL);
 
 const SITE_TITLE = "PodLog - ラジオの記録・レビューアプリ";
 const SITE_DESCRIPTION =
@@ -24,7 +44,7 @@ const SITE_DESCRIPTION =
 export const metadata: Metadata = {
   // metadataBase: ルートで一度だけ設定。各ページの alternates.canonical や
   // openGraph.images は相対パスで書けば自動的に絶対 URL に解決される。
-  metadataBase: new URL(siteUrl),
+  metadataBase,
   title: SITE_TITLE,
   description: SITE_DESCRIPTION,
   // alternates は **layout には設定しない**。Next.js metadata は shallow merge
