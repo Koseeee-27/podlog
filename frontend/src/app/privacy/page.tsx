@@ -1,17 +1,28 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
+
+const PAGE_TITLE = "プライバシーポリシー | PodLog";
+const PAGE_DESCRIPTION = "PodLog のプライバシーポリシーです。";
 
 export const metadata: Metadata = {
-  title: "プライバシーポリシー - PodLog",
-  description: "PodLog のプライバシーポリシーです。",
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
   alternates: {
     canonical: "/privacy",
   },
+  // openGraph / twitter は shallow merge で置換されるため spread で継承
   openGraph: {
-    title: "プライバシーポリシー - PodLog",
-    description: "PodLog のプライバシーポリシーです。",
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
     url: "/privacy",
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
   },
 };
 
