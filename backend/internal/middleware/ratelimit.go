@@ -57,11 +57,15 @@ const identifierHashLen = 8
 // ログ:
 //
 //	レート超過時は slog の WARN レベルで以下の属性を出力します:
-//	  - path: c.Path() (例: "/podcasts/:id")
 //	  - method: HTTP メソッド
+//	  - path: req.URL.Path (実パス、例: "/api/v1/podcasts/123")
+//	    プロジェクト内の他のログ (errorhandler.go 等) とキー粒度を揃えるため
+//	    ルートパターンではなく実パスを入れる。
+//	  - route: c.Path() (ルートパターン、例: "/podcasts/:id")
 //	  - identifier_hash: IP アドレスの SHA-256 を頭 N 文字に切り詰めた値
 //	    PII (IP アドレス) を生のまま残すのを避けつつ、同一クライアントかの
 //	    同定には十分な情報を残す折衷案。
+//	  - retry_after: Retry-After ヘッダに返した秒数
 //
 // トークンバケットの仕組み（Go 初学者向け補足）:
 //

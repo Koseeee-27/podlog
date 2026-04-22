@@ -64,8 +64,9 @@ func newRateLimiterTestEcho(reqPerMin, burst int) *echo.Echo {
 // requestOptions はテスト用リクエストのオプションをまとめた構造体です。
 type requestOptions struct {
 	// remoteAddr は TCP 接続元の IP:port。未指定ならデフォルトの "192.0.2.1:1234"。
-	// IPExtractor に TrustPrivateNet のみを渡している前提では、これがパブリック IP
-	// であれば識別子として使われ、プライベート IP なら XFF 側にフォールバックする。
+	// IPExtractor に TrustLoopback(true) と TrustPrivateNet(true) を渡している前提では、
+	// これがパブリック IP であれば識別子として使われ、loopback / private なら XFF 側に
+	// フォールバックする。
 	remoteAddr string
 	// xff は X-Forwarded-For ヘッダの生値 (カンマ区切り複数 OK)。空なら未設定。
 	xff string

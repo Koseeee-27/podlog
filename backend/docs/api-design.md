@@ -29,7 +29,7 @@
 
 #### レート超過時のレスポンス
 
-```
+```http
 HTTP/1.1 429 Too Many Requests
 Retry-After: <秒数>
 Content-Type: application/json
@@ -49,7 +49,8 @@ Content-Type: application/json
 | キー | 内容 |
 |---|---|
 | `method` | HTTP メソッド |
-| `path` | ルートパターン（例: `/podcasts/:id`） |
+| `path` | 実際のリクエストパス（例: `/api/v1/podcasts/123`）。プロジェクト内の他のログ（`errorhandler.go` 等）とキー粒度を揃えるため実パスを入れる |
+| `route` | ルートパターン（例: `/podcasts/:id`） |
 | `identifier_hash` | クライアント IP の SHA-256 先頭 8 文字。PII (生 IP) を残さず、同一クライアントかの同定は可能にする折衷 |
 | `retry_after` | Retry-After に返した秒数 |
 
