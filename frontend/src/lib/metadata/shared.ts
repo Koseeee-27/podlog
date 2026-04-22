@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 
 /**
- * 共通の OG 画像設定。
+ * 共通の OG 画像設定（og-default.png のみを含む配列）。
  *
- * 各ページで `openGraph.images` を個別に指定したいとき、
- * 既存の og-default.png をフォールバックとして含めるために spread する。
+ * 主な用途:
+ * - 静的ページ: `defaultOpenGraph` 経由で自動的に含まれるため、直接使う必要はない
+ * - 動的ページ（後続 Issue #376 の podcast / episode / user）: ページ固有の
+ *   artwork を先頭に置きつつ、画像がない場合のフォールバックとして
+ *   og-default.png を末尾に含めるために spread する想定。
+ *   例: `images: [{ url: artwork_url, ... }, ...defaultOpenGraphImages]`
  */
 export const defaultOpenGraphImages = [
   {
