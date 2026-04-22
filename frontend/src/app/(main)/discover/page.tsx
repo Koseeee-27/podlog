@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import DiscoverSearchBar from "./DiscoverSearchBar";
@@ -9,6 +10,22 @@ import {
   GenrePodcastsSkeleton,
   DefaultSectionSkeleton,
 } from "./skeletons";
+
+export const metadata: Metadata = {
+  title: "探す | PodLog",
+  description:
+    "PodLog で新しいラジオ・ポッドキャスト番組を探します。キーワード検索やジャンル別ブラウズで、人気の番組と出会えます。",
+  alternates: {
+    // クエリパラメータ（q / genre）は正規 URL から除外し、本体 `/discover` に集約する
+    canonical: "/discover",
+  },
+  openGraph: {
+    title: "探す | PodLog",
+    description:
+      "PodLog で新しいラジオ・ポッドキャスト番組を探します。",
+    url: "/discover",
+  },
+};
 
 interface DiscoverPageProps {
   searchParams: Promise<{ q?: string | string[]; genre?: string | string[] }>;

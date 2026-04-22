@@ -5,6 +5,14 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "利用規約 - PodLog",
   description: "PodLog の利用規約です。",
+  alternates: {
+    canonical: "/terms",
+  },
+  openGraph: {
+    title: "利用規約 - PodLog",
+    description: "PodLog の利用規約です。",
+    url: "/terms",
+  },
 };
 
 export default function TermsPage() {

@@ -5,6 +5,14 @@ import Image from "next/image";
 export const metadata: Metadata = {
   title: "プライバシーポリシー - PodLog",
   description: "PodLog のプライバシーポリシーです。",
+  alternates: {
+    canonical: "/privacy",
+  },
+  openGraph: {
+    title: "プライバシーポリシー - PodLog",
+    description: "PodLog のプライバシーポリシーです。",
+    url: "/privacy",
+  },
 };
 
 export default function PrivacyPage() {
