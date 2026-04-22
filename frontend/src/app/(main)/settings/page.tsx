@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import SettingsClient from "./SettingsClient";
 import type { User } from "@/types/user";
+
+export const metadata: Metadata = {
+  title: "設定 | PodLog",
+  description: "PodLog のアカウント設定・プロフィール編集はこちら。",
+  // 認証必須の個人設定ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+};
 
 /**
  * /settings ページ (保護ページ)。

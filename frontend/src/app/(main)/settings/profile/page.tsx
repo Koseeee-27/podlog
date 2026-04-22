@@ -1,9 +1,17 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { getUserFavoritePodcasts } from "@/lib/data/users";
 import { ApiRequestError } from "@/types/api";
 import ProfileEditClient from "./ProfileEditClient";
 import type { User } from "@/types/user";
+
+export const metadata: Metadata = {
+  title: "プロフィール編集 | PodLog",
+  description: "PodLog のプロフィール情報を編集します。",
+  // 認証必須の個人設定ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+};
 
 /**
  * /settings/profile ページ (保護ページ)。

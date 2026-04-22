@@ -1,7 +1,15 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ProfileSetupClient from "./ProfileSetupClient";
+
+export const metadata: Metadata = {
+  title: "プロフィール設定 | PodLog",
+  description: "PodLog のプロフィールを設定します。",
+  // 認証必須の個人設定ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+};
 
 /**
  * /profile/setup ページ (保護ページ)。

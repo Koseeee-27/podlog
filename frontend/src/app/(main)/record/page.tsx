@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
@@ -6,6 +7,13 @@ import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
 import { RecentEpisodesSkeleton } from "./skeletons";
+
+export const metadata: Metadata = {
+  title: "記録する | PodLog",
+  description: "聴いたラジオを記録します。",
+  // 認証必須ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+};
 
 // 認証ユーザーごとにデータが異なるため、静的生成をスキップする
 export const dynamic = "force-dynamic";

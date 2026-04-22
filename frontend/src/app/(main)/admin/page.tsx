@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import AdminClient from "./AdminClient";
 import type { User } from "@/types/user";
+
+export const metadata: Metadata = {
+  title: "管理画面 | PodLog",
+  description: "PodLog の管理者向け機能。",
+  // 管理者限定ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+};
 
 /**
  * /admin ページ (保護ページ)。
