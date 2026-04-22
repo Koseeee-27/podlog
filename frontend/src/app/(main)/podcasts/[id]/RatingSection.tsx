@@ -16,7 +16,8 @@ interface RatingSectionProps {
  * ラップして、取得失敗時は無音で非表示にする設計を採用している。
  *
  * これは「握りつぶし」ではなく ErrorBoundary への明示的な委譲であり、
- * `componentDidCatch` でエラー監視サービス（Sentry 等）に送信可能。
+ * Server 側で throw されたエラーは `src/instrumentation.ts` の `onRequestError`
+ * が自動で Sentry に送信するため、取得失敗は無音で隠しても観測は欠落しない。
  */
 export default async function RatingSection({ podcastId }: RatingSectionProps) {
   const result = await getPodcastRating(podcastId);

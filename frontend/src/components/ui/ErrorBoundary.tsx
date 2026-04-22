@@ -2,6 +2,7 @@
 
 import { Component, ErrorInfo, ReactNode, useTransition, useState } from "react";
 import { useRouter } from "next/navigation";
+import * as Sentry from "@sentry/nextjs";
 import ErrorMessage from "./ErrorMessage";
 
 interface ErrorBoundaryProps {
@@ -64,6 +65,12 @@ interface ErrorBoundaryInnerProps {
   isPending: boolean;
 }
 
+/**
+ * Next.js が Server Component / Server Action のエラーに付与する `digest`。
+ * 公式の `Error` 型には存在しないため、`Error` を拡張して扱う。
+ */
+type NextError = Error & { digest?: string };
+
 class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: boolean }> {
   constructor(props: ErrorBoundaryInnerProps) {
     super(props);
@@ -74,8 +81,21 @@ class ErrorBoundaryInner extends Component<ErrorBoundaryInnerProps, { hasError: 
     return { hasError: true };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
-    // 本番環境ではここに外部エラー監視サービス（Sentry 等）への送信を追加する
+  componentDidCatch(error: NextError, errorInfo: ErrorInfo): void {
+    // Server Component で throw されたエラーは、RSC ペイロード経由でクライアントに
+    // 流れ着くと Next.js が `digest` プロパティを付与する。この場合、サーバー側で
+    // `instrumentation.ts` の `onRequestError` が既に Sentry に送信済みなので、
+    // ここで再送信すると二重計上になる（無料枠を無駄に消費する）。
+    // digest がある = Server 発のエラー → Sentry 送信はスキップし、console だけ残す。
+    // digest が無い = 純粋な Client render エラー → Sentry に送信する。
+    if (!error.digest) {
+      Sentry.withScope((scope) => {
+        scope.setContext("errorInfo", { componentStack: errorInfo.componentStack });
+        Sentry.captureException(error);
+      });
+    }
+
+    // 既存の console.error はローカル開発でのデバッグ用に常時維持する。
     console.error("[ErrorBoundary] Uncaught error:", error);
     console.error("[ErrorBoundary] Component stack:", errorInfo.componentStack);
   }

@@ -10,7 +10,8 @@ interface DiscoverErrorProps {
 }
 
 export default function DiscoverError({ error, reset }: DiscoverErrorProps) {
-  // エラー監視サービス（Sentry 等）への送信ポイント。
+  // Server 側で発生したエラーは instrumentation.ts の onRequestError が
+  // 自動で Sentry に送信するため、このファイルでは再送信しない。
   console.error("[DiscoverError]", error);
 
   const router = useRouter();

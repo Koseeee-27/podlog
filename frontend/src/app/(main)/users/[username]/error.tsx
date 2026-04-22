@@ -10,7 +10,8 @@ interface UserProfileErrorProps {
 }
 
 export default function UserProfileError({ error, reset }: UserProfileErrorProps) {
-  // エラー監視サービス（Sentry 等）への送信ポイント。
+  // Server 側で発生したエラーは instrumentation.ts の onRequestError が
+  // 自動で Sentry に送信するため、このファイルでは再送信しない。
   console.error("[UserProfileError]", error);
 
   const router = useRouter();

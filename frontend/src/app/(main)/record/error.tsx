@@ -10,7 +10,8 @@ interface RecordErrorProps {
 }
 
 export default function RecordError({ error, reset }: RecordErrorProps) {
-  // エラー監視サービス（Sentry 等）への送信ポイント。
+  // Server 側で発生したエラーは instrumentation.ts の onRequestError が
+  // 自動で Sentry に送信するため、このファイルでは再送信しない。
   console.error("[RecordError]", error);
 
   const router = useRouter();
