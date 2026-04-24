@@ -16,8 +16,8 @@ import {
 
 // ホームページの canonical。title / description / openGraph / twitter は
 // root layout から継承する（shallow merge のため alternates だけ上書きする）。
-// layout 側に canonical を置かない設計とセットで、動的ページが誤って canonical="/"
-// を継承する SEO 事故を防ぐ（PR #380 レビュー指摘参照）。
+// layout 側に canonical を置かず、動的ページが誤って canonical="/"
+// を継承する SEO 事故を防ぐため、このページで canonical を明示する。
 export const metadata: Metadata = {
   alternates: {
     canonical: "/",
