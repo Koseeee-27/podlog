@@ -2,14 +2,30 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
 import AdminClient from "./AdminClient";
 import type { User } from "@/types/user";
 
+const PAGE_TITLE = "管理画面 | PodLog";
+const PAGE_DESCRIPTION = "PodLog の管理者向け機能。";
+
 export const metadata: Metadata = {
-  title: "管理画面 | PodLog",
-  description: "PodLog の管理者向け機能。",
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
   // 管理者限定ページ（screens.md の indexable=N）
   robots: { index: false, follow: false },
+  // openGraph / twitter は shallow merge で layout の値が継承されるため、
+  // ページ固有の og:title / og:description にするには各ページで spread が必要
+  openGraph: {
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
 };
 
 /**
