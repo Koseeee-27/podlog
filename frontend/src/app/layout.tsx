@@ -20,17 +20,33 @@ const DEFAULT_SITE_URL = "http://localhost:3000";
 /**
  * `NEXT_PUBLIC_SITE_URL` を安全に URL に変換する。
  *
- * `??` だけでは空文字や scheme なしの typo（例: `"example.com"`）を拾えず、
- * `new URL()` が例外を投げてメタデータ生成モジュール全体がクラッシュする。
- * Netlify の環境変数を typo したときにビルドが原因不明で落ちるのを防ぐため、
- * trim + try/catch でフォールバックさせる（詳細は PR #380 レビュー指摘参照）。
+ * 環境変数の typo や不正な URL 文字列でビルドが原因不明に落ちるのを防ぐため、
+ * trim + try/catch で安全にデフォルト URL へフォールバックさせる。
+ *
+ * production ビルド時に不正な値を検知した場合は `console.warn` を 1 回出力する。
+ * 黙ってフォールバックすると本番環境で canonical / og:image が localhost のまま
+ * 流出しても気づけないため、Netlify の Deploy log で運用者が気づけるようにする
+ * （Sentry の環境別判定と同じ流儀で、production のみ警告を出す）。
  */
 function resolveMetadataBase(raw: string | undefined): URL {
   const value = raw?.trim();
-  if (!value) return new URL(DEFAULT_SITE_URL);
+  const isProduction = process.env.NODE_ENV === "production";
+  if (!value) {
+    if (isProduction) {
+      console.warn(
+        `[metadata] NEXT_PUBLIC_SITE_URL が未設定です。デフォルトの ${DEFAULT_SITE_URL} を使用します。Netlify の環境変数を確認してください。`,
+      );
+    }
+    return new URL(DEFAULT_SITE_URL);
+  }
   try {
     return new URL(value);
   } catch {
+    if (isProduction) {
+      console.warn(
+        `[metadata] NEXT_PUBLIC_SITE_URL が不正な URL です: "${value}"。デフォルトの ${DEFAULT_SITE_URL} を使用します。`,
+      );
+    }
     return new URL(DEFAULT_SITE_URL);
   }
 }
