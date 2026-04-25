@@ -1,7 +1,31 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
 import ProfileSetupClient from "./ProfileSetupClient";
+
+const PAGE_TITLE = "プロフィール設定 | PodLog";
+const PAGE_DESCRIPTION = "PodLog のプロフィールを設定します。";
+
+export const metadata: Metadata = {
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  // 認証必須の個人設定ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+  // openGraph / twitter は shallow merge で layout の値が継承されるため、
+  // ページ固有の og:title / og:description にするには各ページで spread が必要
+  openGraph: {
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+};
 
 /**
  * /profile/setup ページ (保護ページ)。

@@ -1,10 +1,29 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import Image from "next/image";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
+
+const PAGE_TITLE = "利用規約 | PodLog";
+const PAGE_DESCRIPTION = "PodLog の利用規約です。";
 
 export const metadata: Metadata = {
-  title: "利用規約 - PodLog",
-  description: "PodLog の利用規約です。",
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  alternates: {
+    canonical: "/terms",
+  },
+  // openGraph / twitter は shallow merge で置換されるため spread で継承
+  openGraph: {
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    url: "/terms",
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
 };
 
 export default function TermsPage() {

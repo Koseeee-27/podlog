@@ -1,11 +1,35 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { getMyProfile } from "@/lib/data/me";
 import { ApiRequestError } from "@/types/api";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
 import PodcastSearchSection from "./PodcastSearchSection";
 import RecentEpisodesSection from "./RecentEpisodesSection";
 import { RecentEpisodesSkeleton } from "./skeletons";
+
+const PAGE_TITLE = "記録する | PodLog";
+const PAGE_DESCRIPTION = "聴いたラジオを記録します。";
+
+export const metadata: Metadata = {
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  // 認証必須ページ（screens.md の indexable=N）
+  robots: { index: false, follow: false },
+  // openGraph / twitter は shallow merge で layout の値が継承されるため、
+  // ページ固有の og:title / og:description にするには各ページで spread が必要
+  openGraph: {
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+};
 
 // 認証ユーザーごとにデータが異なるため、静的生成をスキップする
 export const dynamic = "force-dynamic";

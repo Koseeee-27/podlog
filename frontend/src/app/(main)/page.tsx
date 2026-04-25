@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import { cookies } from "next/headers";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
@@ -12,6 +13,16 @@ import {
   TimelineSkeleton,
   RecentListeningSkeleton,
 } from "@/components/home/skeletons";
+
+// ホームページの canonical。title / description / openGraph / twitter は
+// root layout から継承する（shallow merge のため alternates だけ上書きする）。
+// layout 側に canonical を置かず、動的ページが誤って canonical="/"
+// を継承する SEO 事故を防ぐため、このページで canonical を明示する。
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 /**
  * トップページ。

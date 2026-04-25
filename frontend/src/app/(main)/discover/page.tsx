@@ -1,5 +1,7 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
+import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
 import DiscoverSearchBar from "./DiscoverSearchBar";
 import SearchResultsSection from "./SearchResultsSection";
 import GenrePodcastsSection from "./GenrePodcastsSection";
@@ -9,6 +11,32 @@ import {
   GenrePodcastsSkeleton,
   DefaultSectionSkeleton,
 } from "./skeletons";
+
+const PAGE_TITLE = "探す | PodLog";
+const PAGE_DESCRIPTION =
+  "PodLog で新しいラジオ・ポッドキャスト番組を探します。キーワード検索やジャンル別ブラウズで、人気の番組と出会えます。";
+
+export const metadata: Metadata = {
+  title: PAGE_TITLE,
+  description: PAGE_DESCRIPTION,
+  alternates: {
+    // クエリパラメータ（q / genre）は正規 URL から除外し、本体 `/discover` に集約する
+    canonical: "/discover",
+  },
+  // openGraph / twitter は Next.js の shallow merge で親の値が**置換される**ため、
+  // defaultOpenGraph / defaultTwitter を spread して og-default.png 等を継承させる
+  openGraph: {
+    ...defaultOpenGraph,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+    url: "/discover",
+  },
+  twitter: {
+    ...defaultTwitter,
+    title: PAGE_TITLE,
+    description: PAGE_DESCRIPTION,
+  },
+};
 
 interface DiscoverPageProps {
   searchParams: Promise<{ q?: string | string[]; genre?: string | string[] }>;
