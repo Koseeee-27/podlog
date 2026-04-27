@@ -27,8 +27,10 @@ interface EpisodePageProps {
  *
  * - `getEpisodeById` は `cache()` 済み（オプショナル認証）。page 本体と
  *   generateMetadata で同じ ID を取得しても API コールは 1 回しか発生しない
- * - DAL が throw した場合は try/catch せず Next.js 標準の挙動に任せる
- *   （page 側の `notFound()` で 404 ページとして表示される）
+ * - DAL の throw は page と同じく try/catch して 404 → `notFound()`、それ以外は
+ *   rethrow に揃える。`generateMetadata` から素の throw を伝播させると Next.js
+ *   のデフォルトエラー画面に倒れて `error.tsx` に届かず、status code が
+ *   200/500 にブレる（Next.js Discussion #49925 / Issue #75543）
  * - og:image は episode.artwork_url → podcast.artwork_url → og-default.png の順で
  *   フォールバック（エピソード固有 → 番組のアートワーク → 共通 OG 画像）
  */
@@ -41,7 +43,15 @@ export async function generateMetadata({
     notFound();
   }
 
-  const episode = await getEpisodeById(id);
+  let episode: EpisodeDetailResult;
+  try {
+    episode = await getEpisodeById(id);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
 
   const title = `${episode.title} - ${episode.podcast.title} | PodLog`;
   const description = buildMetadataDescription(

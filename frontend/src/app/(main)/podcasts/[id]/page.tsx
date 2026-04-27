@@ -28,8 +28,10 @@ interface PodcastPageProps {
  *
  * - `getPodcastById` は `cache()` 済みのため、page 本体と generateMetadata で
  *   同じ ID を取得しても API コールは 1 回しか発生しない
- * - DAL が throw した場合は try/catch せず Next.js 標準の挙動（page 側の
- *   `notFound()` で 404 ページとして表示される）に任せる
+ * - DAL の throw は page と同じく try/catch して 404 → `notFound()`、それ以外は
+ *   rethrow に揃える。`generateMetadata` から素の throw を伝播させると Next.js
+ *   のデフォルトエラー画面に倒れて `error.tsx` に届かず、status code が
+ *   200/500 にブレる（Next.js Discussion #49925 / Issue #75543）
  * - openGraph / twitter は shallow merge のため、共通の siteName / locale 等を
  *   失わないよう `defaultOpenGraph` / `defaultTwitter` を spread する
  */
@@ -42,7 +44,15 @@ export async function generateMetadata({
     notFound();
   }
 
-  const podcast = await getPodcastById(id);
+  let podcast: PodcastDetailResult;
+  try {
+    podcast = await getPodcastById(id);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
 
   const title = `${podcast.title} | PodLog`;
   const description = buildMetadataDescription(

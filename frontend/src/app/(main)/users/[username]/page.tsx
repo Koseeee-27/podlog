@@ -29,7 +29,10 @@ interface PublicProfilePageProps {
  *
  * - `getUserPublicProfile` は `cache()` 済み。page 本体と generateMetadata で
  *   同じ username を取得しても API コールは 1 回しか発生しない
- * - DAL が throw した場合は try/catch せず Next.js 標準の挙動に任せる
+ * - DAL の throw は page と同じく try/catch して 404 → `notFound()`、それ以外は
+ *   rethrow に揃える。`generateMetadata` から素の throw を伝播させると Next.js
+ *   のデフォルトエラー画面に倒れて `error.tsx` に届かず、status code が
+ *   200/500 にブレる（Next.js Discussion #49925 / Issue #75543）
  * - description は bio があれば優先、なければ「@username の聴取履歴・レビュー」
  *   というデフォルト文言を fallback に使う
  */
@@ -42,7 +45,15 @@ export async function generateMetadata({
     notFound();
   }
 
-  const profile = await getUserPublicProfile(username);
+  let profile: UserPublicProfile;
+  try {
+    profile = await getUserPublicProfile(username);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
 
   const title = `${profile.display_name}（@${profile.username}） | PodLog`;
   const description = buildMetadataDescription(
