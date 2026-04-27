@@ -46,6 +46,10 @@ export const defaultOpenGraphImages = [
  *
  * @see https://nextjs.org/docs/app/api-reference/functions/generate-metadata#merging
  */
+// `defaultOpenGraphImages` を spread して新しい mutable 配列に展開する。
+// `as const` 由来の `readonly` 型のままだと、Next.js の `Metadata["openGraph"]["images"]`
+// (readonly を受けない型) と互換性が無くなるため、spread して mutable に変換する。
+// 子ページが `images: [...defaultOpenGraphImages]` の形で再利用する場合も同じ理由。
 export const defaultOpenGraph = {
   siteName: "PodLog",
   locale: "ja_JP",
@@ -112,4 +116,32 @@ export function buildMetadataDescription(
   if (stripped.length === 0) return fallback;
   if (stripped.length <= maxLength) return stripped;
   return stripped.slice(0, maxLength) + "…";
+}
+
+/**
+ * og:image / twitter:image 用の URL を、空文字も「無し」扱いに正規化して返す。
+ *
+ * `artwork_url` / `avatar_url` 等は型上 `string | null | undefined` だが、
+ * API レスポンスで空文字 `""` が紛れ込むケースがあり得る。null 合体演算子
+ * (`??`) で複数候補を連結すると空文字を「値あり」として通してしまい、
+ * `<meta property="og:image" content="">` という壊れたタグを出力する事故に
+ * つながる。本ヘルパーで一律 truthy 判定（長さ 1 以上）に揃える。
+ *
+ * 使用例:
+ * ```ts
+ * // 単一候補
+ * const ogImage = pickMetadataImage(podcast.artwork_url);
+ *
+ * // フォールバックチェーン
+ * const ogImage =
+ *   pickMetadataImage(episode.artwork_url) ??
+ *   pickMetadataImage(episode.podcast.artwork_url);
+ * ```
+ *
+ * @returns 値があれば URL 文字列、無ければ `null`
+ */
+export function pickMetadataImage(
+  url: string | null | undefined,
+): string | null {
+  return url && url.length > 0 ? url : null;
 }

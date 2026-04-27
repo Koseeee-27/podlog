@@ -12,6 +12,7 @@ import {
   defaultOpenGraph,
   defaultOpenGraphImages,
   defaultTwitter,
+  pickMetadataImage,
 } from "@/lib/metadata/shared";
 import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { ApiRequestError } from "@/types/api";
@@ -49,12 +50,11 @@ export async function generateMetadata({
     `@${profile.username} の聴取履歴・レビュー | PodLog`,
   );
   const canonicalPath = `/users/${profile.username}`;
-  const ogImages = profile.avatar_url
-    ? [profile.avatar_url]
-    : [...defaultOpenGraphImages];
-  const twitterImages = profile.avatar_url
-    ? [profile.avatar_url]
-    : ["/og-default.png"];
+  // `pickMetadataImage` で空文字 / null / undefined を一律「無し」に正規化する
+  // （DB 由来で `""` が入った場合に壊れた og:image タグを出さないため）
+  const ogImage = pickMetadataImage(profile.avatar_url);
+  const ogImages = ogImage ? [ogImage] : [...defaultOpenGraphImages];
+  const twitterImages = ogImage ? [ogImage] : ["/og-default.png"];
 
   return {
     title,

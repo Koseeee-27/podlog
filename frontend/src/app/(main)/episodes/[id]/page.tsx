@@ -8,6 +8,7 @@ import {
   defaultOpenGraph,
   defaultOpenGraphImages,
   defaultTwitter,
+  pickMetadataImage,
 } from "@/lib/metadata/shared";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
@@ -48,12 +49,14 @@ export async function generateMetadata({
     `${episode.podcast.title} のエピソード「${episode.title}」 | PodLog`,
   );
   const canonicalPath = `/episodes/${id}`;
-  const fallbackImage =
-    episode.artwork_url ?? episode.podcast.artwork_url ?? null;
-  const ogImages = fallbackImage
-    ? [fallbackImage]
-    : [...defaultOpenGraphImages];
-  const twitterImages = fallbackImage ? [fallbackImage] : ["/og-default.png"];
+  // `pickMetadataImage` で空文字 / null / undefined を一律「無し」に正規化する。
+  // 単純な `??` だと空文字を「値あり」として通してしまい、フォールバックが
+  // 効かないまま壊れた og:image タグを出力する事故になる。
+  const ogImage =
+    pickMetadataImage(episode.artwork_url) ??
+    pickMetadataImage(episode.podcast.artwork_url);
+  const ogImages = ogImage ? [ogImage] : [...defaultOpenGraphImages];
+  const twitterImages = ogImage ? [ogImage] : ["/og-default.png"];
 
   return {
     title,

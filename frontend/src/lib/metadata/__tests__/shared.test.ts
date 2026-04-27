@@ -1,6 +1,7 @@
 import {
   buildMetadataDescription,
   METADATA_DESCRIPTION_MAX_LENGTH,
+  pickMetadataImage,
 } from "../shared";
 
 describe("buildMetadataDescription", () => {
@@ -95,5 +96,33 @@ describe("buildMetadataDescription", () => {
       const text = "abcde"; // 5 文字
       expect(buildMetadataDescription(text, FALLBACK, 5)).toBe("abcde");
     });
+  });
+});
+
+describe("pickMetadataImage", () => {
+  it("有効な URL 文字列をそのまま返す", () => {
+    expect(pickMetadataImage("https://example.com/a.png")).toBe(
+      "https://example.com/a.png",
+    );
+  });
+
+  it("null は null を返す", () => {
+    expect(pickMetadataImage(null)).toBeNull();
+  });
+
+  it("undefined は null を返す", () => {
+    expect(pickMetadataImage(undefined)).toBeNull();
+  });
+
+  it("空文字は null を返す（?? 連結時の事故を防ぐ要件）", () => {
+    expect(pickMetadataImage("")).toBeNull();
+  });
+
+  it("?? 連結で空文字を弾いて次の候補に進める", () => {
+    // episode.artwork_url が空文字 → podcast.artwork_url にフォールバック
+    const result =
+      pickMetadataImage("") ??
+      pickMetadataImage("https://example.com/podcast.png");
+    expect(result).toBe("https://example.com/podcast.png");
   });
 });
