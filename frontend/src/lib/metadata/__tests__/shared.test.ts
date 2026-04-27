@@ -108,6 +108,32 @@ describe("buildMetadataDescription", () => {
         expect(result.length).toBeLessThanOrEqual(limit);
       }
     });
+
+    it("maxLength = 1 のとき切り詰め時に '…' のみ返す", () => {
+      // 境界: safeMax = 1 のとき slice(0, 0) + "…" = "…"
+      const result = buildMetadataDescription("abcdef", FALLBACK, 1);
+      expect(result).toBe("…");
+      expect(result).toHaveLength(1);
+    });
+
+    it("maxLength <= 0 のときも 1 にクランプして不変条件を守る", () => {
+      // maxLength = 0 / -1 などの不正な値を渡しても、内部で max(1, maxLength)
+      // にクランプされるため、返り値長は最大 1 に揃う（"…" のみ）。
+      // 本番で誤った値が渡るケースの fail-safe。
+      const text = "abcdef";
+      for (const limit of [0, -1, -100]) {
+        const result = buildMetadataDescription(text, FALLBACK, limit);
+        expect(result).toBe("…");
+        expect(result.length).toBeLessThanOrEqual(1);
+      }
+    });
+
+    it("maxLength <= 0 で rawHtml が空のときは fallback を返す", () => {
+      // クランプ前に空文字判定が走るので、fallback がそのまま返る
+      // （fallback の長さは関数の保証外）
+      expect(buildMetadataDescription(null, FALLBACK, 0)).toBe(FALLBACK);
+      expect(buildMetadataDescription("", FALLBACK, -5)).toBe(FALLBACK);
+    });
   });
 });
 

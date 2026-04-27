@@ -105,21 +105,32 @@ export const METADATA_DESCRIPTION_MAX_LENGTH = 160;
  *
  * @param rawHtml HTML タグを含み得る本文（DB 由来の description / bio 等）
  * @param fallback `rawHtml` が空のときに使う代替文字列
- * @param maxLength 返り値の最大文字数（`…` 込み）。デフォルトは 160
- * @returns description フィールドにそのまま渡せる文字列。長さは最大 `maxLength`
+ * @param maxLength 返り値の最大文字数（`…` 込み）。1 以上を想定し、1 未満の値は
+ *   1 にクランプする（不変条件「返り値長 ≦ maxLength」を実装で守るため。負数や
+ *   0 を渡すと `slice(0, maxLength - 1)` が負のオフセットになり、元の文字列の
+ *   末尾を除いた値が返って不変条件を破る）。デフォルトは 160
+ * @returns description フィールドにそのまま渡せる文字列。長さは最大 `max(1, maxLength)`。
+ *   `fallback` 自体の長さは保証しない（呼び出し側で適切な長さの fallback を渡すこと）
  */
 export function buildMetadataDescription(
   rawHtml: string | null | undefined,
   fallback: string,
   maxLength: number = METADATA_DESCRIPTION_MAX_LENGTH,
 ): string {
+  // maxLength <= 0 のとき slice(0, maxLength - 1) が負のオフセットになり、
+  // 「先頭から maxLength - 1 文字」ではなく「末尾の (maxLength - 1) 文字を除く」
+  // 挙動になって不変条件「返り値長 ≦ maxLength」を破る。1 未満をクランプして
+  // 防御する。本番で誤って 0 が渡るケースに対する fail-safe で、設計上は
+  // 呼び出し側が正の数を渡す前提。
+  const safeMax = Math.max(1, maxLength);
+
   if (!rawHtml) return fallback;
   const stripped = stripHtmlTags(rawHtml);
   if (stripped.length === 0) return fallback;
-  if (stripped.length <= maxLength) return stripped;
-  // 切り詰め後に `…` (1 文字) を付けても合計長が maxLength を超えないよう、
-  // (maxLength - 1) 文字で slice する。
-  return stripped.slice(0, maxLength - 1) + "…";
+  if (stripped.length <= safeMax) return stripped;
+  // 切り詰め後に `…` (1 文字) を付けても合計長が safeMax を超えないよう、
+  // (safeMax - 1) 文字で slice する。safeMax === 1 のときは "…" のみ返る。
+  return stripped.slice(0, safeMax - 1) + "…";
 }
 
 /**
