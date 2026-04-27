@@ -68,33 +68,45 @@ describe("buildMetadataDescription", () => {
       expect(result).toHaveLength(METADATA_DESCRIPTION_MAX_LENGTH);
     });
 
-    it("160 文字を超えたら 160 文字で切り詰めて末尾に … を付ける", () => {
+    it("160 文字を超えたら maxLength 文字以内に切り詰めて末尾に … を付ける", () => {
+      // maxLength は最終的な返り値長の上限（… 込み）
       const text = "a".repeat(METADATA_DESCRIPTION_MAX_LENGTH + 10);
       const result = buildMetadataDescription(text, FALLBACK);
-      expect(result).toHaveLength(METADATA_DESCRIPTION_MAX_LENGTH + 1); // 160 + …
+      expect(result).toHaveLength(METADATA_DESCRIPTION_MAX_LENGTH);
       expect(result.endsWith("…")).toBe(true);
-      expect(result.slice(0, METADATA_DESCRIPTION_MAX_LENGTH)).toBe(
-        "a".repeat(METADATA_DESCRIPTION_MAX_LENGTH),
+      // 先頭 (maxLength - 1) 文字は元の文字列の prefix と一致する
+      expect(result.slice(0, METADATA_DESCRIPTION_MAX_LENGTH - 1)).toBe(
+        "a".repeat(METADATA_DESCRIPTION_MAX_LENGTH - 1),
       );
     });
 
     it("日本語でも文字数ベースで切り詰める", () => {
       // 日本語 1 文字を 1 として数える（bytes ではなく文字数）
+      // 返り値長は maxLength 以内（"あ" × 159 + "…" = 160 文字）
       const text = "あ".repeat(200);
       const result = buildMetadataDescription(text, FALLBACK);
-      // "あ" 160 文字 + "…" = 161 文字
-      expect(result).toHaveLength(METADATA_DESCRIPTION_MAX_LENGTH + 1);
+      expect(result).toHaveLength(METADATA_DESCRIPTION_MAX_LENGTH);
       expect(result.endsWith("…")).toBe(true);
     });
 
-    it("maxLength 引数で上限を変更できる", () => {
+    it("maxLength 引数で上限を変更できる（… 込みで maxLength に揃う）", () => {
       const text = "abcdefghij"; // 10 文字
-      expect(buildMetadataDescription(text, FALLBACK, 5)).toBe("abcde…");
+      // maxLength=5 のとき、"abcd" + "…" = 5 文字
+      expect(buildMetadataDescription(text, FALLBACK, 5)).toBe("abcd…");
     });
 
     it("maxLength 引数の境界（ちょうど maxLength 文字）で … を付けない", () => {
       const text = "abcde"; // 5 文字
       expect(buildMetadataDescription(text, FALLBACK, 5)).toBe("abcde");
+    });
+
+    it("切り詰め発生時の返り値長が maxLength を超えないことを確認", () => {
+      // SEO で重要な不変条件: 返り値長 <= maxLength
+      const text = "x".repeat(500);
+      for (const limit of [5, 10, 50, 100, 160, 200]) {
+        const result = buildMetadataDescription(text, FALLBACK, limit);
+        expect(result.length).toBeLessThanOrEqual(limit);
+      }
     });
   });
 });

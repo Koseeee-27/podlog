@@ -90,8 +90,10 @@ export const METADATA_DESCRIPTION_MAX_LENGTH = 160;
  * 動的ページ（podcast / episode / user）で同じ整形が必要なため共通化した。
  *
  * - `rawHtml` が `null` / `undefined` / 整形後に空文字 → `fallback` を返す
- * - 整形後が `maxLength` 文字を超える場合は `maxLength` 文字で切り詰めて末尾に `…` を付ける
- *   （切り詰め発生時のみ `…` を付ける挙動。元が `maxLength` 文字以内ならそのまま返す）
+ * - 整形後が `maxLength` 文字を超える場合は `(maxLength - 1)` 文字で切り詰めて
+ *   末尾に `…` を付ける。返り値の最大長は `maxLength` 文字に揃う（`…` 込みの長さで
+ *   `maxLength` を超えない設計）
+ * - 元が `maxLength` 文字以内ならそのまま返す（`…` を付けない）
  *
  * 使用例:
  * ```ts
@@ -103,8 +105,8 @@ export const METADATA_DESCRIPTION_MAX_LENGTH = 160;
  *
  * @param rawHtml HTML タグを含み得る本文（DB 由来の description / bio 等）
  * @param fallback `rawHtml` が空のときに使う代替文字列
- * @param maxLength 切り詰めの上限文字数。デフォルトは 160
- * @returns description フィールドにそのまま渡せる文字列
+ * @param maxLength 返り値の最大文字数（`…` 込み）。デフォルトは 160
+ * @returns description フィールドにそのまま渡せる文字列。長さは最大 `maxLength`
  */
 export function buildMetadataDescription(
   rawHtml: string | null | undefined,
@@ -115,7 +117,9 @@ export function buildMetadataDescription(
   const stripped = stripHtmlTags(rawHtml);
   if (stripped.length === 0) return fallback;
   if (stripped.length <= maxLength) return stripped;
-  return stripped.slice(0, maxLength) + "…";
+  // 切り詰め後に `…` (1 文字) を付けても合計長が maxLength を超えないよう、
+  // (maxLength - 1) 文字で slice する。
+  return stripped.slice(0, maxLength - 1) + "…";
 }
 
 /**
