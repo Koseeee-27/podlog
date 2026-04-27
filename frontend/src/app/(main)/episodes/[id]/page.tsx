@@ -1,7 +1,14 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getEpisodeById } from "@/lib/data/episodes";
+import {
+  buildMetadataDescription,
+  defaultOpenGraph,
+  defaultOpenGraphImages,
+  defaultTwitter,
+} from "@/lib/metadata/shared";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
@@ -12,6 +19,60 @@ import type { EpisodeDetailResult } from "@/types/episode";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
+}
+
+/**
+ * エピソード詳細ページの metadata を動的に生成する。
+ *
+ * - `getEpisodeById` は `cache()` 済み（オプショナル認証）。page 本体と
+ *   generateMetadata で同じ ID を取得しても API コールは 1 回しか発生しない
+ * - DAL が throw した場合は try/catch せず Next.js 標準の挙動に任せる
+ *   （page 側の `notFound()` で 404 ページとして表示される）
+ * - og:image は episode.artwork_url → podcast.artwork_url → og-default.png の順で
+ *   フォールバック（エピソード固有 → 番組のアートワーク → 共通 OG 画像）
+ */
+export async function generateMetadata({
+  params,
+}: EpisodePageProps): Promise<Metadata> {
+  const { id } = await params;
+
+  if (!uuidSchema.safeParse(id).success) {
+    notFound();
+  }
+
+  const episode = await getEpisodeById(id);
+
+  const title = `${episode.title} - ${episode.podcast.title} | PodLog`;
+  const description = buildMetadataDescription(
+    episode.description,
+    `${episode.podcast.title} のエピソード「${episode.title}」 | PodLog`,
+  );
+  const canonicalPath = `/episodes/${id}`;
+  const fallbackImage =
+    episode.artwork_url ?? episode.podcast.artwork_url ?? null;
+  const ogImages = fallbackImage
+    ? [fallbackImage]
+    : [...defaultOpenGraphImages];
+  const twitterImages = fallbackImage ? [fallbackImage] : ["/og-default.png"];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      ...defaultOpenGraph,
+      title,
+      description,
+      url: canonicalPath,
+      images: ogImages,
+    },
+    twitter: {
+      ...defaultTwitter,
+      title,
+      description,
+      images: twitterImages,
+    },
+    alternates: { canonical: canonicalPath },
+  };
 }
 
 export default async function EpisodePage({ params }: EpisodePageProps) {

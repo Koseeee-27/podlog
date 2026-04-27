@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { usernameSchema } from "@/lib/schemas/common";
 import {
   getUserPublicProfile,
@@ -6,6 +7,12 @@ import {
   getUserListeningRecords,
   getUserReviews,
 } from "@/lib/data/users";
+import {
+  buildMetadataDescription,
+  defaultOpenGraph,
+  defaultOpenGraphImages,
+  defaultTwitter,
+} from "@/lib/metadata/shared";
 import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
@@ -14,6 +21,59 @@ import { PAGE_SIZE } from "./constants";
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;
+}
+
+/**
+ * 公開プロフィールページの metadata を動的に生成する。
+ *
+ * - `getUserPublicProfile` は `cache()` 済み。page 本体と generateMetadata で
+ *   同じ username を取得しても API コールは 1 回しか発生しない
+ * - DAL が throw した場合は try/catch せず Next.js 標準の挙動に任せる
+ * - description は bio があれば優先、なければ「@username の聴取履歴・レビュー」
+ *   というデフォルト文言を fallback に使う
+ */
+export async function generateMetadata({
+  params,
+}: PublicProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+
+  if (!usernameSchema.safeParse(username).success) {
+    notFound();
+  }
+
+  const profile = await getUserPublicProfile(username);
+
+  const title = `${profile.display_name}（@${profile.username}） | PodLog`;
+  const description = buildMetadataDescription(
+    profile.bio,
+    `@${profile.username} の聴取履歴・レビュー | PodLog`,
+  );
+  const canonicalPath = `/users/${profile.username}`;
+  const ogImages = profile.avatar_url
+    ? [profile.avatar_url]
+    : [...defaultOpenGraphImages];
+  const twitterImages = profile.avatar_url
+    ? [profile.avatar_url]
+    : ["/og-default.png"];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      ...defaultOpenGraph,
+      title,
+      description,
+      url: canonicalPath,
+      images: ogImages,
+    },
+    twitter: {
+      ...defaultTwitter,
+      title,
+      description,
+      images: twitterImages,
+    },
+    alternates: { canonical: canonicalPath },
+  };
 }
 
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {
