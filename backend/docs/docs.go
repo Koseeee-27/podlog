@@ -1191,7 +1191,12 @@ const docTemplate = `{
         },
         "/sitemap/episodes": {
             "get": {
-                "description": "sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。FE の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development 環境では認証スキップ）。",
                 "produces": [
                     "application/json"
                 ],
@@ -1204,6 +1209,15 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/usecase.SitemapEpisodesResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
@@ -1220,7 +1234,12 @@ const docTemplate = `{
         },
         "/sitemap/podcasts": {
             "get": {
-                "description": "sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。FE の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development 環境では認証スキップ）。",
                 "produces": [
                     "application/json"
                 ],
@@ -1233,6 +1252,15 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/usecase.SitemapPodcastsResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
@@ -1249,7 +1277,12 @@ const docTemplate = `{
         },
         "/sitemap/users": {
             "get": {
-                "description": "sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。FE の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development 環境では認証スキップ）。",
                 "produces": [
                     "application/json"
                 ],
@@ -1262,6 +1295,15 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/usecase.SitemapUsersResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "500": {
