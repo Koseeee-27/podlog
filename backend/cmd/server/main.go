@@ -255,6 +255,7 @@ func run() error {
 	reviewRepo := repository.NewReviewRepository(db)
 	favoritePodcastRepo := repository.NewFavoritePodcastRepository(db)
 	podcastRequestRepo := repository.NewPodcastRequestRepository(db)
+	sitemapRepo := repository.NewSitemapRepository(db)
 
 	userUsecase := usecase.NewUserUsecase(userRepo, fileStorage)
 	podcastUsecase := usecase.NewPodcastUsecase(podcastRepo, itunesClient)
@@ -266,6 +267,7 @@ func run() error {
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
+	sitemapUsecase := usecase.NewSitemapUsecase(sitemapRepo)
 
 	adminUserIDs := cfg.GetAdminUserIDs()
 	if len(adminUserIDs) > 0 {
@@ -284,6 +286,7 @@ func run() error {
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
 		Genre:           handler.NewGenreHandler(genreUsecase),
+		Sitemap:         handler.NewSitemapHandler(sitemapUsecase),
 		Admin:           handler.NewAdminHandler(podcastUsecase, episodeUsecase),
 	}
 

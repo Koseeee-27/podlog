@@ -22,6 +22,7 @@ type Handlers struct {
 	FavoritePodcast *handler.FavoritePodcastHandler
 	PodcastRequest  *handler.PodcastRequestHandler
 	Genre           *handler.GenreHandler
+	Sitemap         *handler.SitemapHandler
 	Admin           *handler.AdminHandler
 }
 
@@ -94,6 +95,14 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 
 	// Timeline (公開)
 	v1.GET("/timeline", h.Review.GetTimeline)
+
+	// Sitemap (公開)
+	// FE の app/sitemap.ts から呼ばれる軽量 API。全件返すためページングなし。
+	// 現状の規模（podcasts ~700 件 / episodes ~2000 件）では DB 負荷も軽微。
+	// 将来 episodes が 10 万件オーダーに増えたら sitemap index 化（分割）を検討する。
+	v1.GET("/sitemap/podcasts", h.Sitemap.GetPodcasts)
+	v1.GET("/sitemap/episodes", h.Sitemap.GetEpisodes)
+	v1.GET("/sitemap/users", h.Sitemap.GetUsers)
 
 	// ── 認証不要 + 外部通信を含むルート（タイムアウト: 60秒） ──
 	// iTunes API への検索リクエストを含む
