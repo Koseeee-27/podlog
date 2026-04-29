@@ -51,10 +51,14 @@ func SitemapAuth(expectedToken string, isDev bool) echo.MiddlewareFunc {
 			ctx := c.Request().Context()
 			method := c.Request().Method
 			path := c.Request().URL.Path
+			// route はルートパターン（例: /api/v1/sitemap/podcasts）。
+			// path（実パス）と粒度を分けることで、Cloud Logging 上で path フィルタ
+			// （実パス指定）と route フィルタ（ハンドラ単位の集計）の両方を打てる。
+			// rules/backend.md「ログ属性のキー名と値の粒度を統一する」に従う。
+			route := c.Path()
 
 			// 既存の extractBearerToken を再利用（同パッケージ内）。
-			// "Bearer <token>" 形式かどうか、空白だけのトークンでないか、
-			// 等のフォーマットチェックを共通化している。
+			// "Bearer <token>" 単体（token 部分が空白のみ）も tokenInvalidFormat で弾かれる。
 			token, result := extractBearerToken(c)
 			if result != tokenOK {
 				// ヘッダー無しもフォーマット不正もまとめて 401。
@@ -63,6 +67,7 @@ func SitemapAuth(expectedToken string, isDev bool) echo.MiddlewareFunc {
 				slog.WarnContext(ctx, "sitemap auth: missing or invalid authorization header",
 					"method", method,
 					"path", path,
+					"route", route,
 				)
 				return response.Error(c, http.StatusUnauthorized, "unauthorized")
 			}
@@ -76,14 +81,17 @@ func SitemapAuth(expectedToken string, isDev bool) echo.MiddlewareFunc {
 			// 攻撃者が応答時間からトークンを 1 文字ずつ推測できてしまう（理論上の脅威だが、
 			// 認証に関わる比較ではベストプラクティスとして使う）。
 			//
-			// ConstantTimeCompare はバイト列の長さが異なると即座に 0 を返すため、
-			// 長さの違いによるタイミング差は別途吸収される（短いトークンだと不一致でも
-			// 短時間で返るが、これは攻撃の成功には繋がらない）。
+			// ConstantTimeCompare の挙動:
+			//   - 長さが異なるバイト列が渡された場合は即 0 を返す（タイミング差の話とは独立）。
+			//   - 同じ長さの場合のみ全バイトを比較し、定数時間で 0 / 1 を返す。
+			// このため「短いトークンを送ると不一致でも短時間で返る」という現象は起きるが、
+			// 攻撃者が真のトークンの中身を推測する手がかりにはならない。
 			if expectedToken == "" ||
 				subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
 				slog.WarnContext(ctx, "sitemap auth: token mismatch",
 					"method", method,
 					"path", path,
+					"route", route,
 				)
 				return response.Error(c, http.StatusUnauthorized, "unauthorized")
 			}
