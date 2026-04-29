@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { usernameSchema } from "@/lib/schemas/common";
 import {
   getUserPublicProfile,
@@ -6,6 +7,13 @@ import {
   getUserListeningRecords,
   getUserReviews,
 } from "@/lib/data/users";
+import {
+  buildMetadataDescription,
+  defaultOpenGraph,
+  defaultOpenGraphImages,
+  defaultTwitter,
+  pickMetadataImage,
+} from "@/lib/metadata/shared";
 import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import { ApiRequestError } from "@/types/api";
 import PublicProfileClient from "./PublicProfileClient";
@@ -14,6 +22,69 @@ import { PAGE_SIZE } from "./constants";
 
 interface PublicProfilePageProps {
   params: Promise<{ username: string }>;
+}
+
+/**
+ * 公開プロフィールページの metadata を動的に生成する。
+ *
+ * - `getUserPublicProfile` は `cache()` 済み。page 本体と generateMetadata で
+ *   同じ username を取得しても API コールは 1 回しか発生しない
+ * - DAL の throw は page と同じく try/catch して 404 → `notFound()`、それ以外は
+ *   rethrow に揃える。`generateMetadata` から素の throw を伝播させると Next.js
+ *   のデフォルトエラー画面に倒れて `error.tsx` に届かず、status code が
+ *   200/500 にブレる（Next.js Discussion #49925 / Issue #75543）
+ * - description は bio があれば優先、なければ「@username の聴取履歴・レビュー」
+ *   というデフォルト文言を fallback に使う
+ */
+export async function generateMetadata({
+  params,
+}: PublicProfilePageProps): Promise<Metadata> {
+  const { username } = await params;
+
+  if (!usernameSchema.safeParse(username).success) {
+    notFound();
+  }
+
+  let profile: UserPublicProfile;
+  try {
+    profile = await getUserPublicProfile(username);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+
+  const title = `${profile.display_name}（@${profile.username}） | PodLog`;
+  const description = buildMetadataDescription(
+    profile.bio,
+    `@${profile.username} の聴取履歴・レビュー | PodLog`,
+  );
+  const canonicalPath = `/users/${profile.username}`;
+  // `pickMetadataImage` で空文字 / null / undefined を一律「無し」に正規化する
+  // （DB 由来で `""` が入った場合に壊れた og:image タグを出さないため）
+  const ogImage = pickMetadataImage(profile.avatar_url);
+  const ogImages = ogImage ? [ogImage] : [...defaultOpenGraphImages];
+  const twitterImages = ogImage ? [ogImage] : ["/og-default.png"];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      ...defaultOpenGraph,
+      title,
+      description,
+      url: canonicalPath,
+      images: ogImages,
+    },
+    twitter: {
+      ...defaultTwitter,
+      title,
+      description,
+      images: twitterImages,
+    },
+    alternates: { canonical: canonicalPath },
+  };
 }
 
 export default async function PublicProfilePage({ params }: PublicProfilePageProps) {

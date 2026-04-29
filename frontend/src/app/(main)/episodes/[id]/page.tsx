@@ -1,7 +1,15 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { getEpisodeById } from "@/lib/data/episodes";
+import {
+  buildMetadataDescription,
+  defaultOpenGraph,
+  defaultOpenGraphImages,
+  defaultTwitter,
+  pickMetadataImage,
+} from "@/lib/metadata/shared";
 import { ApiRequestError } from "@/types/api";
 import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
@@ -12,6 +20,72 @@ import type { EpisodeDetailResult } from "@/types/episode";
 
 interface EpisodePageProps {
   params: Promise<{ id: string }>;
+}
+
+/**
+ * エピソード詳細ページの metadata を動的に生成する。
+ *
+ * - `getEpisodeById` は `cache()` 済み（オプショナル認証）。page 本体と
+ *   generateMetadata で同じ ID を取得しても API コールは 1 回しか発生しない
+ * - DAL の throw は page と同じく try/catch して 404 → `notFound()`、それ以外は
+ *   rethrow に揃える。`generateMetadata` から素の throw を伝播させると Next.js
+ *   のデフォルトエラー画面に倒れて `error.tsx` に届かず、status code が
+ *   200/500 にブレる（Next.js Discussion #49925 / Issue #75543）
+ * - og:image は episode.artwork_url → podcast.artwork_url → og-default.png の順で
+ *   フォールバック（エピソード固有 → 番組のアートワーク → 共通 OG 画像）
+ */
+export async function generateMetadata({
+  params,
+}: EpisodePageProps): Promise<Metadata> {
+  const { id } = await params;
+
+  if (!uuidSchema.safeParse(id).success) {
+    notFound();
+  }
+
+  let episode: EpisodeDetailResult;
+  try {
+    episode = await getEpisodeById(id);
+  } catch (err) {
+    if (err instanceof ApiRequestError && err.status === 404) {
+      notFound();
+    }
+    throw err;
+  }
+
+  const title = `${episode.title} - ${episode.podcast.title} | PodLog`;
+  const description = buildMetadataDescription(
+    episode.description,
+    `${episode.podcast.title} のエピソード「${episode.title}」 | PodLog`,
+  );
+  const canonicalPath = `/episodes/${id}`;
+  // `pickMetadataImage` で空文字 / null / undefined を一律「無し」に正規化する。
+  // 単純な `??` だと空文字を「値あり」として通してしまい、フォールバックが
+  // 効かないまま壊れた og:image タグを出力する事故になる。
+  const ogImage =
+    pickMetadataImage(episode.artwork_url) ??
+    pickMetadataImage(episode.podcast.artwork_url);
+  const ogImages = ogImage ? [ogImage] : [...defaultOpenGraphImages];
+  const twitterImages = ogImage ? [ogImage] : ["/og-default.png"];
+
+  return {
+    title,
+    description,
+    openGraph: {
+      ...defaultOpenGraph,
+      title,
+      description,
+      url: canonicalPath,
+      images: ogImages,
+    },
+    twitter: {
+      ...defaultTwitter,
+      title,
+      description,
+      images: twitterImages,
+    },
+    alternates: { canonical: canonicalPath },
+  };
 }
 
 export default async function EpisodePage({ params }: EpisodePageProps) {
