@@ -3,14 +3,11 @@ package usecase
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/Koseeee-27/podlog/backend/internal/repository"
 )
-
-// rfc3339 は updated_at を JSON 文字列に整形するときの time.Format レイアウトです。
-// 既存の PodcastDetailResult.CreatedAt の整形と同じパターンを使います。
-const rfc3339 = "2006-01-02T15:04:05Z07:00"
 
 // SitemapPodcastItem は sitemap 用 podcast 1 件のレスポンスです。
 type SitemapPodcastItem struct {
@@ -76,7 +73,7 @@ func (u *sitemapUsecase) GetPodcasts(ctx context.Context) (*SitemapPodcastsResul
 	for _, row := range rows {
 		items = append(items, SitemapPodcastItem{
 			ID:        row.ID,
-			UpdatedAt: row.UpdatedAt.UTC().Format(rfc3339),
+			UpdatedAt: row.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -94,7 +91,7 @@ func (u *sitemapUsecase) GetEpisodes(ctx context.Context) (*SitemapEpisodesResul
 	for _, row := range rows {
 		items = append(items, SitemapEpisodeItem{
 			ID:        row.ID,
-			UpdatedAt: row.UpdatedAt.UTC().Format(rfc3339),
+			UpdatedAt: row.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 
@@ -114,7 +111,7 @@ func (u *sitemapUsecase) GetUsers(ctx context.Context) (*SitemapUsersResult, err
 	for _, row := range rows {
 		items = append(items, SitemapUserItem{
 			Username:  row.Username,
-			UpdatedAt: row.UpdatedAt.UTC().Format(rfc3339),
+			UpdatedAt: row.UpdatedAt.UTC().Format(time.RFC3339),
 		})
 	}
 

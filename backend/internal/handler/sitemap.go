@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/Koseeee-27/podlog/backend/internal/response"
@@ -30,8 +31,12 @@ func NewSitemapHandler(sitemapUsecase usecase.SitemapUsecase) *SitemapHandler {
 // @Failure 500 {object} map[string]string
 // @Router /sitemap/podcasts [get]
 func (h *SitemapHandler) GetPodcasts(c echo.Context) error {
-	result, err := h.sitemapUsecase.GetPodcasts(c.Request().Context())
+	ctx := c.Request().Context()
+	result, err := h.sitemapUsecase.GetPodcasts(ctx)
 	if err != nil {
+		// DB ダウン等の障害を Cloud Error Reporting で検知できるよう ERROR で残す。
+		// sitemap API は cron / クローラーからの低頻度 hit のため ERROR でもノイズにならない。
+		slog.ErrorContext(ctx, "failed to get podcasts for sitemap", "error", err)
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcasts for sitemap")
 	}
 	return response.Success(c, http.StatusOK, result)
@@ -46,8 +51,10 @@ func (h *SitemapHandler) GetPodcasts(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Router /sitemap/episodes [get]
 func (h *SitemapHandler) GetEpisodes(c echo.Context) error {
-	result, err := h.sitemapUsecase.GetEpisodes(c.Request().Context())
+	ctx := c.Request().Context()
+	result, err := h.sitemapUsecase.GetEpisodes(ctx)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to get episodes for sitemap", "error", err)
 		return response.Error(c, http.StatusInternalServerError, "failed to get episodes for sitemap")
 	}
 	return response.Success(c, http.StatusOK, result)
@@ -62,8 +69,10 @@ func (h *SitemapHandler) GetEpisodes(c echo.Context) error {
 // @Failure 500 {object} map[string]string
 // @Router /sitemap/users [get]
 func (h *SitemapHandler) GetUsers(c echo.Context) error {
-	result, err := h.sitemapUsecase.GetUsers(c.Request().Context())
+	ctx := c.Request().Context()
+	result, err := h.sitemapUsecase.GetUsers(ctx)
 	if err != nil {
+		slog.ErrorContext(ctx, "failed to get users for sitemap", "error", err)
 		return response.Error(c, http.StatusInternalServerError, "failed to get users for sitemap")
 	}
 	return response.Success(c, http.StatusOK, result)
