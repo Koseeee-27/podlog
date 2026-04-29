@@ -534,6 +534,48 @@ definitions:
       username:
         type: string
     type: object
+  usecase.SitemapEpisodeItem:
+    properties:
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  usecase.SitemapEpisodesResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.SitemapEpisodeItem'
+        type: array
+    type: object
+  usecase.SitemapPodcastItem:
+    properties:
+      id:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  usecase.SitemapPodcastsResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.SitemapPodcastItem'
+        type: array
+    type: object
+  usecase.SitemapUserItem:
+    properties:
+      updated_at:
+        type: string
+      username:
+        type: string
+    type: object
+  usecase.SitemapUsersResult:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/usecase.SitemapUserItem'
+        type: array
+    type: object
   usecase.TimelineItem:
     properties:
       comment:
@@ -1368,6 +1410,63 @@ paths:
       summary: ポッドキャスト検索
       tags:
       - podcasts
+  /sitemap/episodes:
+    get:
+      description: sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.SitemapEpisodesResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: sitemap 用 episode 一覧取得
+      tags:
+      - sitemap
+  /sitemap/podcasts:
+    get:
+      description: sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.SitemapPodcastsResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: sitemap 用 podcast 一覧取得
+      tags:
+      - sitemap
+  /sitemap/users:
+    get:
+      description: sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.SitemapUsersResult'
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: sitemap 用 user 一覧取得
+      tags:
+      - sitemap
   /timeline:
     get:
       description: 全ユーザーの最新レビューを時系列で取得します

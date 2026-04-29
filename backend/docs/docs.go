@@ -1189,6 +1189,93 @@ const docTemplate = `{
                 }
             }
         },
+        "/sitemap/episodes": {
+            "get": {
+                "description": "sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sitemap"
+                ],
+                "summary": "sitemap 用 episode 一覧取得",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.SitemapEpisodesResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sitemap/podcasts": {
+            "get": {
+                "description": "sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sitemap"
+                ],
+                "summary": "sitemap 用 podcast 一覧取得",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.SitemapPodcastsResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/sitemap/users": {
+            "get": {
+                "description": "sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "sitemap"
+                ],
+                "summary": "sitemap 用 user 一覧取得",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.SitemapUsersResult"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/timeline": {
             "get": {
                 "description": "全ユーザーの最新レビューを時系列で取得します",
@@ -2670,6 +2757,72 @@ const docTemplate = `{
                 },
                 "username": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.SitemapEpisodeItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.SitemapEpisodesResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.SitemapEpisodeItem"
+                    }
+                }
+            }
+        },
+        "usecase.SitemapPodcastItem": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.SitemapPodcastsResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.SitemapPodcastItem"
+                    }
+                }
+            }
+        },
+        "usecase.SitemapUserItem": {
+            "type": "object",
+            "properties": {
+                "updated_at": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.SitemapUsersResult": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.SitemapUserItem"
+                    }
                 }
             }
         },
