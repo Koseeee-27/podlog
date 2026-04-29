@@ -30,7 +30,9 @@ type Handlers struct {
 // supabaseURL は Supabase プロジェクトの URL（例: https://xxx.supabase.co）です。
 // JWKS エンドポイントから公開鍵を取得して JWT 検証に使います。
 // adminUserIDs は管理者ユーザー ID のリストです。/admin API へのアクセスを制限します。
-func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) error {
+// sitemapAPIToken は sitemap 用内部 API の Bearer トークンです（FE と共有する pre-shared token）。
+// isDev は開発環境かどうかのフラグで、true のときは SitemapAuth が認証を素通しします。
+func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, sitemapAPIToken string, isDev bool) error {
 	// JWKS keyfunc を 1 回だけ初期化し、全ミドルウェアで共有する。
 	// これにより JWKS のキャッシュ・バックグラウンドリフレッシュ goroutine が 1 つだけになる。
 	jwksKeyfunc, err := mw.NewJWKSKeyfunc(supabaseURL)
@@ -96,13 +98,23 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string) 
 	// Timeline (公開)
 	v1.GET("/timeline", h.Review.GetTimeline)
 
-	// Sitemap (公開)
-	// FE の app/sitemap.ts から呼ばれる軽量 API。全件返すためページングなし。
+	// Sitemap（内部 API: Bearer トークン認証）
+	//
+	// FE の app/sitemap.ts からのみ呼ばれる軽量 API。全件返すためページングなし。
 	// 現状の規模（podcasts ~700 件 / episodes ~2000 件）では DB 負荷も軽微。
 	// 将来 episodes が 10 万件オーダーに増えたら sitemap index 化（分割）を検討する。
-	v1.GET("/sitemap/podcasts", h.Sitemap.GetPodcasts)
-	v1.GET("/sitemap/episodes", h.Sitemap.GetEpisodes)
-	v1.GET("/sitemap/users", h.Sitemap.GetUsers)
+	//
+	// sitemap.xml 自体は最終的にクローラーに公開されるが、データソース API を
+	// そのまま公開すると以下のリスクがあるため、共有秘密の Bearer トークンで保護する:
+	//   - /sitemap/users で全ユーザーの username が 1 リクエストで列挙可能
+	//   - 全 podcast / episode の ID リストが 1 リクエストでスクレイピング可能
+	//
+	// dev では SitemapAuth が isDev=true で素通しするため、ローカル開発時は
+	// FE 側もヘッダー無しで動作する。
+	sitemap := v1.Group("/sitemap", mw.SitemapAuth(sitemapAPIToken, isDev))
+	sitemap.GET("/podcasts", h.Sitemap.GetPodcasts)
+	sitemap.GET("/episodes", h.Sitemap.GetEpisodes)
+	sitemap.GET("/users", h.Sitemap.GetUsers)
 
 	// ── 認証不要 + 外部通信を含むルート（タイムアウト: 60秒） ──
 	// iTunes API への検索リクエストを含む

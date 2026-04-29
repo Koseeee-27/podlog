@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"strings"
 
+	"github.com/Koseeee-27/podlog/backend/internal/logging"
 	"github.com/caarlos0/env/v11"
 )
 
@@ -45,6 +46,19 @@ type Config struct {
 	// 例: "550e8400-e29b-41d4-a716-446655440000,6ba7b810-9dad-11d1-80b4-00c04fd430c8"
 	// この ID を持つユーザーのみが /admin API にアクセスできる
 	AdminUserIDs string `env:"ADMIN_USER_IDS" envDefault:""`
+
+	// sitemap 用内部 API の Bearer トークン
+	//
+	// FE（Netlify）の app/sitemap.ts から
+	//   Authorization: Bearer <SITEMAP_API_TOKEN>
+	// で送られてきた値と一致するかを SitemapAuth ミドルウェアで検証する。
+	//
+	// JWT ではなく単純な共有秘密（pre-shared token）。FE と BE の両方に
+	// 同じ値を環境変数として設定し、突合する運用。
+	//
+	// 本番環境では必須（未設定だと SitemapAuth が fail-secure で全リクエストを 401 にする）。
+	// development では未設定でも middleware 側が素通しするため空のままで良い。
+	SitemapAPIToken string `env:"SITEMAP_API_TOKEN" envDefault:""`
 }
 
 // DatabaseDSN はデータベース接続用の DSN 文字列を組み立てます。
@@ -100,12 +114,20 @@ func (c *Config) Validate() error {
 		missing = append(missing, "SUPABASE_URL")
 	}
 
+	// SITEMAP_API_TOKEN は本番でのみ必須。
+	// development では SitemapAuth ミドルウェアが素通しするため未設定でも動く。
+	// 「development 以外」を本番扱いとする（APP_ENV の typo で誤って未保護にならないよう保守的に判定）。
+	if c.Environment != logging.EnvDevelopment && c.SitemapAPIToken == "" {
+		missing = append(missing, "SITEMAP_API_TOKEN")
+	}
+
 	if len(missing) > 0 {
 		return fmt.Errorf(
 			"必須の環境変数が設定されていません: %s\n"+
 				"  → .env.example を参考に .env ファイルを作成してください:\n"+
 				"    cp .env.example .env\n"+
-				"  → SUPABASE_URL は Supabase ダッシュボード → Settings → API → Project URL から取得できます",
+				"  → SUPABASE_URL は Supabase ダッシュボード → Settings → API → Project URL から取得できます\n"+
+				"  → SITEMAP_API_TOKEN は `openssl rand -base64 32` で生成し、Cloud Run と Netlify の両方に同じ値を設定してください",
 			strings.Join(missing, ", "),
 		)
 	}
