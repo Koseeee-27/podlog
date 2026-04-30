@@ -32,25 +32,19 @@ import (
 //go:embed migrations/*.sql
 var migrationsFS embed.FS
 
-// RunMigrations はデータベースに未適用のマイグレーションを適用します。
+// newMigrator は embed されたマイグレーションファイルと DSN から *migrate.Migrate を作成します。
+// 呼び出し側で defer closeMigrator(m) を行うこと。
 //
-// 動作の流れ:
-//  1. embed.FS から SQL ファイルを読み込む iofs ドライバーを作成
-//  2. DSN（データベース接続文字列）を使って migrate インスタンスを作成
-//  3. Up() で未適用のマイグレーションを全て実行
-//  4. 全て適用済みの場合（ErrNoChange）は何もせずスキップ
-//
-// エラーが発生した場合はサーバー起動前に中断できるよう、エラーを返します。
-func RunMigrations(databaseDSN string) error {
-	// golang-migrate の pgx/v5 ドライバーは "pgx5://" スキームを要求する。
-	// アプリケーション側の DSN は "postgres://" スキームなので、ここで変換する。
+// golang-migrate の pgx/v5 ドライバーは "pgx5://" スキームを要求する。
+// アプリケーション側の DSN は "postgres://" スキームなので、ここで変換する。
+func newMigrator(databaseDSN string) (*migrate.Migrate, error) {
 	migrateDSN := strings.Replace(databaseDSN, "postgres://", "pgx5://", 1)
 
 	// iofs.New でembedしたファイルシステムからマイグレーションソースを作成
 	// 第2引数の "migrations" はembed.FS内のディレクトリパス
 	source, err := iofs.New(migrationsFS, "migrations")
 	if err != nil {
-		return fmt.Errorf("マイグレーションソースの作成に失敗: %w", err)
+		return nil, fmt.Errorf("マイグレーションソースの作成に失敗: %w", err)
 	}
 
 	// migrate.NewWithSourceInstance で、ソース（SQL ファイル群）と
@@ -60,28 +54,61 @@ func RunMigrations(databaseDSN string) error {
 	// - 第3引数 migrateDSN: "pgx5://user:pass@host:port/dbname?sslmode=disable" 形式の接続文字列
 	m, err := migrate.NewWithSourceInstance("iofs", source, migrateDSN)
 	if err != nil {
-		return fmt.Errorf("マイグレーターの作成に失敗: %w", err)
+		return nil, fmt.Errorf("マイグレーターの作成に失敗: %w", err)
 	}
-	// defer m.Close() でリソースを解放
-	// Close() は (sourceErr, databaseErr) の2つのエラーを返す
-	// Up() 自体は既に成否決定済みのため、Close 失敗は WARN に留める
-	// （プロセスは続行されるがリソース解放の異常は記録する）
-	defer func() {
-		sourceErr, dbErr := m.Close()
-		if sourceErr != nil {
-			slog.Warn("migration source close failed", "error", sourceErr)
+	return m, nil
+}
+
+// closeMigrator は *migrate.Migrate のリソースを解放します。
+// Close() は (sourceErr, databaseErr) の2つのエラーを返す。
+// 上位処理は既に成否確定済みのため、Close 失敗は WARN に留める。
+func closeMigrator(m *migrate.Migrate) {
+	sourceErr, dbErr := m.Close()
+	if sourceErr != nil {
+		slog.Warn("migration source close failed", "error", sourceErr)
+	}
+	if dbErr != nil {
+		slog.Warn("migration database close failed", "error", dbErr)
+	}
+}
+
+// logVersion は現在のマイグレーションバージョンを INFO ログに出力します。
+// バージョン取得自体に失敗した場合は WARN で記録するが、処理は続行する。
+func logVersion(m *migrate.Migrate, msg string) {
+	version, dirty, verErr := m.Version()
+	if verErr != nil {
+		// migrate.ErrNilVersion はバージョンレコードがない（適用済み 0 件）状態を意味する。
+		// ロールバックで全マイグレーションを巻き戻した直後など、エラーではなく正常系。
+		if errors.Is(verErr, migrate.ErrNilVersion) {
+			slog.Info(msg, "version", "none")
+			return
 		}
-		if dbErr != nil {
-			slog.Warn("migration database close failed", "error", dbErr)
-		}
-	}()
+		slog.Warn(msg+" but version lookup failed", "error", verErr)
+		return
+	}
+	slog.Info(msg, "version", version, "dirty", dirty)
+}
+
+// RunMigrations はデータベースに未適用のマイグレーションを全て適用します。
+//
+// 動作の流れ:
+//  1. newMigrator で migrate インスタンスを作成
+//  2. Up() で未適用のマイグレーションを全て実行
+//  3. 全て適用済みの場合（ErrNoChange）は何もせずスキップ
+//
+// エラーが発生した場合はサーバー起動前に中断できるよう、エラーを返します。
+func RunMigrations(databaseDSN string) error {
+	m, err := newMigrator(databaseDSN)
+	if err != nil {
+		return err
+	}
+	defer closeMigrator(m)
 
 	// Up() は未適用のマイグレーションを古い順に全て実行する
 	// - 成功: nil を返す
 	// - 全て適用済み: migrate.ErrNoChange を返す（エラーではない）
 	// - 失敗: その他のエラーを返す
-	err = m.Up()
-	if err != nil {
+	if err := m.Up(); err != nil {
 		// errors.Is で特定のエラー型かどうかを判定する（Go のエラー比較のベストプラクティス）
 		if errors.Is(err, migrate.ErrNoChange) {
 			// ErrNoChange は「既に全て適用済み」を意味する正常系なので INFO レベル
@@ -92,13 +119,32 @@ func RunMigrations(databaseDSN string) error {
 	}
 
 	// 適用後のバージョンをログに出力
-	version, dirty, verErr := m.Version()
-	if verErr != nil {
-		// 適用自体は成功しているが、バージョン情報が取れない異常を WARN で記録
-		slog.Warn("migrations applied but version lookup failed", "error", verErr)
-	} else {
-		slog.Info("migrations applied", "version", version, "dirty", dirty)
+	logVersion(m, "migrations applied")
+	return nil
+}
+
+// RollbackMigration は最新の適用済みマイグレーションを 1 ステップだけロールバックします。
+// ローカルでの動作確認（make migrate-down）で使う想定。
+//
+// Steps(-1) は「現在のバージョンから 1 つ前に戻す」操作で、対応する .down.sql を実行する。
+// 全て巻き戻したい場合は呼び出し側で複数回実行するか、別途 Down() を呼ぶ用の関数を追加する。
+func RollbackMigration(databaseDSN string) error {
+	m, err := newMigrator(databaseDSN)
+	if err != nil {
+		return err
+	}
+	defer closeMigrator(m)
+
+	// Steps(-1) は 1 つ前のバージョンに戻す。
+	// 適用済み 0 件の状態から呼ぶと migrate.ErrNoChange を返す（正常系として扱う）。
+	if err := m.Steps(-1); err != nil {
+		if errors.Is(err, migrate.ErrNoChange) {
+			slog.Info("no migrations to rollback")
+			return nil
+		}
+		return fmt.Errorf("マイグレーションのロールバックに失敗: %w", err)
 	}
 
+	logVersion(m, "migration rolled back")
 	return nil
 }
