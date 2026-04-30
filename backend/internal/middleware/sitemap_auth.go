@@ -32,8 +32,10 @@ import (
 //
 //   - 検証失敗はクライアント起因なので WARN（ERROR にすると Cloud Error Reporting
 //     のノイズ源になる）。
-//   - method / path（実パス）のみログに残し、トークン本体やヘッダー値は残さない
-//     （rules/backend.md「絶対 NG ログ」）。
+//   - method / path（実パス）/ route（ルートパターン）をログに残し、
+//     トークン本体やヘッダー値は残さない（rules/backend.md「絶対 NG ログ」）。
+//     path と route の使い分けは rules/backend.md「ログ属性のキー名と値の粒度を
+//     統一する」に従う。
 //
 // 引数:
 //   - expectedToken: 期待するトークンの値（環境変数 SITEMAP_API_TOKEN）

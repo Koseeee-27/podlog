@@ -99,6 +99,40 @@ func TestSitemapAuth_DevModePassesWithWrongToken(t *testing.T) {
 	}
 }
 
+// TestSitemapAuth_DevModePassesWithEmptyExpectedToken は dev モードで expectedToken が
+// 空文字列のときも素通しすることを検証します。
+//
+// 背景: Config.Validate() は development 環境では SITEMAP_API_TOKEN 未設定を許可する
+// 仕様（cfg.Environment == "development" の場合は必須チェックをスキップ）。
+// したがって dev では「expectedToken が空 + isDev=true」の組み合わせで起動するのが
+// 通常運用パターンとなる。middleware 側もこのケースで素通しすることを保証しないと、
+// Config 仕様と middleware の挙動が乖離してしまう。
+//
+// このテストは「dev では fail-secure（expectedToken=="" → 401）チェックよりも先に
+// isDev による早期 return が効く」という挙動を仕様として固定する。将来 isDev 判定を
+// fail-secure チェックの後ろに動かすような変更が入ったら、このテストが落ちて回帰を
+// 検知できる。
+func TestSitemapAuth_DevModePassesWithEmptyExpectedToken(t *testing.T) {
+	e := newSitemapAuthTestEcho("", true) // dev モード + トークン未設定（dev での通常運用形態）
+
+	// ヘッダーが付いていない / 何かしら付いている、いずれでも素通しすることを確認。
+	tests := []struct {
+		name       string
+		authHeader string
+	}{
+		{"ヘッダー無し", ""},
+		{"ヘッダーあり（dev では検証されない）", "Bearer anything"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := sendSitemapRequest(e, tt.authHeader)
+			if rec.Code != http.StatusOK {
+				t.Errorf("status = %d, want %d (dev mode + empty expectedToken should pass through)", rec.Code, http.StatusOK)
+			}
+		})
+	}
+}
+
 // TestSitemapAuth_FailSecureWhenExpectedTokenIsEmpty は本番モードで expectedToken が
 // 空文字列（設定漏れ）のとき、クライアントが正しい形式の Bearer ヘッダーを送っても
 // 401 が返ることを検証します。これが SitemapAuth の fail-secure 分岐の本質的なテスト。
