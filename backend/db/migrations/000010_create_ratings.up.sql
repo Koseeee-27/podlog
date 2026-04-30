@@ -8,9 +8,12 @@ CREATE TABLE IF NOT EXISTS ratings (
     id         UUID          NOT NULL DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id    UUID          NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     episode_id UUID          NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
-    rating     SMALLINT      NOT NULL CHECK (rating >= 1 AND rating <= 5),
+    rating     SMALLINT      NOT NULL,
     created_at TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ   NOT NULL DEFAULT NOW()
+    updated_at TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+    -- 1〜5 の範囲を強制。`database.md` の制約一覧（ratings_rating_check）と
+    -- 制約名を一致させるため、名前付きで宣言する（PostgreSQL の自動命名に依存しない）。
+    CONSTRAINT ratings_rating_check CHECK (rating >= 1 AND rating <= 5)
 );
 
 -- 同じユーザーが同じエピソードに2件以上評価できないようにする（重複防止 + 検索高速化）
