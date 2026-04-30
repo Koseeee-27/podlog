@@ -193,7 +193,7 @@ flowchart TD
     NOPROFILE_CHECK -- "/settings" --> VIEW_SETTINGS["閲覧可能<br>（プロフィール編集は<br>/profile/setup へリダイレクト）"]
     NOPROFILE_CHECK -- "/settings/profile" --> REDIRECT_SETUP_CLIENT["/profile/setup へリダイレクト<br>（Server Component）"]
     NOPROFILE_CHECK -- "/profile/setup" --> SETUP_PAGE["プロフィール初期設定<br>画面を表示"]
-    NOPROFILE_CHECK -- "/admin,<br>/record" --> REDIRECT_SETUP_ADMIN["/profile/setup へリダイレクト<br>（Server Component）"]
+    NOPROFILE_CHECK -- "/admin,<br>/record" --> REDIRECT_SETUP_PROTECTED["/profile/setup へリダイレクト<br>（Server Component）"]
 ```
 
 ### ナビゲーションからの遷移
