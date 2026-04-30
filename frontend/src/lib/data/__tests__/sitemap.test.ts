@@ -5,6 +5,14 @@
  * 同じ関数を複数回呼ぶと 2 回目以降 `apiFetch` が呼ばれない（リクエストスコープの
  * メモ化）。本テストでは各関数を 1 回ずつしか呼ばない構成にしてメモ化のヒットを
  * 回避している。
+ *
+ * **新しいテストを追加するときの注意**:
+ * - 同じ関数（例: `getSitemapPodcasts`）を 2 回 await するテストを足したい場合は、
+ *   `cache()` のメモ化により 2 回目の呼び出しで `mockApiFetch` が呼ばれず、
+ *   無言で誤った成功になる。`jest.resetModules()` + dynamic import でモジュール
+ *   ごと再ロードしてメモを破棄するか、関数ごとに別のテストケースに分けること。
+ * - `process.env` を変更するテストは必ず `beforeEach` で初期化し、`afterAll` で
+ *   `ORIGINAL_ENV` に戻す（本ファイルの既存パターン参照）。
  */
 import {
   getSitemapPodcasts,

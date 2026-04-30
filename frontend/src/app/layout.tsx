@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import { ToastProvider } from "@/components/ui/Toast";
 import { defaultOpenGraph, defaultTwitter } from "@/lib/metadata/shared";
+import { resolveMetadataBase } from "@/lib/metadata/site-url";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,43 +16,9 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const DEFAULT_SITE_URL = "http://localhost:3000";
-
-/**
- * `NEXT_PUBLIC_SITE_URL` を安全に URL に変換する。
- *
- * 環境変数の typo や不正な URL 文字列でビルドが原因不明に落ちるのを防ぐため、
- * trim + try/catch で安全にデフォルト URL へフォールバックさせる。
- *
- * production ビルド時に不正な値を検知した場合は `console.warn` を 1 回出力する。
- * 黙ってフォールバックすると本番環境で canonical / og:image が localhost のまま
- * 流出しても気づけないため、Netlify の Deploy log で運用者が気づけるようにする
- * （Sentry の環境別判定と同じ流儀で、production のみ警告を出す）。
- */
-function resolveMetadataBase(raw: string | undefined): URL {
-  const value = raw?.trim();
-  const isProduction = process.env.NODE_ENV === "production";
-  if (!value) {
-    if (isProduction) {
-      console.warn(
-        `[metadata] NEXT_PUBLIC_SITE_URL が未設定です。デフォルトの ${DEFAULT_SITE_URL} を使用します。Netlify の環境変数を確認してください。`,
-      );
-    }
-    return new URL(DEFAULT_SITE_URL);
-  }
-  try {
-    return new URL(value);
-  } catch {
-    if (isProduction) {
-      console.warn(
-        `[metadata] NEXT_PUBLIC_SITE_URL が不正な URL です: "${value}"。デフォルトの ${DEFAULT_SITE_URL} を使用します。`,
-      );
-    }
-    return new URL(DEFAULT_SITE_URL);
-  }
-}
-
-const metadataBase = resolveMetadataBase(process.env.NEXT_PUBLIC_SITE_URL);
+// `NEXT_PUBLIC_SITE_URL` の解決は `lib/metadata/site-url.ts` に集約。
+// `app/robots.ts` / `app/sitemap.ts` も同じヘルパー（`getSiteOrigin`）を使う。
+const metadataBase = resolveMetadataBase();
 
 const SITE_TITLE = "PodLog - ラジオの記録・レビューアプリ";
 const SITE_DESCRIPTION =

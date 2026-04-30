@@ -4,6 +4,7 @@ import {
   getSitemapEpisodes,
   getSitemapUsers,
 } from "@/lib/data/sitemap";
+import { getSiteOrigin } from "@/lib/metadata/site-url";
 
 /**
  * `app/sitemap.ts` は Next.js 16 の File Convention で
@@ -40,25 +41,6 @@ import {
  * 含まれる可能性は低いが、念のため `encodeURIComponent` でエンコードする
  * （DAL 側の podcast/episode id も同じ流儀）。
  */
-
-const DEFAULT_SITE_URL = "http://localhost:3000";
-
-/**
- * `NEXT_PUBLIC_SITE_URL` から sitemap に書き込む絶対 URL のベース origin を返す。
- *
- * robots.ts の同名ヘルパーと同じ実装（layout.tsx の `resolveMetadataBase` の
- * 防御的フォールバックと整合）。`URL.origin` を返すことで、末尾スラッシュや
- * 余計なパスが入っていてもクリーンな `scheme://host[:port]` に正規化する。
- */
-function getSiteOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!raw) return DEFAULT_SITE_URL;
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return DEFAULT_SITE_URL;
-  }
-}
 
 /**
  * BE 取得失敗時の Promise.allSettled の結果から items 配列を取り出す。
@@ -118,23 +100,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const episodes = pickItems(episodesResult, "episodes");
   const users = pickItems(usersResult, "users");
 
+  // BE が返す `updated_at` は `time.RFC3339` 形式の UTC 文字列（例:
+  // "2026-04-01T00:00:00Z"）だが、`new Date(...)` を挟んで Next.js に正規化させる
+  // ことで、将来 BE がローカル TZ 表記やマイクロ秒を返すように変わっても
+  // sitemap.xml の `<lastmod>` 部分が壊れないようにしている（防御的）。
   const podcastEntries: MetadataRoute.Sitemap = podcasts.map((p) => ({
     url: `${origin}/podcasts/${encodeURIComponent(p.id)}`,
-    lastModified: p.updated_at,
+    lastModified: new Date(p.updated_at),
     changeFrequency: "weekly",
     priority: 0.7,
   }));
 
   const episodeEntries: MetadataRoute.Sitemap = episodes.map((e) => ({
     url: `${origin}/episodes/${encodeURIComponent(e.id)}`,
-    lastModified: e.updated_at,
+    lastModified: new Date(e.updated_at),
     changeFrequency: "weekly",
     priority: 0.7,
   }));
 
   const userEntries: MetadataRoute.Sitemap = users.map((u) => ({
     url: `${origin}/users/${encodeURIComponent(u.username)}`,
-    lastModified: u.updated_at,
+    lastModified: new Date(u.updated_at),
     changeFrequency: "weekly",
     priority: 0.7,
   }));

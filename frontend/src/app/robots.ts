@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { getSiteOrigin } from "@/lib/metadata/site-url";
 
 /**
  * `app/robots.ts` は Next.js 16 の File Convention で
@@ -45,26 +46,6 @@ const PROTECTED_PATHS = [
   "/monitoring",
   "/callback",
 ] as const;
-
-const DEFAULT_SITE_URL = "http://localhost:3000";
-
-/**
- * `NEXT_PUBLIC_SITE_URL` から sitemap の絶対 URL を組み立てる。
- *
- * trim + `new URL(...)` の try/catch で空文字 / 不正な URL でビルドが落ちないよう
- * 防御する（layout.tsx の `resolveMetadataBase` と同じ流儀）。`URL.origin` を使い
- * 末尾スラッシュやパス・クエリを取り除いた純粋な scheme://host[:port] を返すため、
- * `${origin}/sitemap.xml` の組み立てが安全になる。
- */
-function getSiteOrigin(): string {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (!raw) return DEFAULT_SITE_URL;
-  try {
-    return new URL(raw).origin;
-  } catch {
-    return DEFAULT_SITE_URL;
-  }
-}
 
 export default function robots(): MetadataRoute.Robots {
   const isProduction = process.env.NEXT_PUBLIC_SENTRY_ENV === "production";
