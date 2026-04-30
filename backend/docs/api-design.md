@@ -154,7 +154,7 @@ Content-Type: application/json
 | GET    | `/episodes/{id}/ratings/mine` | 必要  | 自分の評価取得             | 未実装 |
 | PUT    | `/episodes/{id}/ratings/mine` | 必要  | 自分の評価更新             | 未実装 |
 | DELETE | `/episodes/{id}/ratings/mine` | 必要  | 自分の評価削除             | 未実装 |
-| GET    | `/episodes/{id}/ratings`      | 不要  | エピソードの評価集計（平均・件数）   | 未実装 |
+| GET    | `/episodes/{id}/ratings`      | 不要  | エピソードの評価集計（平均・件数・分布） | 未実装 |
 | GET    | `/users/me/ratings`           | 必要  | 自分の評価一覧             | 未実装 |
 
 
