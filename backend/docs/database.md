@@ -55,12 +55,20 @@ erDiagram
         TIMESTAMPTZ created_at
     }
 
-    reviews {
+    ratings {
         UUID id PK
         UUID user_id FK
         UUID episode_id FK
         SMALLINT rating
-        VARCHAR(1000) comment
+        TIMESTAMPTZ created_at
+        TIMESTAMPTZ updated_at
+    }
+
+    comments {
+        UUID id PK
+        UUID user_id FK
+        UUID episode_id FK
+        VARCHAR(1000) body
         TIMESTAMPTZ created_at
         TIMESTAMPTZ updated_at
     }
@@ -86,8 +94,10 @@ erDiagram
     podcasts ||--o{ episodes : "has many"
     users ||--o{ listening_records : "has many"
     episodes ||--o{ listening_records : "has many"
-    users ||--o{ reviews : "has many"
-    episodes ||--o{ reviews : "has many"
+    users ||--o{ ratings : "has many"
+    episodes ||--o{ ratings : "has many"
+    users ||--o{ comments : "has many"
+    episodes ||--o{ comments : "has many"
     users ||--o{ favorite_podcasts : "has many"
     podcasts ||--o{ favorite_podcasts : "has many"
     users ||--o{ podcast_requests : "has many"
@@ -162,9 +172,9 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | episode_id | UUID | NO | - | FK → episodes.id（CASCADE DELETE） |
 | created_at | TIMESTAMPTZ | NO | NOW() | 記録日時 |
 
-### reviews
+### ratings
 
-ユーザーのレビュー。1ユーザー1エピソードにつき1レビュー。
+ユーザーの星評価（1〜5）。1ユーザー1エピソードにつき1件（重複不可、編集で更新する）。感想（comments）とは独立した別オブジェクトで、評価のみ・感想のみ・両方のいずれの組み合わせも可能。
 
 | カラム | 型 | NULL | デフォルト | 説明 |
 |---|---|---|---|---|
@@ -172,7 +182,19 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | user_id | UUID | NO | - | FK → users.id（CASCADE DELETE） |
 | episode_id | UUID | NO | - | FK → episodes.id（CASCADE DELETE） |
 | rating | SMALLINT | NO | - | 評価（1〜5） |
-| comment | VARCHAR(1000) | YES | - | コメント |
+| created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
+| updated_at | TIMESTAMPTZ | NO | NOW() | 更新日時 |
+
+### comments
+
+ユーザーのテキスト感想。**1ユーザー1エピソードに対して複数件投稿可能**（重複制限なし）。評価（ratings）とは独立した別オブジェクトで、評価のみ・感想のみ・両方のいずれの組み合わせも可能。
+
+| カラム | 型 | NULL | デフォルト | 説明 |
+|---|---|---|---|---|
+| id | UUID | NO | gen_random_uuid() | PK |
+| user_id | UUID | NO | - | FK → users.id（CASCADE DELETE） |
+| episode_id | UUID | NO | - | FK → episodes.id（CASCADE DELETE） |
+| body | VARCHAR(1000) | NO | - | 感想本文（最大 1000 文字。短文〜長文まで対応するが、フォーム UI は短文を前提に設計する） |
 | created_at | TIMESTAMPTZ | NO | NOW() | 作成日時 |
 | updated_at | TIMESTAMPTZ | NO | NOW() | 更新日時 |
 
@@ -220,10 +242,12 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | listening_records | idx_listening_records_user_episode | (user_id, episode_id) | ユニーク | - |
 | listening_records | idx_listening_records_user_id_created_at | (user_id, created_at DESC) | 通常 | - |
 | listening_records | idx_listening_records_episode_id | episode_id | 通常 | - |
-| reviews | idx_reviews_user_episode | (user_id, episode_id) | ユニーク | - |
-| reviews | idx_reviews_episode_id | episode_id | 通常 | - |
-| reviews | idx_reviews_user_id_created_at | (user_id, created_at DESC) | 通常 | - |
-| reviews | idx_reviews_created_at | created_at DESC | 通常 | - |
+| ratings | idx_ratings_user_episode | (user_id, episode_id) | ユニーク | - |
+| ratings | idx_ratings_episode_id | episode_id | 通常 | - |
+| ratings | idx_ratings_user_id_created_at | (user_id, created_at DESC) | 通常 | - |
+| comments | idx_comments_episode_id_created_at | (episode_id, created_at DESC) | 通常 | エピソード詳細の感想一覧（新しい順） |
+| comments | idx_comments_user_id_created_at | (user_id, created_at DESC) | 通常 | ユーザーの感想一覧 |
+| comments | idx_comments_created_at | created_at DESC | 通常 | グローバルタイムライン |
 | favorite_podcasts | idx_favorite_podcasts_user_podcast | (user_id, podcast_id) | ユニーク | - |
 | favorite_podcasts | idx_favorite_podcasts_user_position | (user_id, position) | ユニーク | - |
 | podcast_requests | idx_podcast_requests_user_id | user_id | 通常 | - |
@@ -241,10 +265,14 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 | listening_records | listening_records_pkey | PRIMARY KEY | id |
 | listening_records | listening_records_user_id_fkey | FOREIGN KEY | user_id → users.id (CASCADE DELETE) |
 | listening_records | listening_records_episode_id_fkey | FOREIGN KEY | episode_id → episodes.id (CASCADE DELETE) |
-| reviews | reviews_pkey | PRIMARY KEY | id |
-| reviews | reviews_user_id_fkey | FOREIGN KEY | user_id → users.id (CASCADE DELETE) |
-| reviews | reviews_episode_id_fkey | FOREIGN KEY | episode_id → episodes.id (CASCADE DELETE) |
-| reviews | reviews_rating_check | CHECK | rating >= 1 AND rating <= 5 |
+| ratings | ratings_pkey | PRIMARY KEY | id |
+| ratings | ratings_user_id_fkey | FOREIGN KEY | user_id → users.id (CASCADE DELETE) |
+| ratings | ratings_episode_id_fkey | FOREIGN KEY | episode_id → episodes.id (CASCADE DELETE) |
+| ratings | ratings_rating_check | CHECK | rating >= 1 AND rating <= 5 |
+| comments | comments_pkey | PRIMARY KEY | id |
+| comments | comments_user_id_fkey | FOREIGN KEY | user_id → users.id (CASCADE DELETE) |
+| comments | comments_episode_id_fkey | FOREIGN KEY | episode_id → episodes.id (CASCADE DELETE) |
+| comments | comments_body_length_check | CHECK | char_length(body) >= 1 AND char_length(body) <= 1000 |
 | favorite_podcasts | favorite_podcasts_pkey | PRIMARY KEY | id |
 | favorite_podcasts | favorite_podcasts_user_id_fkey | FOREIGN KEY | user_id → users.id (CASCADE DELETE) |
 | favorite_podcasts | favorite_podcasts_podcast_id_fkey | FOREIGN KEY | podcast_id → podcasts.id (CASCADE DELETE) |
@@ -268,6 +296,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 
 | 日付 | 変更内容 |
 |---|---|
+| 2026-04-30 | コアコンセプト転換に伴う評価/感想分離: `reviews` テーブルを廃止し、`ratings`（星評価のみ、1ユーザー1エピソード=1件）と `comments`（テキスト感想、1ユーザー1エピソードに複数件投稿可）の2テーブルに分離。インデックス・制約も新モデルに合わせて再設計（podlog#388 / 親 Issue: podlog-workspace#59）。マイグレーション SQL は podlog#389 で実装する |
 | 2026-04-07 | podcasts テーブルに feed_last_fetched_at カラムを追加（マイグレーション 009） |
 | 2026-03-21 | マイグレーション 001〜008 との突き合わせを実施し、差分がないことを確認 |
 | 2026-03-11 | 機能要件書・API設計書に基づいて全面改訂。favorite_podcasts・podcast_requests テーブルの追加、インデックス・制約の整理、設計方針の補完 |
