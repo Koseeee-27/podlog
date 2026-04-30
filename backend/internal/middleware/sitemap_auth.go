@@ -72,9 +72,19 @@ func SitemapAuth(expectedToken string, isDev bool) echo.MiddlewareFunc {
 				return response.Error(c, http.StatusUnauthorized, "unauthorized")
 			}
 
-			// fail-secure: 期待トークンが空（誤設定）のときは認証を成功させない。
-			// この分岐がないと expectedToken == "" のときに ConstantTimeCompare(token, "")
-			// が「token も空なら一致」と判定してしまい、空文字列で素通りされる事故になる。
+			// fail-secure: 期待トークンが空（設定漏れ）のときは認証を成功させない。
+			//
+			// 現状は extractBearerToken が空トークン（"Bearer " 等で TrimSpace 後に
+			// 空になるケース）を tokenInvalidFormat で弾くため、上の分岐で先に 401
+			// になっている。つまり「クライアントが空 + expectedToken も空 →
+			// ConstantTimeCompare で一致して素通り」という経路は現状塞がっている。
+			//
+			// それでも expectedToken == "" を明示的に拒否しているのは、
+			// (1) 設定漏れ時に常に 401 を返す（=本番環境で SITEMAP_API_TOKEN 未設定の
+			//     誤設定を運用上検知しやすくする）、
+			// (2) 将来 extractBearerToken の挙動が変わっても素通りさせない、
+			// という防御的なガードとして残しておくため。Validate() 側の起動時必須
+			// チェックと合わせた多重防御の一段階。
 			//
 			// crypto/subtle.ConstantTimeCompare はタイミング攻撃対策のための定数時間比較。
 			// 通常の == 演算子だと文字列の先頭から不一致箇所までの実行時間が変わるため、

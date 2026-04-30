@@ -100,30 +100,22 @@ func TestSitemapAuth_DevModePassesWithWrongToken(t *testing.T) {
 }
 
 // TestSitemapAuth_FailSecureWhenExpectedTokenIsEmpty は本番モードで expectedToken が
-// 空文字列のとき、たとえ正しい形式の Bearer ヘッダーがあっても 401 を返すことを検証します。
+// 空文字列（設定漏れ）のとき、クライアントが正しい形式の Bearer ヘッダーを送っても
+// 401 が返ることを検証します。これが SitemapAuth の fail-secure 分岐の本質的なテスト。
 //
-// 背景: 万一 SITEMAP_API_TOKEN が本番で未設定（空文字列）になった場合、
-// ConstantTimeCompare("", "") は一致を返すため、空の Bearer ヘッダーで素通りしてしまう。
-// fail-secure として明示的に「expectedToken が空なら常に 401」を返す分岐を入れている。
+// 背景: extractBearerToken が空トークン（"Bearer " など TrimSpace 後に空）を
+// tokenInvalidFormat で弾くため、ヘッダー無しや空トークンを送るケースは
+// TestSitemapAuth_MissingHeader / TestSitemapAuth_EmptyBearer 側で網羅されている。
+// したがって fail-secure 分岐（expectedToken == "" のチェック）に到達する唯一の
+// シナリオは「expectedToken が空 + クライアントが何らかの非空トークンを送る」
+// のケースであり、それを 1 ケースで確認する。
 func TestSitemapAuth_FailSecureWhenExpectedTokenIsEmpty(t *testing.T) {
 	e := newSitemapAuthTestEcho("", false)
 
-	// クライアント側が空のトークンを送る、または何かしら値を送る、
-	// どちらのケースでも 401 になることを確認する。
-	tests := []struct {
-		name       string
-		authHeader string
-	}{
-		{"クライアント側が空（=空のトークンで素通り狙い）", ""},
-		{"クライアント側が何らかの値を送る", "Bearer some-guess"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			rec := sendSitemapRequest(e, tt.authHeader)
-			if rec.Code != http.StatusUnauthorized {
-				t.Errorf("status = %d, want %d (fail-secure when expectedToken is empty)", rec.Code, http.StatusUnauthorized)
-			}
-		})
+	rec := sendSitemapRequest(e, "Bearer some-guess")
+
+	if rec.Code != http.StatusUnauthorized {
+		t.Errorf("status = %d, want %d (fail-secure when expectedToken is empty)", rec.Code, http.StatusUnauthorized)
 	}
 }
 
