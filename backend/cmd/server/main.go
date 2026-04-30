@@ -291,8 +291,11 @@ func run() error {
 	}
 
 	// 10. ルーティングを設定
-	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス
-	if err := router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs); err != nil {
+	// adminUserIDs は環境変数 ADMIN_USER_IDS をカンマ区切りでパースしたスライス。
+	// cfg.SitemapAPIToken は sitemap 用内部 API の Bearer トークン（FE と共有する pre-shared token）。
+	// isDev は SitemapAuth ミドルウェアの素通し判定に使われる（development では認証スキップ）。
+	isDev := cfg.Environment == logging.EnvDevelopment
+	if err := router.Setup(e, handlers, cfg.SupabaseURL, adminUserIDs, cfg.SitemapAPIToken, isDev); err != nil {
 		return fmt.Errorf("failed to setup router: %w", err)
 	}
 

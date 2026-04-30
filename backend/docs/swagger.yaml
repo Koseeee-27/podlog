@@ -1412,7 +1412,9 @@ paths:
       - podcasts
   /sitemap/episodes:
     get:
-      description: sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。
+      description: sitemap 生成用に、全 episode の id / updated_at のみを軽量に返します。ページングなし。FE
+        の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development
+        環境では認証スキップ）。
       produces:
       - application/json
       responses:
@@ -1420,18 +1422,28 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/usecase.SitemapEpisodesResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: sitemap 用 episode 一覧取得
       tags:
       - sitemap
   /sitemap/podcasts:
     get:
-      description: sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。
+      description: sitemap 生成用に、全 podcast の id / updated_at のみを軽量に返します。ページングなし。FE
+        の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development
+        環境では認証スキップ）。
       produces:
       - application/json
       responses:
@@ -1439,18 +1451,28 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/usecase.SitemapPodcastsResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: sitemap 用 podcast 一覧取得
       tags:
       - sitemap
   /sitemap/users:
     get:
-      description: sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。
+      description: sitemap 生成用に、有効な全ユーザーの username / updated_at のみを軽量に返します。ページングなし。ソフトデリート済みユーザーは除外。FE
+        の app/sitemap.ts からのみ呼ばれる内部 API で、Authorization ヘッダーで共有秘密の Bearer トークン（SITEMAP_API_TOKEN）を要求します（development
+        環境では認証スキップ）。
       produces:
       - application/json
       responses:
@@ -1458,12 +1480,20 @@ paths:
           description: OK
           schema:
             $ref: '#/definitions/usecase.SitemapUsersResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
         "500":
           description: Internal Server Error
           schema:
             additionalProperties:
               type: string
             type: object
+      security:
+      - BearerAuth: []
       summary: sitemap 用 user 一覧取得
       tags:
       - sitemap
