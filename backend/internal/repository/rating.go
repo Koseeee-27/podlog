@@ -176,7 +176,10 @@ func (r *ratingRepository) queryDistribution(ctx context.Context, query string, 
 // 削除済みユーザーの評価は除外するため users テーブルと JOIN し、deleted_at IS NULL で
 // 絞り込みます。これは旧 ReviewRepository の集計クエリと同じ流儀です。
 func (r *ratingRepository) GetEpisodeStats(ctx context.Context, episodeID uuid.UUID) (float64, int, map[int]int, error) {
-	// 1. 平均と総件数（FILTER で削除済みユーザーを除外）
+	// 1. 平均と総件数（JOIN + WHERE で削除済みユーザーを除外）。
+	//    `repository/{episode,podcast}.go` の集計クエリは LEFT JOIN を使うため
+	//    NULL ガードに `FILTER (WHERE u.id IS NOT NULL)` を併用するが、
+	//    ここは INNER JOIN 主体なので JOIN + WHERE のみで十分（FILTER 句は不要）。
 	var aggregated struct {
 		Average *float64 `db:"average"`
 		Count   int      `db:"count"`
