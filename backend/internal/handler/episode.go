@@ -16,20 +16,29 @@ import (
 // EpisodeHandler はエピソード関連のHTTPハンドラーです。
 // podcastUsecase は feed_url を持つポッドキャストの取得に使用します。
 // ratingUsecase はエピソード詳細に平均評価・評価件数を付加するために使用します。
+// commentUsecase はエピソード詳細に感想件数（total_comments）を付加するために使用します。
 type EpisodeHandler struct {
 	episodeUsecase usecase.EpisodeUsecase
 	podcastUsecase usecase.PodcastUsecase
 	ratingUsecase  usecase.RatingUsecase
+	commentUsecase usecase.CommentUsecase
 }
 
 // NewEpisodeHandler は EpisodeHandler を生成します。
 // podcastUsecase は FetchFromFeed で feed_url を取得するために必要です。
 // ratingUsecase はエピソード詳細のレスポンスに平均評価を含めるために必要です。
-func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase, podcastUsecase usecase.PodcastUsecase, ratingUsecase usecase.RatingUsecase) *EpisodeHandler {
+// commentUsecase はエピソード詳細のレスポンスに total_comments を含めるために必要です。
+func NewEpisodeHandler(
+	episodeUsecase usecase.EpisodeUsecase,
+	podcastUsecase usecase.PodcastUsecase,
+	ratingUsecase usecase.RatingUsecase,
+	commentUsecase usecase.CommentUsecase,
+) *EpisodeHandler {
 	return &EpisodeHandler{
 		episodeUsecase: episodeUsecase,
 		podcastUsecase: podcastUsecase,
 		ratingUsecase:  ratingUsecase,
+		commentUsecase: commentUsecase,
 	}
 }
 
@@ -75,13 +84,10 @@ func (h *EpisodeHandler) Create(c echo.Context) error {
 }
 
 // GetByID はエピソード詳細を取得するハンドラーです。
-// API 設計書に従い、podcast 情報と average_rating / total_ratings を含むレスポンスを返します。
+// API 設計書に従い、podcast 情報・average_rating / total_ratings・total_comments を含むレスポンスを返します。
 // OptionalJWTAuth ミドルウェアの後に実行され、認証済みの場合は聴取状態（listened）も含みます。
-//
-// 注: API 設計書では `total_comments` も含む方針だが、本 PR (podlog#390) は rating レイヤーのみ
-// 切替する。`total_comments` の追加は podlog#391（comment レイヤー実装）で行う。
 // @Summary エピソード詳細取得
-// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。
+// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数・感想件数を含みます。認証済みの場合は聴取状態も含みます。
 // @Tags episodes
 // @Produce json
 // @Param id path string true "エピソードID (UUID)"
@@ -126,6 +132,14 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episode rating")
 	}
 
+	// エピソードの感想件数を取得（total_comments）。
+	// 集計専用の軽量メソッド（COUNT(*) 1 クエリ）。一覧本体は別エンドポイント
+	// `GET /episodes/{id}/comments` で取得するため、ここでは件数のみ。
+	totalComments, err := h.commentUsecase.CountByEpisodeID(ctx, id)
+	if err != nil {
+		return response.Error(c, http.StatusInternalServerError, "failed to count comments")
+	}
+
 	// API 設計書のレスポンス形式に合わせて組み立て
 	result := usecase.EpisodeDetailResult{
 		ID:          episode.ID,
@@ -141,6 +155,7 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		},
 		AverageRating: stats.AverageRating,
 		TotalRatings:  stats.TotalRatings,
+		TotalComments: totalComments,
 		CreatedAt:     episode.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 	if episode.PublishedAt != nil {

@@ -19,6 +19,7 @@ type Handlers struct {
 	Episode         *handler.EpisodeHandler
 	ListeningRecord *handler.ListeningRecordHandler
 	Rating          *handler.RatingHandler
+	Comment         *handler.CommentHandler
 	FavoritePodcast *handler.FavoritePodcastHandler
 	PodcastRequest  *handler.PodcastRequestHandler
 	Genre           *handler.GenreHandler
@@ -74,6 +75,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 	v1.GET("/users/:username", h.User.GetPublicProfile)
 	v1.GET("/users/:username/listening-records", h.ListeningRecord.GetUserListeningRecords)
 	v1.GET("/users/:username/ratings/stats", h.Rating.GetUsernameStats)
+	v1.GET("/users/:username/comments", h.Comment.GetByUsername)
 	v1.GET("/users/:username/favorite-podcasts", h.FavoritePodcast.GetUserFavoritePodcasts)
 
 	// Genres (公開)
@@ -91,16 +93,17 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 
 	// Ratings 集計 (公開)
 	// `/episodes/:id/ratings` (GET, 公開) は集計値（平均・件数・分布）を返します。
-	// 旧 `/episodes/:id/reviews` (list) はデータソースとして廃止し、感想一覧は podlog#391 で
-	// 追加する `/episodes/:id/comments` 系から取得する設計に変更しました。
+	// 感想一覧は `/episodes/:id/comments` (GET, 公開) で別途取得します。
 	v1.GET("/episodes/:id/ratings", h.Rating.GetEpisodeStats)
 
 	// Podcasts 評価 (公開)
 	v1.GET("/podcasts/:id/rating", h.Rating.GetPodcastRating)
 
-	// Timeline はリリース前の評価/感想分離リファクタ中につき一時的に未提供です。
-	// 旧 `/timeline` は rating + comment の混在モデルに依存していたため本 PR で撤去し、
-	// comment ベースの新タイムラインは podlog#391 で復活する予定です。
+	// Comments 一覧 (公開)
+	// エピソード詳細に並べる感想一覧と、全ユーザーの最新感想を時系列で並べるタイムライン。
+	// rating と独立して取得できる（評価のみ・感想のみ・両方の組合せがある仕様のため）。
+	v1.GET("/episodes/:id/comments", h.Comment.GetByEpisodeID)
+	v1.GET("/timeline", h.Comment.GetTimeline)
 
 	// Sitemap（内部 API: Bearer トークン認証）
 	//
@@ -153,6 +156,15 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 	auth.PUT("/episodes/:id/ratings/mine", h.Rating.Update)
 	auth.DELETE("/episodes/:id/ratings/mine", h.Rating.Delete)
 	auth.GET("/users/me/ratings", h.Rating.GetMyRatings)
+
+	// Comments (認証必要)
+	// rating と異なり 1ユーザー1エピソード=複数件可のため、`/episodes/:id/comments/mine` のような
+	// 「自分のコメント」エンドポイントは提供せず、コメント ID 単位で更新・削除します。
+	// 所有者チェック失敗時は 403、不存在は 404 を返します（api-design.md 準拠）。
+	auth.POST("/episodes/:id/comments", h.Comment.Create)
+	auth.PUT("/comments/:id", h.Comment.Update)
+	auth.DELETE("/comments/:id", h.Comment.Delete)
+	auth.GET("/users/me/comments", h.Comment.GetMyComments)
 
 	// Favorite Podcasts (認証必要)
 	auth.PUT("/users/me/favorite-podcasts", h.FavoritePodcast.UpdateFavoritePodcasts)

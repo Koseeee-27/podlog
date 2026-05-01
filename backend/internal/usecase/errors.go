@@ -45,3 +45,18 @@ type SSRFBlockedError struct {
 func (e *SSRFBlockedError) Error() string {
 	return e.Message
 }
+
+// ForbiddenError は認可失敗（操作権限なし）を表すエラーです。
+// handler 層では 403 Forbidden を返します。
+//
+// 用途: リソース自体は存在するが、認証ユーザーが操作権限を持たない場合に使う。
+// 例: PUT/DELETE /comments/{id} で「他人のコメント」を操作しようとしたケース。
+// リソース不存在は NotFoundError、認可失敗は ForbiddenError と区別する
+// （api-design.md の comment 仕様で 403/404 を使い分けるため）。
+type ForbiddenError struct {
+	Message string
+}
+
+func (e *ForbiddenError) Error() string {
+	return e.Message
+}
