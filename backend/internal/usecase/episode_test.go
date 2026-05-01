@@ -857,13 +857,13 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 					Title:         "エピソード1",
 					PublishedAt:   &now,
 					AverageRating: 4.333,
-					TotalReviews:  3,
+					TotalRatings:  3,
 				},
 				{
 					ID:            ep2ID,
 					Title:         "エピソード2",
 					AverageRating: 0,
-					TotalReviews:  0,
+					TotalRatings:  0,
 				},
 			}, 2, nil
 		},
@@ -884,8 +884,8 @@ func TestGetByPodcastIDWithStats_Success(t *testing.T) {
 	if math.Abs(result.Episodes[0].AverageRating-4.3) > 0.001 {
 		t.Errorf("expected average_rating 4.3, got %f", result.Episodes[0].AverageRating)
 	}
-	if result.Episodes[0].TotalReviews != 3 {
-		t.Errorf("expected total_reviews 3, got %d", result.Episodes[0].TotalReviews)
+	if result.Episodes[0].TotalRatings != 3 {
+		t.Errorf("expected total_ratings 3, got %d", result.Episodes[0].TotalRatings)
 	}
 	// published_at が nil のエピソードでもエラーにならないこと
 	if result.Episodes[1].PublishedAt != nil {
@@ -974,14 +974,14 @@ func TestGetByPodcastIDWithStats_WithUserID_Listened(t *testing.T) {
 					Title:         "聴取済みエピソード",
 					PublishedAt:   &now,
 					AverageRating: 4.0,
-					TotalReviews:  2,
+					TotalRatings:  2,
 					Listened:      &listenedTrue,
 				},
 				{
 					ID:            ep2ID,
 					Title:         "未聴取エピソード",
 					AverageRating: 0,
-					TotalReviews:  0,
+					TotalRatings:  0,
 					Listened:      &listenedFalse,
 				},
 			}, 2, nil
@@ -1023,7 +1023,7 @@ func TestGetByPodcastIDWithStats_WithoutUserID_ListenedNil(t *testing.T) {
 					Title:         "エピソード",
 					PublishedAt:   &now,
 					AverageRating: 3.5,
-					TotalReviews:  1,
+					TotalRatings:  1,
 					Listened:      nil, // 未認証のため nil
 				},
 			}, 1, nil

@@ -30,7 +30,7 @@ type PodcastSearchRow struct {
 	Author        *string   `db:"author"`
 	ArtworkURL    *string   `db:"artwork_url"`
 	AverageRating float64   `db:"average_rating"`
-	TotalReviews  int       `db:"total_reviews"`
+	TotalRatings  int       `db:"total_ratings"`
 	FavoriteCount int       `db:"favorite_count"`
 }
 
@@ -173,7 +173,7 @@ func (r *podcastRepository) ExistsByIDs(ctx context.Context, ids []uuid.UUID) ([
 // GetByIDsWithStats は指定された podcast_id のリストに対して、Search と同じ集計値込みで
 // 番組レコードを一括取得します。N+1 を避けるため IN 句で 1 クエリにまとめます。
 //
-// 集計値（average_rating / total_reviews / favorite_count）の計算ロジックは
+// 集計値（average_rating / total_ratings / favorite_count）の計算ロジックは
 // Search のデータ取得 SQL と完全に一致させています。
 // 同じ番組が「DB キーワード検索ヒット経路」と「iTunes フォールバック経由の既存番組経路」の
 // どちらで返ってきても集計値が同一になるよう、JOIN 条件もすべて揃えます。
@@ -198,11 +198,11 @@ func (r *podcastRepository) GetByIDsWithStats(ctx context.Context, ids []uuid.UU
 			p.author,
 			p.artwork_url,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_ratings,
 			COALESCE(fav.cnt, 0)::int AS favorite_count
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
-		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN ratings r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		LEFT JOIN (
 			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
@@ -294,7 +294,7 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 	// キーワード検索のみの場合はタイトル順のまま（検索ワードとの関連性を重視）。
 	orderBy := "p.title, p.id"
 	if len(genres) > 0 {
-		orderBy = "favorite_count DESC, total_reviews DESC, average_rating DESC, p.title, p.id"
+		orderBy = "favorite_count DESC, total_ratings DESC, average_rating DESC, p.title, p.id"
 	}
 
 	// LIMIT / OFFSET のプレースホルダ番号は、これまでの args の数 +1, +2 になります。
@@ -307,11 +307,11 @@ func (r *podcastRepository) Search(ctx context.Context, query string, genres []s
 			p.author,
 			p.artwork_url,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_ratings,
 			COALESCE(fav.cnt, 0)::int AS favorite_count
 		FROM podcasts p
 		LEFT JOIN episodes e ON p.id = e.podcast_id
-		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN ratings r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		LEFT JOIN (
 			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
@@ -430,11 +430,11 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 			p.author,
 			p.artwork_url,
 			AVG(r.rating)::float8 AS average_rating,
-			COUNT(r.id)::int AS total_reviews,
+			COUNT(r.id)::int AS total_ratings,
 			COALESCE(fav.cnt, 0)::int AS favorite_count
 		FROM podcasts p
 		INNER JOIN episodes e ON p.id = e.podcast_id
-		INNER JOIN reviews r ON e.id = r.episode_id
+		INNER JOIN ratings r ON e.id = r.episode_id
 		INNER JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		LEFT JOIN (
 			SELECT fp.podcast_id, COUNT(fp.user_id)::int AS cnt
@@ -443,7 +443,7 @@ func (r *podcastRepository) GetPopular(ctx context.Context, limit int) ([]Podcas
 			GROUP BY fp.podcast_id
 		) fav ON p.id = fav.podcast_id
 		GROUP BY p.id, p.title, p.author, p.artwork_url, fav.cnt
-		ORDER BY total_reviews DESC, average_rating DESC, p.id
+		ORDER BY total_ratings DESC, average_rating DESC, p.id
 		LIMIT $1
 	`
 	var rows []PodcastSearchRow

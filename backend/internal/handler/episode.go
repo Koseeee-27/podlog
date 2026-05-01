@@ -15,21 +15,21 @@ import (
 
 // EpisodeHandler はエピソード関連のHTTPハンドラーです。
 // podcastUsecase は feed_url を持つポッドキャストの取得に使用します。
-// reviewUsecase はエピソード詳細に平均評価・レビュー件数を付加するために使用します。
+// ratingUsecase はエピソード詳細に平均評価・評価件数を付加するために使用します。
 type EpisodeHandler struct {
 	episodeUsecase usecase.EpisodeUsecase
 	podcastUsecase usecase.PodcastUsecase
-	reviewUsecase  usecase.ReviewUsecase
+	ratingUsecase  usecase.RatingUsecase
 }
 
 // NewEpisodeHandler は EpisodeHandler を生成します。
 // podcastUsecase は FetchFromFeed で feed_url を取得するために必要です。
-// reviewUsecase はエピソード詳細のレスポンスに平均評価を含めるために必要です。
-func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase, podcastUsecase usecase.PodcastUsecase, reviewUsecase usecase.ReviewUsecase) *EpisodeHandler {
+// ratingUsecase はエピソード詳細のレスポンスに平均評価を含めるために必要です。
+func NewEpisodeHandler(episodeUsecase usecase.EpisodeUsecase, podcastUsecase usecase.PodcastUsecase, ratingUsecase usecase.RatingUsecase) *EpisodeHandler {
 	return &EpisodeHandler{
 		episodeUsecase: episodeUsecase,
 		podcastUsecase: podcastUsecase,
-		reviewUsecase:  reviewUsecase,
+		ratingUsecase:  ratingUsecase,
 	}
 }
 
@@ -75,10 +75,13 @@ func (h *EpisodeHandler) Create(c echo.Context) error {
 }
 
 // GetByID はエピソード詳細を取得するハンドラーです。
-// API 設計書に従い、podcast 情報と average_rating / total_reviews を含むレスポンスを返します。
+// API 設計書に従い、podcast 情報と average_rating / total_ratings を含むレスポンスを返します。
 // OptionalJWTAuth ミドルウェアの後に実行され、認証済みの場合は聴取状態（listened）も含みます。
+//
+// 注: API 設計書では `total_comments` も含む方針だが、本 PR (podlog#390) は rating レイヤーのみ
+// 切替する。`total_comments` の追加は podlog#391（comment レイヤー実装）で行う。
 // @Summary エピソード詳細取得
-// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
+// @Description エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。
 // @Tags episodes
 // @Produce json
 // @Param id path string true "エピソードID (UUID)"
@@ -116,8 +119,9 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
-	// エピソードの平均評価・レビュー件数を取得（統計専用メソッドで軽量に取得）
-	rating, err := h.reviewUsecase.GetEpisodeRating(ctx, id)
+	// エピソードの平均評価・評価件数を取得（集計専用メソッドで軽量に取得）。
+	// 詳細レスポンスには distribution は含めないので、Stats.AverageRating / TotalRatings のみ使う。
+	stats, err := h.ratingUsecase.GetEpisodeStats(ctx, id)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get episode rating")
 	}
@@ -135,8 +139,8 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 			Title:      podcast.Title,
 			ArtworkURL: podcast.ArtworkURL,
 		},
-		AverageRating: rating.AverageRating,
-		TotalReviews:  rating.TotalReviews,
+		AverageRating: stats.AverageRating,
+		TotalRatings:  stats.TotalRatings,
 		CreatedAt:     episode.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}
 	if episode.PublishedAt != nil {
@@ -165,11 +169,11 @@ func (h *EpisodeHandler) GetByID(c echo.Context) error {
 }
 
 // GetByPodcastID はポッドキャストのエピソード一覧を取得するハンドラーです。
-// API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+// API 設計書に従い、各エピソードに average_rating / total_ratings を含み、total を返します。
 // OptionalJWTAuth ミドルウェアの後に実行され、認証済みの場合は各エピソードの聴取状態（listened）も含みます。
 // Stale-While-Revalidate 方式で、必要に応じて RSS フィードからエピソードを自動取得します。
 // @Summary エピソード一覧取得
-// @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
+// @Description ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。
 // @Tags podcasts
 // @Produce json
 // @Param id path string true "ポッドキャストID (UUID)"

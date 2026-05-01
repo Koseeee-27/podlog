@@ -16,10 +16,10 @@ func newTestEpisode() *model.Episode {
 	}
 }
 
-// newTestReview はテスト用のレビューを生成します。
-func newTestReview(userID, episodeID uuid.UUID) *model.Review {
+// newTestRating はテスト用の評価を生成します。
+func newTestRating(userID, episodeID uuid.UUID) *model.Rating {
 	now := time.Now()
-	return &model.Review{
+	return &model.Rating{
 		ID:        uuid.New(),
 		UserID:    userID,
 		EpisodeID: episodeID,
