@@ -2,6 +2,7 @@ package handler
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -86,7 +87,7 @@ func (h *CommentHandler) GetByEpisodeID(c echo.Context) error {
 
 	result, err := h.commentUsecase.GetByEpisodeID(c.Request().Context(), episodeID, limit, offset)
 	if err != nil {
-		return response.Error(c, http.StatusInternalServerError, "failed to get comments")
+		return handleCommentError(c, err)
 	}
 
 	return response.Success(c, http.StatusOK, result)
@@ -186,7 +187,7 @@ func (h *CommentHandler) GetMyComments(c echo.Context) error {
 
 	result, err := h.commentUsecase.GetByUserID(c.Request().Context(), userID, limit, offset)
 	if err != nil {
-		return response.Error(c, http.StatusInternalServerError, "failed to get comments")
+		return handleCommentError(c, err)
 	}
 
 	return response.Success(c, http.StatusOK, result)
@@ -214,11 +215,11 @@ func (h *CommentHandler) GetByUsername(c echo.Context) error {
 
 	result, err := h.commentUsecase.GetByUsername(c.Request().Context(), username, limit, offset)
 	if err != nil {
-		var notFoundErr *usecase.NotFoundError
-		if errors.As(err, &notFoundErr) {
-			return response.Error(c, http.StatusNotFound, "user not found")
-		}
-		return response.Error(c, http.StatusInternalServerError, "failed to get comments")
+		// usecase は NotFoundError{Resource: "user"} を返すため、
+		// handleCommentError が "user not found" としてレスポンスを返します。
+		// 将来的に GetByUsername でバリデーション（username 形式不正等）が
+		// 追加されても 400/403/404/500 を一律ヘルパー経由で扱える。
+		return handleCommentError(c, err)
 	}
 
 	return response.Success(c, http.StatusOK, result)
@@ -238,7 +239,7 @@ func (h *CommentHandler) GetTimeline(c echo.Context) error {
 
 	result, err := h.commentUsecase.GetTimeline(c.Request().Context(), limit, offset)
 	if err != nil {
-		return response.Error(c, http.StatusInternalServerError, "failed to get timeline")
+		return handleCommentError(c, err)
 	}
 
 	return response.Success(c, http.StatusOK, result)
@@ -249,6 +250,11 @@ func (h *CommentHandler) GetTimeline(c echo.Context) error {
 // errors.As でカスタムエラー型を判定して、対応するステータスコードに変換します。
 // `ForbiddenError` は他のリソース（rating 等）では未使用ですが、comment では
 // 「他人のコメント = 403」を区別するために使います（api-design.md 準拠）。
+//
+// 500 を返す場合のみ、原因の err を slog.ErrorContext で記録します
+// （400/403/404 は想定内のクライアントエラーなのでログを残さない）。
+// backend.md の「エラーログには必ず "error" 属性を含める」ルールおよび
+// 「500 を返す直前に slog で記録する」運用に従います。
 func handleCommentError(c echo.Context, err error) error {
 	var notFoundErr *usecase.NotFoundError
 	var validationErr *usecase.ValidationError
@@ -263,5 +269,11 @@ func handleCommentError(c echo.Context, err error) error {
 	if errors.As(err, &forbiddenErr) {
 		return response.Error(c, http.StatusForbidden, err.Error())
 	}
+	slog.ErrorContext(c.Request().Context(), "comment handler unexpected error",
+		"error", err,
+		"method", c.Request().Method,
+		"path", c.Request().URL.Path,
+		"route", c.Path(),
+	)
 	return response.Error(c, http.StatusInternalServerError, "internal server error")
 }

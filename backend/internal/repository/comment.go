@@ -160,6 +160,20 @@ func (r *commentRepository) Delete(ctx context.Context, commentID uuid.UUID) err
 }
 
 // GetByID は ID で感想を取得します。存在しない場合は (nil, nil) を返します。
+//
+// NOTE（論理削除済みユーザーの取り扱い・仕様未確定）:
+// 一覧系メソッド（GetByEpisodeID / GetByUsername / GetTimeline / CountByEpisodeID）は
+// `users.deleted_at IS NULL` で論理削除済みユーザーの感想を除外しますが、本メソッドは
+// users JOIN を行わないため、論理削除済みユーザーの感想も id 一致なら返します。
+// 結果として、usecase 層の所有者チェック（`existing.UserID != userID`）では
+// 「論理削除済みでも自分の comment なら更新・削除できる」挙動になります
+// （一覧から消えた感想を直接 ID 指定で操作できる状態）。
+//
+// 仕様としてどちらが正しいかは現時点で未確定:
+//   - パターン A（自分の comment は削除済みでも操作可）: 自分の過去投稿を整理できる
+//   - パターン B（削除済みは誰も触れない）: 論理削除 = 完全凍結として一貫
+//
+// 論理削除フローを動かす段階で再検討します（フォロー Issue で扱う想定）。
 func (r *commentRepository) GetByID(ctx context.Context, commentID uuid.UUID) (*model.Comment, error) {
 	var comment model.Comment
 	query := `SELECT * FROM comments WHERE id = $1`

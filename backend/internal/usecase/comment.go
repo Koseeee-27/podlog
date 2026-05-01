@@ -375,6 +375,10 @@ func (u *commentUsecase) GetTimeline(ctx context.Context, limit, offset int) (*T
 //   - 前後の空白は trim する（DB に保存する値）
 //   - trim 後に空文字なら ValidationError
 //   - 1〜1000 文字（コードポイント数）でなければ ValidationError
+//   - NULL バイト（U+0000）を含む場合は ValidationError
+//     （PostgreSQL の TEXT/VARCHAR は NUL byte を物理的に保存できず、
+//     "invalid byte sequence for encoding UTF8: 0x00" で 500 エラーになるため
+//     usecase 層で 400 として弾く）
 //   - DB 側の `comments_body_length_check` (char_length 1〜1000) と整合
 func validateCommentBody(raw string) (string, error) {
 	body := strings.TrimSpace(raw)
@@ -383,6 +387,9 @@ func validateCommentBody(raw string) (string, error) {
 	}
 	if utf8.RuneCountInString(body) > commentBodyMaxLength {
 		return "", &ValidationError{Message: "body must be 1-1000 characters"}
+	}
+	if strings.ContainsRune(body, 0) {
+		return "", &ValidationError{Message: "body must not contain null bytes"}
 	}
 	return body, nil
 }

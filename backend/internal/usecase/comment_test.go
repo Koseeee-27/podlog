@@ -145,6 +145,21 @@ func TestValidateCommentBody(t *testing.T) {
 			t.Fatal("expected validation error for 1001 chars")
 		}
 	})
+
+	t.Run("NULL バイトを含む本文はエラー（PG の UTF8 制約で 500 になるのを防ぐ）", func(t *testing.T) {
+		// PostgreSQL の TEXT/VARCHAR は NUL byte を保存できず
+		// "invalid byte sequence for encoding UTF8: 0x00" で 500 になる。
+		// usecase 層で 400 として弾く。
+		body := "hello\x00world"
+		_, err := validateCommentBody(body)
+		if err == nil {
+			t.Fatal("expected validation error for null-byte body")
+		}
+		var ve *ValidationError
+		if !errors.As(err, &ve) {
+			t.Fatalf("expected ValidationError, got %T", err)
+		}
+	})
 }
 
 // ── テスト: Create ──
