@@ -1,11 +1,22 @@
 # Makefile - よく使うコマンドをまとめたファイル
 # `make run` のように短いコマンドで実行できます
 
-.PHONY: run build test lint swagger clean
+.PHONY: run build test lint swagger clean migrate-up migrate-down
 
 # ローカルでサーバーを起動（Docker不使用）
 run:
 	go run ./cmd/server
+
+# マイグレーション: 未適用のマイグレーションを全て適用する
+# サーバー起動時（cmd/server）にも自動で同じ Up が走るが、
+# Down 検証や CI/CD で明示的に流したいときに使う
+migrate-up:
+	go run ./cmd/migrate up
+
+# マイグレーション: 直近 1 ステップだけロールバックする
+# 連続して巻き戻したい場合は本コマンドを複数回叩く（誤操作で全消し事故を防ぐため）
+migrate-down:
+	go run ./cmd/migrate down
 
 # バイナリをビルド
 build:
