@@ -215,9 +215,11 @@ func (r *ratingRepository) GetEpisodeStats(ctx context.Context, episodeID uuid.U
 
 // GetUsernameStats はユーザー名で指定したユーザーの評価集計値（平均・件数・分布）を返します。
 //
-// 削除済みユーザー判定は呼び出し元（usecase 層の ExistsByUsername）が事前に行うため、
-// このメソッド内では deleted_at の絞り込みは省略しています（ratings は ON DELETE CASCADE で
-// users 削除時に物理削除されるため、削除済みユーザーの評価が残っているケースは無い）。
+// 呼び出し元（usecase 層）が `ExistsByUsername` で論理削除済みユーザーを事前に弾く想定だが、
+// `ExistsByUsername` と本メソッドの間で論理削除が走る TOCTOU レースに備えて、SQL 側でも
+// `users.deleted_at IS NULL` で防御的に絞り込んでいる。
+// なお ratings は users への外部キーが `ON DELETE CASCADE` のため、ユーザー物理削除時には
+// 評価レコードも一緒に消える。論理削除（deleted_at をセット）の場合のみこの絞り込みが効く。
 func (r *ratingRepository) GetUsernameStats(ctx context.Context, username string) (float64, int, map[int]int, error) {
 	var aggregated struct {
 		Average *float64 `db:"average"`

@@ -38,7 +38,7 @@ type RatingUsecase interface {
 
 // EpisodeRatingStatsResult はエピソードの評価集計レスポンスです。
 //
-// `GET /episodes/{id}/ratings` のレスポンスとして使います。距離（distribution）は API 設計書に
+// `GET /episodes/{id}/ratings` のレスポンスとして使います。分布（distribution）は API 設計書に
 // 合わせて 1〜5 の星別件数を返します。`map[int]int` は Go の encoding/json で
 // 文字列キー（`"1"` 〜 `"5"`）に自動変換されます。
 type EpisodeRatingStatsResult struct {
