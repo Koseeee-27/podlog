@@ -1,0 +1,18 @@
+-- 000012_drop_reviews.up.sql
+-- reviews テーブルを廃止する。
+--
+-- このマイグレーションは Go コード側の reviews 参照（repository / usecase / handler）が
+-- すべて ratings に置き換わったあとに流す前提。先に流すと cmd/server/main.go の起動時
+-- 自動 RunMigrations で reviews が消え、まだ FROM reviews を SQL で叩いている箇所がある場合に
+-- ランタイムで全滅する。本 PR (podlog#390) では Go 層の置き換えと同じトランザクションで適用するため
+-- 順序破綻は起きない。
+--
+-- DROP TABLE は CASCADE で関連オブジェクト（インデックス・外部キー）を一緒に消す:
+--  - idx_reviews_user_episode（UNIQUE）
+--  - idx_reviews_episode_id
+--  - idx_reviews_user_id_created_at
+--  - idx_reviews_created_at
+--  - users.id / episodes.id への REFERENCES（FK 参照される側のため、reviews 側の FK は自動で消える）
+--
+-- リリース前のため過去データの移行は不要（podlog-workspace#59 の方針）。
+DROP TABLE IF EXISTS reviews CASCADE;

@@ -109,10 +109,8 @@ definitions:
       updated_at:
         type: string
     type: object
-  model.Review:
+  model.Rating:
     properties:
-      comment:
-        type: string
       created_at:
         type: string
       episode_id:
@@ -204,10 +202,8 @@ definitions:
         description: '任意: Apple Podcasts や Spotify の URL'
         type: string
     type: object
-  usecase.CreateReviewInput:
+  usecase.CreateRatingInput:
     properties:
-      comment:
-        type: string
       rating:
         type: integer
     type: object
@@ -235,7 +231,7 @@ definitions:
         type: string
       title:
         type: string
-      total_reviews:
+      total_ratings:
         type: integer
     type: object
   usecase.EpisodeListItem:
@@ -254,7 +250,7 @@ definitions:
         type: string
       title:
         type: string
-      total_reviews:
+      total_ratings:
         type: integer
     type: object
   usecase.EpisodeListResult:
@@ -274,6 +270,17 @@ definitions:
         type: string
       title:
         type: string
+    type: object
+  usecase.EpisodeRatingStatsResult:
+    properties:
+      average_rating:
+        type: number
+      distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      total_ratings:
+        type: integer
     type: object
   usecase.FavoritePodcastItem:
     properties:
@@ -362,18 +369,29 @@ definitions:
       title:
         type: string
     type: object
-  usecase.MyReviewResult:
+  usecase.MyRatingItem:
     properties:
-      comment:
-        type: string
       created_at:
         type: string
+      episode:
+        $ref: '#/definitions/usecase.RatingEpisodeInfo'
       id:
         type: string
+      podcast:
+        $ref: '#/definitions/usecase.RatingPodcastInfo'
       rating:
         type: integer
       updated_at:
         type: string
+    type: object
+  usecase.MyRatingListResult:
+    properties:
+      ratings:
+        items:
+          $ref: '#/definitions/usecase.MyRatingItem'
+        type: array
+      total:
+        type: integer
     type: object
   usecase.PodcastDetailResult:
     properties:
@@ -397,14 +415,14 @@ definitions:
         type: string
       title:
         type: string
-      total_reviews:
+      total_ratings:
         type: integer
     type: object
   usecase.PodcastRatingResult:
     properties:
       average_rating:
         type: number
-      total_reviews:
+      total_ratings:
         type: integer
     type: object
   usecase.PodcastRequestResult:
@@ -434,7 +452,7 @@ definitions:
         type: string
       title:
         type: string
-      total_reviews:
+      total_ratings:
         type: integer
     type: object
   usecase.PodcastSearchResult:
@@ -445,6 +463,26 @@ definitions:
         type: array
       total:
         type: integer
+    type: object
+  usecase.RatingEpisodeInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      podcast_id:
+        type: string
+      title:
+        type: string
+    type: object
+  usecase.RatingPodcastInfo:
+    properties:
+      artwork_url:
+        type: string
+      id:
+        type: string
+      title:
+        type: string
     type: object
   usecase.RecentEpisodeItem:
     properties:
@@ -478,61 +516,6 @@ definitions:
         $ref: '#/definitions/usecase.EpisodePodcastInfo'
       total_unlistened:
         type: integer
-    type: object
-  usecase.ReviewEpisodeInfo:
-    properties:
-      artwork_url:
-        type: string
-      id:
-        type: string
-      podcast_id:
-        type: string
-      title:
-        type: string
-    type: object
-  usecase.ReviewItem:
-    properties:
-      comment:
-        type: string
-      created_at:
-        type: string
-      id:
-        type: string
-      rating:
-        type: integer
-      user:
-        $ref: '#/definitions/usecase.ReviewUserInfo'
-    type: object
-  usecase.ReviewListResult:
-    properties:
-      average_rating:
-        type: number
-      reviews:
-        items:
-          $ref: '#/definitions/usecase.ReviewItem'
-        type: array
-      total:
-        type: integer
-    type: object
-  usecase.ReviewPodcastInfo:
-    properties:
-      artwork_url:
-        type: string
-      id:
-        type: string
-      title:
-        type: string
-    type: object
-  usecase.ReviewUserInfo:
-    properties:
-      avatar_url:
-        type: string
-      display_name:
-        type: string
-      id:
-        type: string
-      username:
-        type: string
     type: object
   usecase.SitemapEpisodeItem:
     properties:
@@ -576,32 +559,6 @@ definitions:
           $ref: '#/definitions/usecase.SitemapUserItem'
         type: array
     type: object
-  usecase.TimelineItem:
-    properties:
-      comment:
-        type: string
-      created_at:
-        type: string
-      episode:
-        $ref: '#/definitions/usecase.ReviewEpisodeInfo'
-      id:
-        type: string
-      podcast:
-        $ref: '#/definitions/usecase.ReviewPodcastInfo'
-      rating:
-        type: integer
-      user:
-        $ref: '#/definitions/usecase.ReviewUserInfo'
-    type: object
-  usecase.TimelineResult:
-    properties:
-      reviews:
-        items:
-          $ref: '#/definitions/usecase.TimelineItem'
-        type: array
-      total:
-        type: integer
-    type: object
   usecase.UpdateFavoritePodcastsInput:
     properties:
       podcast_ids:
@@ -609,37 +566,20 @@ definitions:
           type: string
         type: array
     type: object
-  usecase.UpdateReviewInput:
+  usecase.UpdateRatingInput:
     properties:
-      comment:
-        type: string
       rating:
         type: integer
     type: object
-  usecase.UserReviewItem:
+  usecase.UserRatingStatsResult:
     properties:
-      comment:
-        type: string
-      created_at:
-        type: string
-      episode:
-        $ref: '#/definitions/usecase.ReviewEpisodeInfo'
-      id:
-        type: string
-      podcast:
-        $ref: '#/definitions/usecase.ReviewPodcastInfo'
-      rating:
-        type: integer
-      updated_at:
-        type: string
-    type: object
-  usecase.UserReviewListResult:
-    properties:
-      reviews:
-        items:
-          $ref: '#/definitions/usecase.UserReviewItem'
-        type: array
-      total:
+      average_rating:
+        type: number
+      distribution:
+        additionalProperties:
+          type: integer
+        type: object
+      total_ratings:
         type: integer
     type: object
 host: localhost:8080
@@ -738,7 +678,7 @@ paths:
       - admin
   /episodes/{id}:
     get:
-      description: エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
+      description: エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。
       parameters:
       - description: エピソードID (UUID)
         in: path
@@ -873,64 +813,55 @@ paths:
       summary: 聴取記録追加
       tags:
       - listening-records
-  /episodes/{id}/reviews:
+  /episodes/{id}/ratings:
     get:
-      description: エピソードに投稿されたレビュー一覧を取得します
+      description: エピソードの平均評価・総件数・星別分布を取得します
       parameters:
       - description: エピソードID (UUID)
         in: path
         name: id
         required: true
         type: string
-      - default: 20
-        description: 最大取得件数
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: スキップ件数
-        in: query
-        name: offset
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usecase.ReviewListResult'
+            $ref: '#/definitions/usecase.EpisodeRatingStatsResult'
         "400":
           description: Bad Request
           schema:
             additionalProperties:
               type: string
             type: object
-      summary: エピソードのレビュー一覧
+      summary: エピソードの評価集計
       tags:
-      - reviews
+      - ratings
     post:
       consumes:
       - application/json
-      description: 認証ユーザーがエピソードにレビューを投稿します
+      description: 認証ユーザーがエピソードに評価（1〜5）を投稿します。既に投稿済みの場合は 409 を返します（FE は PUT /episodes/{id}/ratings/mine
+        にフォールバック）。
       parameters:
       - description: エピソードID (UUID)
         in: path
         name: id
         required: true
         type: string
-      - description: レビュー内容
+      - description: 評価値
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/usecase.CreateReviewInput'
+          $ref: '#/definitions/usecase.CreateRatingInput'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/model.Review'
+            $ref: '#/definitions/model.Rating'
         "400":
           description: Bad Request
           schema:
@@ -957,12 +888,12 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: レビュー投稿
+      summary: 評価投稿
       tags:
-      - reviews
-  /episodes/{id}/reviews/mine:
+      - ratings
+  /episodes/{id}/ratings/mine:
     delete:
-      description: 認証ユーザーの自分のレビューを削除します
+      description: 認証ユーザーの自分の評価のみを削除します（感想は別管理）。
       parameters:
       - description: エピソードID (UUID)
         in: path
@@ -992,11 +923,11 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: レビュー削除
+      summary: 評価削除
       tags:
-      - reviews
+      - ratings
     get:
-      description: 認証ユーザーが指定エピソードに投稿したレビューを取得します。未投稿の場合は 404 を返します。
+      description: 認証ユーザーが指定エピソードに投稿した評価を取得します。未投稿の場合は 404 を返します。
       parameters:
       - description: エピソードID (UUID)
         in: path
@@ -1009,7 +940,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usecase.MyReviewResult'
+            $ref: '#/definitions/model.Rating'
         "400":
           description: Bad Request
           schema:
@@ -1030,32 +961,32 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: 自分のレビュー取得
+      summary: 自分の評価取得
       tags:
-      - reviews
+      - ratings
     put:
       consumes:
       - application/json
-      description: 認証ユーザーの自分のレビューを更新します
+      description: 認証ユーザーの自分の評価を更新します
       parameters:
       - description: エピソードID (UUID)
         in: path
         name: id
         required: true
         type: string
-      - description: レビュー内容
+      - description: 評価値
         in: body
         name: body
         required: true
         schema:
-          $ref: '#/definitions/usecase.UpdateReviewInput'
+          $ref: '#/definitions/usecase.UpdateRatingInput'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Review'
+            $ref: '#/definitions/model.Rating'
         "400":
           description: Bad Request
           schema:
@@ -1076,9 +1007,9 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: レビュー更新
+      summary: 評価更新
       tags:
-      - reviews
+      - ratings
   /genres:
     get:
       description: DB に登録されている番組のジャンル一覧を取得します。英語名・日本語名の両方を含みます。
@@ -1121,7 +1052,7 @@ paths:
       - health
   /podcasts/{id}:
     get:
-      description: ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。
+      description: ポッドキャストIDから詳細情報を取得します。平均評価・評価件数を含みます。
       parameters:
       - description: ポッドキャストID (UUID)
         in: path
@@ -1146,7 +1077,7 @@ paths:
       - podcasts
   /podcasts/{id}/episodes:
     get:
-      description: ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。
+      description: ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。
       parameters:
       - description: ポッドキャストID (UUID)
         in: path
@@ -1264,7 +1195,7 @@ paths:
       - episodes
   /podcasts/{id}/rating:
     get:
-      description: ポッドキャストの全エピソードの平均評価を取得します
+      description: ポッドキャストに紐づく全エピソードの評価から平均評価と総件数を集計します
       parameters:
       - description: ポッドキャストID (UUID)
         in: path
@@ -1286,7 +1217,7 @@ paths:
             type: object
       summary: ポッドキャスト平均評価
       tags:
-      - reviews
+      - ratings
   /podcasts/fetch-url:
     post:
       consumes:
@@ -1319,7 +1250,7 @@ paths:
       - podcasts
   /podcasts/popular:
     get:
-      description: レビュー件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。
+      description: 評価件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。
       parameters:
       - default: 10
         description: 最大取得件数
@@ -1374,7 +1305,7 @@ paths:
       - podcast-requests
   /podcasts/search:
     get:
-      description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。
+      description: アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・評価件数を含みます。genre パラメータでジャンル絞り込みが可能です。
       parameters:
       - description: 検索キーワード（genre 指定時は省略可）
         in: query
@@ -1497,30 +1428,6 @@ paths:
       summary: sitemap 用 user 一覧取得
       tags:
       - sitemap
-  /timeline:
-    get:
-      description: 全ユーザーの最新レビューを時系列で取得します
-      parameters:
-      - default: 20
-        description: 最大取得件数
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: スキップ件数
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/usecase.TimelineResult'
-      summary: タイムライン
-      tags:
-      - timeline
   /users/{username}:
     get:
       description: ユーザー名から公開プロフィールを取得します
@@ -1606,32 +1513,22 @@ paths:
       summary: ユーザーの聴取履歴一覧（公開）
       tags:
       - listening-records
-  /users/{username}/reviews:
+  /users/{username}/ratings/stats:
     get:
-      description: ユーザー名を指定してレビュー一覧をエピソード・ポッドキャスト情報付きで取得します
+      description: ユーザー名を指定して評価の統計値（平均・総件数・星別分布）を取得します
       parameters:
       - description: ユーザー名
         in: path
         name: username
         required: true
         type: string
-      - default: 20
-        description: 最大取得件数
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: スキップ件数
-        in: query
-        name: offset
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/usecase.UserReviewListResult'
+            $ref: '#/definitions/usecase.UserRatingStatsResult'
         "400":
           description: Bad Request
           schema:
@@ -1644,9 +1541,9 @@ paths:
             additionalProperties:
               type: string
             type: object
-      summary: ユーザーのレビュー一覧（公開）
+      summary: ユーザーの評価統計サマリー（公開）
       tags:
-      - reviews
+      - ratings
   /users/me:
     get:
       description: 認証済みユーザー自身のプロフィールを取得します。is_admin フィールドで管理者かどうかを判定できます。
@@ -1830,6 +1727,38 @@ paths:
       summary: 聴取履歴一覧
       tags:
       - listening-records
+  /users/me/ratings:
+    get:
+      description: 認証ユーザーが投稿した評価をエピソード・番組情報付きで一覧取得します（設定ページ等での確認用途）。
+      parameters:
+      - default: 20
+        description: 最大取得件数
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: スキップ件数
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/usecase.MyRatingListResult'
+        "401":
+          description: Unauthorized
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: 自分の評価一覧
+      tags:
+      - ratings
   /users/me/recent-episodes:
     get:
       description: 認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。
@@ -1851,38 +1780,6 @@ paths:
       summary: 最近のエピソード取得（番組グループ化）
       tags:
       - episodes
-  /users/me/reviews:
-    get:
-      description: 認証ユーザーのレビュー一覧をエピソード・ポッドキャスト情報付きで取得します
-      parameters:
-      - default: 20
-        description: 最大取得件数
-        in: query
-        name: limit
-        type: integer
-      - default: 0
-        description: スキップ件数
-        in: query
-        name: offset
-        type: integer
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/usecase.UserReviewListResult'
-        "401":
-          description: Unauthorized
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      security:
-      - BearerAuth: []
-      summary: 自分のレビュー一覧
-      tags:
-      - reviews
   /users/profile:
     post:
       consumes:

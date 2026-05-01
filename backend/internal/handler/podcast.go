@@ -14,21 +14,21 @@ import (
 )
 
 // PodcastHandler はポッドキャスト関連のHTTPハンドラーです。
-// reviewUsecase はポッドキャスト詳細に平均評価・レビュー件数を付加するために使用します。
+// ratingUsecase はポッドキャスト詳細に平均評価・評価件数を付加するために使用します。
 type PodcastHandler struct {
 	podcastUsecase    usecase.PodcastUsecase
-	reviewUsecase     usecase.ReviewUsecase
+	ratingUsecase     usecase.RatingUsecase
 	favoritePodcastRepo repository.FavoritePodcastRepository
 	ogpScraper        *ogp.Scraper
 }
 
 // NewPodcastHandler は PodcastHandler を生成します。
-// reviewUsecase はポッドキャスト詳細レスポンスに平均評価を含めるために必要です。
+// ratingUsecase はポッドキャスト詳細レスポンスに平均評価を含めるために必要です。
 // favoritePodcastRepo は番組詳細レスポンスにお気に入り件数を含めるために必要です。
-func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usecase.ReviewUsecase, favoritePodcastRepo repository.FavoritePodcastRepository, ogpScraper *ogp.Scraper) *PodcastHandler {
+func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, ratingUsecase usecase.RatingUsecase, favoritePodcastRepo repository.FavoritePodcastRepository, ogpScraper *ogp.Scraper) *PodcastHandler {
 	return &PodcastHandler{
 		podcastUsecase:    podcastUsecase,
-		reviewUsecase:     reviewUsecase,
+		ratingUsecase:     ratingUsecase,
 		favoritePodcastRepo: favoritePodcastRepo,
 		ogpScraper:        ogpScraper,
 	}
@@ -37,7 +37,7 @@ func NewPodcastHandler(podcastUsecase usecase.PodcastUsecase, reviewUsecase usec
 // Search はアプリ内 DB でポッドキャストをキーワード検索するハンドラーです。
 // genre クエリパラメータを指定すると、そのジャンルに絞り込んで検索できます。
 // @Summary ポッドキャスト検索
-// @Description アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。
+// @Description アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・評価件数を含みます。genre パラメータでジャンル絞り込みが可能です。
 // @Tags podcasts
 // @Produce json
 // @Param q query string false "検索キーワード（genre 指定時は省略可）"
@@ -65,9 +65,9 @@ func (h *PodcastHandler) Search(c echo.Context) error {
 	return response.Success(c, http.StatusOK, result)
 }
 
-// GetPopular はレビュー件数の多い人気番組を取得するハンドラーです。
+// GetPopular は評価件数の多い人気番組を取得するハンドラーです。
 // @Summary 人気ポッドキャスト一覧
-// @Description レビュー件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。
+// @Description 評価件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。
 // @Tags podcasts
 // @Produce json
 // @Param limit query int false "最大取得件数" default(10)
@@ -90,9 +90,9 @@ func (h *PodcastHandler) GetPopular(c echo.Context) error {
 }
 
 // GetByID はポッドキャスト詳細を取得するハンドラーです。
-// API 設計書に従い、番組情報に加えて average_rating / total_reviews を含むレスポンスを返します。
+// API 設計書に従い、番組情報に加えて average_rating / total_ratings を含むレスポンスを返します。
 // @Summary ポッドキャスト詳細取得
-// @Description ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。
+// @Description ポッドキャストIDから詳細情報を取得します。平均評価・評価件数を含みます。
 // @Tags podcasts
 // @Produce json
 // @Param id path string true "ポッドキャストID (UUID)"
@@ -114,8 +114,8 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast")
 	}
 
-	// ReviewUsecase から平均評価とレビュー件数を取得
-	rating, err := h.reviewUsecase.GetPodcastRating(c.Request().Context(), id)
+	// RatingUsecase から平均評価と評価件数を取得
+	rating, err := h.ratingUsecase.GetPodcastRating(c.Request().Context(), id)
 	if err != nil {
 		return response.Error(c, http.StatusInternalServerError, "failed to get podcast rating")
 	}
@@ -136,7 +136,7 @@ func (h *PodcastHandler) GetByID(c echo.Context) error {
 		Genre:         podcast.Genre,
 		FeedURL:       podcast.FeedURL,
 		AverageRating: rating.AverageRating,
-		TotalReviews:  rating.TotalReviews,
+		TotalRatings:  rating.TotalRatings,
 		FavoriteCount: favoriteCount,
 		CreatedAt:     podcast.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
 	}

@@ -252,7 +252,7 @@ func run() error {
 	podcastRepo := repository.NewPodcastRepository(db)
 	episodeRepo := repository.NewEpisodeRepository(db)
 	listeningRecordRepo := repository.NewListeningRecordRepository(db)
-	reviewRepo := repository.NewReviewRepository(db)
+	ratingRepo := repository.NewRatingRepository(db)
 	favoritePodcastRepo := repository.NewFavoritePodcastRepository(db)
 	podcastRequestRepo := repository.NewPodcastRequestRepository(db)
 	sitemapRepo := repository.NewSitemapRepository(db)
@@ -263,7 +263,7 @@ func run() error {
 	var bgWg sync.WaitGroup
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssClient, &bgWg)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
-	reviewUsecase := usecase.NewReviewUsecase(reviewRepo, episodeRepo, userRepo)
+	ratingUsecase := usecase.NewRatingUsecase(ratingRepo, episodeRepo, userRepo)
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
@@ -279,10 +279,10 @@ func run() error {
 	handlers := router.Handlers{
 		Health:          handler.NewHealthHandler(db),
 		User:            handler.NewUserHandler(userUsecase, adminUserIDs),
-		Podcast:         handler.NewPodcastHandler(podcastUsecase, reviewUsecase, favoritePodcastRepo, ogpScraper),
-		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, reviewUsecase),
+		Podcast:         handler.NewPodcastHandler(podcastUsecase, ratingUsecase, favoritePodcastRepo, ogpScraper),
+		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, ratingUsecase),
 		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
-		Review:          handler.NewReviewHandler(reviewUsecase),
+		Rating:          handler.NewRatingHandler(ratingUsecase),
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
 		Genre:           handler.NewGenreHandler(genreUsecase),

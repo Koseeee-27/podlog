@@ -12,7 +12,7 @@ import (
 	"github.com/Koseeee-27/podlog/backend/internal/model"
 )
 
-// EpisodeWithStatsRow はエピソード一覧でレビュー統計を含む行です。
+// EpisodeWithStatsRow はエピソード一覧で評価統計を含む行です。
 // Listened は認証ユーザーの聴取状態です。未認証（userID が nil）の場合は NULL になります。
 type EpisodeWithStatsRow struct {
 	ID            uuid.UUID  `db:"id"`
@@ -21,7 +21,7 @@ type EpisodeWithStatsRow struct {
 	DurationMs    *int64     `db:"duration_ms"`
 	PublishedAt   *time.Time `db:"published_at"`
 	AverageRating float64    `db:"average_rating"`
-	TotalReviews  int        `db:"total_reviews"`
+	TotalRatings  int        `db:"total_ratings"`
 	Listened      *bool      `db:"listened"`
 }
 
@@ -136,10 +136,10 @@ func (r *episodeRepository) GetByGUID(ctx context.Context, podcastID uuid.UUID, 
 	return &episode, nil
 }
 
-// GetByPodcastIDWithStats はポッドキャストのエピソード一覧をレビュー統計付きで取得します。
-// 各エピソードに平均評価とレビュー件数を含み、総件数（total）も返します。
-// LEFT JOIN でレビューテーブルを結合し、N+1 問題を回避しています。
-// 削除済みユーザーのレビューは集計から除外します。
+// GetByPodcastIDWithStats はポッドキャストのエピソード一覧を評価統計付きで取得します。
+// 各エピソードに平均評価と評価件数を含み、総件数（total）も返します。
+// LEFT JOIN で ratings テーブルを結合し、N+1 問題を回避しています。
+// 削除済みユーザーの評価は集計から除外します。
 //
 // userID が nil でない場合、EXISTS サブクエリで各エピソードの聴取状態（listened）も
 // 1 クエリで取得します（N+1 回避）。userID が nil の場合、listened は NULL になります。
@@ -151,10 +151,10 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 		return nil, 0, fmt.Errorf("failed to count episodes: %w", err)
 	}
 
-	// 2. データ取得（レビュー統計 + 聴取状態付き）
+	// 2. データ取得（評価統計 + 聴取状態付き）
 	// 聴取状態は EXISTS サブクエリで判定します。
-	// LEFT JOIN だと reviews との Cartesian Product（行の掛け算）が発生し、
-	// average_rating / total_reviews の集計値がズレるリスクがあるため、
+	// LEFT JOIN だと ratings との Cartesian Product（行の掛け算）が発生し、
+	// average_rating / total_ratings の集計値がズレるリスクがあるため、
 	// サブクエリで分離しています。
 	//
 	// userID が指定されている場合:
@@ -170,7 +170,7 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 			e.duration_ms,
 			e.published_at,
 			COALESCE(AVG(r.rating) FILTER (WHERE u.id IS NOT NULL)::float8, 0) AS average_rating,
-			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_reviews,
+			COUNT(r.id) FILTER (WHERE u.id IS NOT NULL)::int AS total_ratings,
 			CASE
 				WHEN $4::uuid IS NOT NULL THEN EXISTS(
 					SELECT 1 FROM listening_records lr
@@ -179,7 +179,7 @@ func (r *episodeRepository) GetByPodcastIDWithStats(ctx context.Context, podcast
 				ELSE NULL
 			END AS listened
 		FROM episodes e
-		LEFT JOIN reviews r ON e.id = r.episode_id
+		LEFT JOIN ratings r ON e.id = r.episode_id
 		LEFT JOIN users u ON r.user_id = u.id AND u.deleted_at IS NULL
 		WHERE e.podcast_id = $1
 		GROUP BY e.id, e.title, e.description, e.duration_ms, e.published_at

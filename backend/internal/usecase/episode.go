@@ -22,8 +22,11 @@ import (
 const maxEpisodesPerFetch = 50
 
 // EpisodeDetailResult はエピソード詳細のレスポンスです。
-// API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_reviews を含みます。
+// API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_ratings を含みます。
 // Listened は認証ユーザーの聴取状態です。未認証の場合は omitempty により省略されます。
+//
+// 注: API 設計書では `total_comments` も含む方針だが、本 PR (podlog#390) は rating レイヤーのみの
+// 切替で、comment 関連は podlog#391 で別途追加する。
 type EpisodeDetailResult struct {
 	ID            uuid.UUID              `json:"id"`
 	Title         string                 `json:"title"`
@@ -34,7 +37,7 @@ type EpisodeDetailResult struct {
 	PublishedAt   *string                `json:"published_at,omitempty"`
 	Podcast       EpisodePodcastInfo     `json:"podcast"`
 	AverageRating float64                `json:"average_rating"`
-	TotalReviews  int                    `json:"total_reviews"`
+	TotalRatings  int                    `json:"total_ratings"`
 	Listened      *bool                  `json:"listened,omitempty"`
 	CreatedAt     string                 `json:"created_at"`
 }
@@ -47,7 +50,7 @@ type EpisodePodcastInfo struct {
 }
 
 // EpisodeListResult はエピソード一覧のレスポンスです。
-// API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+// API 設計書に従い、各エピソードに average_rating / total_ratings を含み、total を返します。
 type EpisodeListResult struct {
 	Episodes []EpisodeListItem `json:"episodes"`
 	Total    int               `json:"total"`
@@ -62,7 +65,7 @@ type EpisodeListItem struct {
 	DurationMs    *int64    `json:"duration_ms,omitempty"`
 	PublishedAt   *string   `json:"published_at,omitempty"`
 	AverageRating float64   `json:"average_rating"`
-	TotalReviews  int       `json:"total_reviews"`
+	TotalRatings  int       `json:"total_ratings"`
 	Listened      *bool     `json:"listened,omitempty"`
 }
 
@@ -277,7 +280,7 @@ func (u *episodeUsecase) GetByPodcastID(ctx context.Context, podcastID uuid.UUID
 }
 
 // GetByPodcastIDWithStats はポッドキャストのエピソード一覧をレビュー統計付きで取得します。
-// API 設計書に従い、各エピソードに average_rating / total_reviews を含み、total を返します。
+// API 設計書に従い、各エピソードに average_rating / total_ratings を含み、total を返します。
 // userID が nil でない場合、各エピソードの聴取状態（listened）も含めます。
 func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID uuid.UUID, limit, offset int, userID *uuid.UUID) (*EpisodeListResult, error) {
 	if limit <= 0 || limit > 100 {
@@ -300,7 +303,7 @@ func (u *episodeUsecase) GetByPodcastIDWithStats(ctx context.Context, podcastID 
 			Description:   row.Description,
 			DurationMs:    row.DurationMs,
 			AverageRating: roundToOneDecimal(row.AverageRating),
-			TotalReviews:  row.TotalReviews,
+			TotalRatings:  row.TotalRatings,
 			Listened:      row.Listened,
 		}
 		if row.PublishedAt != nil {

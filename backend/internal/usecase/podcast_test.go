@@ -211,7 +211,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 						Author:        &author,
 						ArtworkURL:    &artworkURL,
 						AverageRating: 4.25,
-						TotalReviews:  12,
+						TotalRatings:  12,
 						FavoriteCount: 5,
 					},
 				}, 1, nil
@@ -239,8 +239,8 @@ func TestPodcastUsecase_Search(t *testing.T) {
 		if p.AverageRating != 4.3 {
 			t.Errorf("average_rating = %f, want 4.3", p.AverageRating)
 		}
-		if p.TotalReviews != 12 {
-			t.Errorf("total_reviews = %d, want 12", p.TotalReviews)
+		if p.TotalRatings != 12 {
+			t.Errorf("total_ratings = %d, want 12", p.TotalRatings)
 		}
 		if p.FavoriteCount != 5 {
 			t.Errorf("favorite_count = %d, want 5", p.FavoriteCount)
@@ -303,7 +303,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 						Author:        &author,
 						ArtworkURL:    &artworkURL,
 						AverageRating: 3.5,
-						TotalReviews:  8,
+						TotalRatings:  8,
 					},
 				}, 1, nil
 			},
@@ -357,7 +357,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 						Author:        &author,
 						ArtworkURL:    &artworkURL,
 						AverageRating: 4.0,
-						TotalReviews:  5,
+						TotalRatings:  5,
 					},
 					{
 						ID:            uuid.New(),
@@ -365,7 +365,7 @@ func TestPodcastUsecase_Search(t *testing.T) {
 						Author:        &author,
 						ArtworkURL:    &artworkURL,
 						AverageRating: 3.0,
-						TotalReviews:  2,
+						TotalRatings:  2,
 					},
 				}, 2, nil
 			},
@@ -517,7 +517,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 						Author:        &dbAuthor,
 						ArtworkURL:    &dbArtwork,
 						AverageRating: 4.0,
-						TotalReviews:  10,
+						TotalRatings:  10,
 						FavoriteCount: 3,
 					},
 				}, 1, nil
@@ -682,7 +682,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 
 	t.Run("iTunes結果がDBに既存だがDB検索にヒットしていない場合は集計値込みで結果に追加", func(t *testing.T) {
 		// podlog#351: 旧実装では既存番組を結果に追加する際に集計値がセットされず、
-		// レビューやお気に入りが付いていても average_rating=0, total_reviews=0,
+		// レビューやお気に入りが付いていても average_rating=0, total_ratings=0,
 		// favorite_count=0 で返ってしまうバグがあった。修正後は GetByIDsWithStats で
 		// DB の実値を取得して埋めることを検証する。
 		server := newTestItunesServer(t, itunes.SearchResponse{
@@ -721,7 +721,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 					Title:         "既存番組",
 					Author:        &author,
 					AverageRating: 4.25, // roundToOneDecimal で 4.3 になる想定
-					TotalReviews:  12,
+					TotalRatings:  12,
 					FavoriteCount: 5,
 				}
 				return map[uuid.UUID]repository.PodcastSearchRow{existingID: row}, nil
@@ -743,12 +743,12 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 		// podlog#351 の検証ポイント: 集計値が DB の実値で埋まっていること。
 		// roundToOneDecimal を通した結果との比較は浮動小数の表現誤差で
-		// 不安定になりうるため、許容誤差で比較します（review_test.go と同様）。
+		// 不安定になりうるため、許容誤差で比較します（rating_test.go と同様）。
 		if math.Abs(got.AverageRating-4.3) > 1e-9 {
 			t.Errorf("AverageRating = %v, want 4.3 (rounded from 4.25)", got.AverageRating)
 		}
-		if got.TotalReviews != 12 {
-			t.Errorf("TotalReviews = %d, want 12", got.TotalReviews)
+		if got.TotalRatings != 12 {
+			t.Errorf("TotalRatings = %d, want 12", got.TotalRatings)
 		}
 		if got.FavoriteCount != 5 {
 			t.Errorf("FavoriteCount = %d, want 5", got.FavoriteCount)
@@ -795,9 +795,9 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 					t.Errorf("GetByIDsWithStats called with %d ids, want 3 (must batch-fetch in one call)", len(ids))
 				}
 				out := map[uuid.UUID]repository.PodcastSearchRow{
-					idA: {ID: idA, AverageRating: 1.0, TotalReviews: 1, FavoriteCount: 1},
-					idB: {ID: idB, AverageRating: 2.0, TotalReviews: 2, FavoriteCount: 2},
-					idC: {ID: idC, AverageRating: 3.0, TotalReviews: 3, FavoriteCount: 3},
+					idA: {ID: idA, AverageRating: 1.0, TotalRatings: 1, FavoriteCount: 1},
+					idB: {ID: idB, AverageRating: 2.0, TotalRatings: 2, FavoriteCount: 2},
+					idC: {ID: idC, AverageRating: 3.0, TotalRatings: 3, FavoriteCount: 3},
 				}
 				return out, nil
 			},
@@ -902,7 +902,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 		// 集計値はプレースホルダ（ゼロ値）のままになる
 		got := result.Podcasts[0]
-		if got.AverageRating != 0 || got.TotalReviews != 0 || got.FavoriteCount != 0 {
+		if got.AverageRating != 0 || got.TotalRatings != 0 || got.FavoriteCount != 0 {
 			t.Errorf("stats = %+v, want all zero (プレースホルダのまま返るべき)", got)
 		}
 		// GetByIDsWithStats は 1 回呼ばれている（呼ばれた上で失敗）

@@ -296,6 +296,7 @@ Supabase Auth の `auth.users.id` と同じ UUID を PK として使用する。
 
 | 日付 | 変更内容 |
 |---|---|
+| 2026-05-01 | `reviews` テーブルを物理削除（マイグレーション 012）。Go コード側の `reviews` 参照（repository / usecase / handler / DI）が `ratings` に完全移行したため、最終 DROP を流す（podlog#390）。down マイグレーションでは旧 `reviews` テーブルを名前付き CHECK 制約 (`reviews_rating_check`) で再作成する。リリース前のため過去データの移行は不要 |
 | 2026-04-30 | コアコンセプト転換に伴う評価/感想分離: `reviews` テーブルを廃止し、`ratings`（星評価のみ、1ユーザー1エピソード=1件）と `comments`（テキスト感想、1ユーザー1エピソードに複数件投稿可）の2テーブルに分離。インデックス・制約も新モデルに合わせて再設計（podlog#388 / 親 Issue: podlog-workspace#59）。マイグレーション SQL は podlog#389 で実装する |
 | 2026-04-07 | podcasts テーブルに feed_last_fetched_at カラムを追加（マイグレーション 009） |
 | 2026-03-21 | マイグレーション 001〜008 との突き合わせを実施し、差分がないことを確認 |

@@ -13,7 +13,7 @@ import (
 )
 
 // PodcastDetailResult はポッドキャスト詳細のレスポンスです。
-// API 設計書に従い、番組情報に加えて average_rating / total_reviews を含みます。
+// API 設計書に従い、番組情報に加えて average_rating / total_ratings を含みます。
 type PodcastDetailResult struct {
 	ID            uuid.UUID `json:"id"`
 	Title         string    `json:"title"`
@@ -23,7 +23,7 @@ type PodcastDetailResult struct {
 	Genre         *string   `json:"genre,omitempty"`
 	FeedURL       *string   `json:"feed_url,omitempty"`
 	AverageRating float64   `json:"average_rating"`
-	TotalReviews  int       `json:"total_reviews"`
+	TotalRatings  int       `json:"total_ratings"`
 	FavoriteCount int       `json:"favorite_count"`
 	CreatedAt     string    `json:"created_at"`
 }
@@ -35,14 +35,14 @@ type PodcastSearchResult struct {
 }
 
 // PodcastSearchItem は番組検索結果の各レコードです。
-// API 設計書に従い、id / title / author / artwork_url / average_rating / total_reviews を含みます。
+// API 設計書に従い、id / title / author / artwork_url / average_rating / total_ratings を含みます。
 type PodcastSearchItem struct {
 	ID            uuid.UUID `json:"id"`
 	Title         string    `json:"title"`
 	Author        *string   `json:"author,omitempty"`
 	ArtworkURL    *string   `json:"artwork_url,omitempty"`
 	AverageRating float64   `json:"average_rating"`
-	TotalReviews  int       `json:"total_reviews"`
+	TotalRatings  int       `json:"total_ratings"`
 	FavoriteCount int       `json:"favorite_count"`
 }
 
@@ -156,7 +156,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 			Author:        row.Author,
 			ArtworkURL:    row.ArtworkURL,
 			AverageRating: roundToOneDecimal(row.AverageRating),
-			TotalReviews:  row.TotalReviews,
+			TotalRatings:  row.TotalRatings,
 			FavoriteCount: row.FavoriteCount,
 		})
 	}
@@ -208,7 +208,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 						continue
 					}
 					// DB に存在するが今回のキーワード検索にヒットしなかった場合は結果に追加。
-					// AverageRating / TotalReviews / FavoriteCount は意図的に省略し
+					// AverageRating / TotalRatings / FavoriteCount は意図的に省略し
 					// （Go のゼロ値 0 がプレースホルダ）、後続の GetByIDsWithStats で
 					// 取得した DB 集計値で上書きします。
 					items = append(items, PodcastSearchItem{
@@ -241,7 +241,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					Author:        newPodcast.Author,
 					ArtworkURL:    newPodcast.ArtworkURL,
 					AverageRating: 0,
-					TotalReviews:  0,
+					TotalRatings:  0,
 					FavoriteCount: 0,
 				})
 			}
@@ -267,7 +267,7 @@ func (u *podcastUsecase) Search(ctx context.Context, query string, genre string,
 					for i := range items {
 						if row, ok := statsByID[items[i].ID]; ok {
 							items[i].AverageRating = roundToOneDecimal(row.AverageRating)
-							items[i].TotalReviews = row.TotalReviews
+							items[i].TotalRatings = row.TotalRatings
 							items[i].FavoriteCount = row.FavoriteCount
 						}
 					}
@@ -336,7 +336,7 @@ func (u *podcastUsecase) GetPopular(ctx context.Context, limit int) (*PodcastSea
 			Author:        row.Author,
 			ArtworkURL:    row.ArtworkURL,
 			AverageRating: roundToOneDecimal(row.AverageRating),
-			TotalReviews:  row.TotalReviews,
+			TotalRatings:  row.TotalRatings,
 			FavoriteCount: row.FavoriteCount,
 		})
 	}

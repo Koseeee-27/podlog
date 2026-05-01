@@ -153,7 +153,7 @@ const docTemplate = `{
         },
         "/episodes/{id}": {
             "get": {
-                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。",
+                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -363,16 +363,16 @@ const docTemplate = `{
                 }
             }
         },
-        "/episodes/{id}/reviews": {
+        "/episodes/{id}/ratings": {
             "get": {
-                "description": "エピソードに投稿されたレビュー一覧を取得します",
+                "description": "エピソードの平均評価・総件数・星別分布を取得します",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "エピソードのレビュー一覧",
+                "summary": "エピソードの評価集計",
                 "parameters": [
                     {
                         "type": "string",
@@ -380,27 +380,13 @@ const docTemplate = `{
                         "name": "id",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "最大取得件数",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "スキップ件数",
-                        "name": "offset",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/usecase.ReviewListResult"
+                            "$ref": "#/definitions/usecase.EpisodeRatingStatsResult"
                         }
                     },
                     "400": {
@@ -420,7 +406,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーがエピソードにレビューを投稿します",
+                "description": "認証ユーザーがエピソードに評価（1〜5）を投稿します。既に投稿済みの場合は 409 を返します（FE は PUT /episodes/{id}/ratings/mine にフォールバック）。",
                 "consumes": [
                     "application/json"
                 ],
@@ -428,9 +414,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "レビュー投稿",
+                "summary": "評価投稿",
                 "parameters": [
                     {
                         "type": "string",
@@ -440,12 +426,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "レビュー内容",
+                        "description": "評価値",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/usecase.CreateReviewInput"
+                            "$ref": "#/definitions/usecase.CreateRatingInput"
                         }
                     }
                 ],
@@ -453,7 +439,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/model.Review"
+                            "$ref": "#/definitions/model.Rating"
                         }
                     },
                     "400": {
@@ -495,21 +481,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/episodes/{id}/reviews/mine": {
+        "/episodes/{id}/ratings/mine": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーが指定エピソードに投稿したレビューを取得します。未投稿の場合は 404 を返します。",
+                "description": "認証ユーザーが指定エピソードに投稿した評価を取得します。未投稿の場合は 404 を返します。",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "自分のレビュー取得",
+                "summary": "自分の評価取得",
                 "parameters": [
                     {
                         "type": "string",
@@ -523,7 +509,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/usecase.MyReviewResult"
+                            "$ref": "#/definitions/model.Rating"
                         }
                     },
                     "400": {
@@ -561,7 +547,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーの自分のレビューを更新します",
+                "description": "認証ユーザーの自分の評価を更新します",
                 "consumes": [
                     "application/json"
                 ],
@@ -569,9 +555,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "レビュー更新",
+                "summary": "評価更新",
                 "parameters": [
                     {
                         "type": "string",
@@ -581,12 +567,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "レビュー内容",
+                        "description": "評価値",
                         "name": "body",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/usecase.UpdateReviewInput"
+                            "$ref": "#/definitions/usecase.UpdateRatingInput"
                         }
                     }
                 ],
@@ -594,7 +580,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/model.Review"
+                            "$ref": "#/definitions/model.Rating"
                         }
                     },
                     "400": {
@@ -632,11 +618,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーの自分のレビューを削除します",
+                "description": "認証ユーザーの自分の評価のみを削除します（感想は別管理）。",
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "レビュー削除",
+                "summary": "評価削除",
                 "parameters": [
                     {
                         "type": "string",
@@ -791,7 +777,7 @@ const docTemplate = `{
         },
         "/podcasts/popular": {
             "get": {
-                "description": "レビュー件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。",
+                "description": "評価件数の多い番組をランキング順で取得します。探す画面の「人気の番組」セクションで使用します。",
                 "produces": [
                     "application/json"
                 ],
@@ -877,7 +863,7 @@ const docTemplate = `{
         },
         "/podcasts/search": {
             "get": {
-                "description": "アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・レビュー件数を含みます。genre パラメータでジャンル絞り込みが可能です。",
+                "description": "アプリ内 DB に登録済みの番組をキーワードで検索します。平均評価・評価件数を含みます。genre パラメータでジャンル絞り込みが可能です。",
                 "produces": [
                     "application/json"
                 ],
@@ -934,7 +920,7 @@ const docTemplate = `{
         },
         "/podcasts/{id}": {
             "get": {
-                "description": "ポッドキャストIDから詳細情報を取得します。平均評価・レビュー件数を含みます。",
+                "description": "ポッドキャストIDから詳細情報を取得します。平均評価・評価件数を含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -972,7 +958,7 @@ const docTemplate = `{
         },
         "/podcasts/{id}/episodes": {
             "get": {
-                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・レビュー件数を含みます。認証済みの場合は聴取状態も含みます。",
+                "description": "ポッドキャストIDに紐づくエピソード一覧を取得します。各エピソードに平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -1153,12 +1139,12 @@ const docTemplate = `{
         },
         "/podcasts/{id}/rating": {
             "get": {
-                "description": "ポッドキャストの全エピソードの平均評価を取得します",
+                "description": "ポッドキャストに紐づく全エピソードの評価から平均評価と総件数を集計します",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
                 "summary": "ポッドキャスト平均評価",
                 "parameters": [
@@ -1313,42 +1299,6 @@ const docTemplate = `{
                             "additionalProperties": {
                                 "type": "string"
                             }
-                        }
-                    }
-                }
-            }
-        },
-        "/timeline": {
-            "get": {
-                "description": "全ユーザーの最新レビューを時系列で取得します",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "timeline"
-                ],
-                "summary": "タイムライン",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "最大取得件数",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "スキップ件数",
-                        "name": "offset",
-                        "in": "query"
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/usecase.TimelineResult"
                         }
                     }
                 }
@@ -1641,55 +1591,21 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/me/recent-episodes": {
+        "/users/me/ratings": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。",
+                "description": "認証ユーザーが投稿した評価をエピソード・番組情報付きで一覧取得します（設定ページ等での確認用途）。",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "episodes"
+                    "ratings"
                 ],
-                "summary": "最近のエピソード取得（番組グループ化）",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/usecase.RecentEpisodeListResult"
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/users/me/reviews": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "認証ユーザーのレビュー一覧をエピソード・ポッドキャスト情報付きで取得します",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "reviews"
-                ],
-                "summary": "自分のレビュー一覧",
+                "summary": "自分の評価一覧",
                 "parameters": [
                     {
                         "type": "integer",
@@ -1710,7 +1626,41 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/usecase.UserReviewListResult"
+                            "$ref": "#/definitions/usecase.MyRatingListResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/recent-episodes": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが記録をつけた番組の、まだ聴いていないエピソードを番組ごとにグループ化して取得します。各番組の未聴取エピソードは最新3件まで返します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "episodes"
+                ],
+                "summary": "最近のエピソード取得（番組グループ化）",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.RecentEpisodeListResult"
                         }
                     },
                     "401": {
@@ -1919,16 +1869,16 @@ const docTemplate = `{
                 }
             }
         },
-        "/users/{username}/reviews": {
+        "/users/{username}/ratings/stats": {
             "get": {
-                "description": "ユーザー名を指定してレビュー一覧をエピソード・ポッドキャスト情報付きで取得します",
+                "description": "ユーザー名を指定して評価の統計値（平均・総件数・星別分布）を取得します",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "reviews"
+                    "ratings"
                 ],
-                "summary": "ユーザーのレビュー一覧（公開）",
+                "summary": "ユーザーの評価統計サマリー（公開）",
                 "parameters": [
                     {
                         "type": "string",
@@ -1936,27 +1886,13 @@ const docTemplate = `{
                         "name": "username",
                         "in": "path",
                         "required": true
-                    },
-                    {
-                        "type": "integer",
-                        "default": 20,
-                        "description": "最大取得件数",
-                        "name": "limit",
-                        "in": "query"
-                    },
-                    {
-                        "type": "integer",
-                        "default": 0,
-                        "description": "スキップ件数",
-                        "name": "offset",
-                        "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/usecase.UserReviewListResult"
+                            "$ref": "#/definitions/usecase.UserRatingStatsResult"
                         }
                     },
                     "400": {
@@ -2148,12 +2084,9 @@ const docTemplate = `{
                 }
             }
         },
-        "model.Review": {
+        "model.Rating": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
@@ -2293,12 +2226,9 @@ const docTemplate = `{
                 }
             }
         },
-        "usecase.CreateReviewInput": {
+        "usecase.CreateRatingInput": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
-                },
                 "rating": {
                     "type": "integer"
                 }
@@ -2340,7 +2270,7 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "total_reviews": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }
@@ -2369,7 +2299,7 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "total_reviews": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }
@@ -2399,6 +2329,23 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.EpisodeRatingStatsResult": {
+            "type": "object",
+            "properties": {
+                "average_rating": {
+                    "type": "number"
+                },
+                "distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
+                    }
+                },
+                "total_ratings": {
+                    "type": "integer"
                 }
             }
         },
@@ -2537,23 +2484,40 @@ const docTemplate = `{
                 }
             }
         },
-        "usecase.MyReviewResult": {
+        "usecase.MyRatingItem": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
-                },
                 "created_at": {
                     "type": "string"
                 },
+                "episode": {
+                    "$ref": "#/definitions/usecase.RatingEpisodeInfo"
+                },
                 "id": {
                     "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.RatingPodcastInfo"
                 },
                 "rating": {
                     "type": "integer"
                 },
                 "updated_at": {
                     "type": "string"
+                }
+            }
+        },
+        "usecase.MyRatingListResult": {
+            "type": "object",
+            "properties": {
+                "ratings": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.MyRatingItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
                 }
             }
         },
@@ -2590,7 +2554,7 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "total_reviews": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }
@@ -2601,7 +2565,7 @@ const docTemplate = `{
                 "average_rating": {
                     "type": "number"
                 },
-                "total_reviews": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }
@@ -2647,7 +2611,7 @@ const docTemplate = `{
                 "title": {
                     "type": "string"
                 },
-                "total_reviews": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }
@@ -2663,6 +2627,37 @@ const docTemplate = `{
                 },
                 "total": {
                     "type": "integer"
+                }
+            }
+        },
+        "usecase.RatingEpisodeInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.RatingPodcastInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
                 }
             }
         },
@@ -2714,91 +2709,6 @@ const docTemplate = `{
                 },
                 "total_unlistened": {
                     "type": "integer"
-                }
-            }
-        },
-        "usecase.ReviewEpisodeInfo": {
-            "type": "object",
-            "properties": {
-                "artwork_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "podcast_id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "usecase.ReviewItem": {
-            "type": "object",
-            "properties": {
-                "comment": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "user": {
-                    "$ref": "#/definitions/usecase.ReviewUserInfo"
-                }
-            }
-        },
-        "usecase.ReviewListResult": {
-            "type": "object",
-            "properties": {
-                "average_rating": {
-                    "type": "number"
-                },
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/usecase.ReviewItem"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
-        "usecase.ReviewPodcastInfo": {
-            "type": "object",
-            "properties": {
-                "artwork_url": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                }
-            }
-        },
-        "usecase.ReviewUserInfo": {
-            "type": "object",
-            "properties": {
-                "avatar_url": {
-                    "type": "string"
-                },
-                "display_name": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
                 }
             }
         },
@@ -2868,46 +2778,6 @@ const docTemplate = `{
                 }
             }
         },
-        "usecase.TimelineItem": {
-            "type": "object",
-            "properties": {
-                "comment": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "episode": {
-                    "$ref": "#/definitions/usecase.ReviewEpisodeInfo"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "podcast": {
-                    "$ref": "#/definitions/usecase.ReviewPodcastInfo"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "user": {
-                    "$ref": "#/definitions/usecase.ReviewUserInfo"
-                }
-            }
-        },
-        "usecase.TimelineResult": {
-            "type": "object",
-            "properties": {
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/usecase.TimelineItem"
-                    }
-                },
-                "total": {
-                    "type": "integer"
-                }
-            }
-        },
         "usecase.UpdateFavoritePodcastsInput": {
             "type": "object",
             "properties": {
@@ -2919,53 +2789,27 @@ const docTemplate = `{
                 }
             }
         },
-        "usecase.UpdateReviewInput": {
+        "usecase.UpdateRatingInput": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
-                },
                 "rating": {
                     "type": "integer"
                 }
             }
         },
-        "usecase.UserReviewItem": {
+        "usecase.UserRatingStatsResult": {
             "type": "object",
             "properties": {
-                "comment": {
-                    "type": "string"
+                "average_rating": {
+                    "type": "number"
                 },
-                "created_at": {
-                    "type": "string"
-                },
-                "episode": {
-                    "$ref": "#/definitions/usecase.ReviewEpisodeInfo"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "podcast": {
-                    "$ref": "#/definitions/usecase.ReviewPodcastInfo"
-                },
-                "rating": {
-                    "type": "integer"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "usecase.UserReviewListResult": {
-            "type": "object",
-            "properties": {
-                "reviews": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/usecase.UserReviewItem"
+                "distribution": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "integer"
                     }
                 },
-                "total": {
+                "total_ratings": {
                     "type": "integer"
                 }
             }

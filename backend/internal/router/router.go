@@ -18,7 +18,7 @@ type Handlers struct {
 	Podcast         *handler.PodcastHandler
 	Episode         *handler.EpisodeHandler
 	ListeningRecord *handler.ListeningRecordHandler
-	Review          *handler.ReviewHandler
+	Rating          *handler.RatingHandler
 	FavoritePodcast *handler.FavoritePodcastHandler
 	PodcastRequest  *handler.PodcastRequestHandler
 	Genre           *handler.GenreHandler
@@ -73,7 +73,7 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 	// Users (公開)
 	v1.GET("/users/:username", h.User.GetPublicProfile)
 	v1.GET("/users/:username/listening-records", h.ListeningRecord.GetUserListeningRecords)
-	v1.GET("/users/:username/reviews", h.Review.GetUserReviews)
+	v1.GET("/users/:username/ratings/stats", h.Rating.GetUsernameStats)
 	v1.GET("/users/:username/favorite-podcasts", h.FavoritePodcast.GetUserFavoritePodcasts)
 
 	// Genres (公開)
@@ -89,14 +89,18 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 	optionalAuth.GET("/podcasts/:id/episodes", h.Episode.GetByPodcastID)
 	optionalAuth.GET("/episodes/:id", h.Episode.GetByID)
 
-	// Episodes (公開)
-	v1.GET("/episodes/:id/reviews", h.Review.GetByEpisodeID)
+	// Ratings 集計 (公開)
+	// `/episodes/:id/ratings` (GET, 公開) は集計値（平均・件数・分布）を返します。
+	// 旧 `/episodes/:id/reviews` (list) はデータソースとして廃止し、感想一覧は podlog#391 で
+	// 追加する `/episodes/:id/comments` 系から取得する設計に変更しました。
+	v1.GET("/episodes/:id/ratings", h.Rating.GetEpisodeStats)
 
 	// Podcasts 評価 (公開)
-	v1.GET("/podcasts/:id/rating", h.Review.GetPodcastRating)
+	v1.GET("/podcasts/:id/rating", h.Rating.GetPodcastRating)
 
-	// Timeline (公開)
-	v1.GET("/timeline", h.Review.GetTimeline)
+	// Timeline はリリース前の評価/感想分離リファクタ中につき一時的に未提供です。
+	// 旧 `/timeline` は rating + comment の混在モデルに依存していたため本 PR で撤去し、
+	// comment ベースの新タイムラインは podlog#391 で復活する予定です。
 
 	// Sitemap（内部 API: Bearer トークン認証）
 	//
@@ -143,12 +147,12 @@ func Setup(e *echo.Echo, h Handlers, supabaseURL string, adminUserIDs []string, 
 	auth.GET("/episodes/:id/listen", h.ListeningRecord.GetStatus)
 	auth.GET("/users/me/listening-records", h.ListeningRecord.GetMyRecords)
 
-	// Reviews (認証必要)
-	auth.POST("/episodes/:id/reviews", h.Review.Create)
-	auth.GET("/episodes/:id/reviews/mine", h.Review.GetMyReview)
-	auth.PUT("/episodes/:id/reviews/mine", h.Review.Update)
-	auth.DELETE("/episodes/:id/reviews/mine", h.Review.Delete)
-	auth.GET("/users/me/reviews", h.Review.GetMyReviews)
+	// Ratings (認証必要)
+	auth.POST("/episodes/:id/ratings", h.Rating.Create)
+	auth.GET("/episodes/:id/ratings/mine", h.Rating.GetMyRating)
+	auth.PUT("/episodes/:id/ratings/mine", h.Rating.Update)
+	auth.DELETE("/episodes/:id/ratings/mine", h.Rating.Delete)
+	auth.GET("/users/me/ratings", h.Rating.GetMyRatings)
 
 	// Favorite Podcasts (認証必要)
 	auth.PUT("/users/me/favorite-podcasts", h.FavoritePodcast.UpdateFavoritePodcasts)
