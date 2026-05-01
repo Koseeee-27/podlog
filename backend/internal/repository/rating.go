@@ -84,16 +84,27 @@ func (r *ratingRepository) Create(ctx context.Context, rating *model.Rating) err
 }
 
 // Update は評価値を更新します。
-// 旧 Review.Update から comment 列の更新を取り除いただけのクエリです。
+//
+// `RowsAffected == 0` の場合は `sql.ErrNoRows` を返します。
+// usecase 側で事前に `GetByUserAndEpisode` で存在確認していますが、その間に並行 DELETE で
+// 消されるレースで「更新が空振りしたのに 200 を返してしまう」TOCTOU を防ぐためです。
+// `Delete` 側（同ファイル）と挙動を揃えています。
 func (r *ratingRepository) Update(ctx context.Context, rating *model.Rating) error {
 	query := `
 		UPDATE ratings
 		SET rating = $1, updated_at = NOW()
 		WHERE id = $2
 	`
-	_, err := r.db.ExecContext(ctx, query, rating.Rating, rating.ID)
+	result, err := r.db.ExecContext(ctx, query, rating.Rating, rating.ID)
 	if err != nil {
 		return fmt.Errorf("failed to update rating: %w", err)
+	}
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+	if rowsAffected == 0 {
+		return sql.ErrNoRows
 	}
 	return nil
 }

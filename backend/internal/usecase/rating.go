@@ -190,6 +190,11 @@ func (u *ratingUsecase) Update(ctx context.Context, userID, episodeID uuid.UUID,
 
 	existing.Rating = input.Rating
 	if err := u.ratingRepo.Update(ctx, existing); err != nil {
+		// 事前 GetByUserAndEpisode と Update の間で並行 DELETE が走ると repository が
+		// sql.ErrNoRows を返す（TOCTOU 対策）。NotFoundError に揃えて 404 にする。
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, &NotFoundError{Resource: "rating"}
+		}
 		return nil, fmt.Errorf("failed to update rating: %w", err)
 	}
 

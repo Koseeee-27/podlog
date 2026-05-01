@@ -743,7 +743,7 @@ func TestPodcastUsecase_Search_ITunesFallback(t *testing.T) {
 		}
 		// podlog#351 の検証ポイント: 集計値が DB の実値で埋まっていること。
 		// roundToOneDecimal を通した結果との比較は浮動小数の表現誤差で
-		// 不安定になりうるため、許容誤差で比較します（review_test.go と同様）。
+		// 不安定になりうるため、許容誤差で比較します（rating_test.go と同様）。
 		if math.Abs(got.AverageRating-4.3) > 1e-9 {
 			t.Errorf("AverageRating = %v, want 4.3 (rounded from 4.25)", got.AverageRating)
 		}

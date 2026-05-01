@@ -23,9 +23,3 @@ type Episode struct {
 	UpdatedAt      time.Time  `db:"updated_at" json:"updated_at"`
 }
 
-// EpisodeWithStats はエピソード詳細にレビュー統計を付加した構造体です。
-type EpisodeWithStats struct {
-	Episode
-	ReviewCount  int     `json:"review_count"`
-	AverageRating float64 `json:"average_rating"`
-}

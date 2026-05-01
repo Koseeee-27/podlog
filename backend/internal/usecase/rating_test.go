@@ -334,6 +334,33 @@ func TestRatingUsecase_Update(t *testing.T) {
 			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
 		}
 	})
+
+	t.Run("並行 DELETE による TOCTOU レース → NotFoundError", func(t *testing.T) {
+		// 事前 GetByUserAndEpisode は成功するが Update が sql.ErrNoRows を返すケース。
+		// 並行リクエストで間に DELETE が走った想定。NotFoundError に変換され 404 が返ること。
+		existing := newTestRating(userID, episodeID)
+		uc := NewRatingUsecase(
+			&mockRatingRepo{
+				getByUserAndEpisodeFn: func(_ context.Context, _, _ uuid.UUID) (*model.Rating, error) {
+					return existing, nil
+				},
+				updateFn: func(_ context.Context, _ *model.Rating) error {
+					return sql.ErrNoRows
+				},
+			},
+			&mockEpisodeRepo{},
+			nil,
+		)
+
+		_, err := uc.Update(ctx, userID, episodeID, UpdateRatingInput{Rating: 3})
+		if err == nil {
+			t.Fatal("expected error, got nil")
+		}
+		var nfe *NotFoundError
+		if !errors.As(err, &nfe) {
+			t.Fatalf("expected NotFoundError, got %T: %v", err, err)
+		}
+	})
 }
 
 // ── テスト: Delete ──
