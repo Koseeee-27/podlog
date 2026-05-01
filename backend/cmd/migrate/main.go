@@ -18,11 +18,11 @@ import (
 	"log/slog"
 	"os"
 
-	"github.com/caarlos0/env/v11"
 	"github.com/joho/godotenv"
 
 	dbmigrate "github.com/Koseeee-27/podlog/backend/db"
 	"github.com/Koseeee-27/podlog/backend/internal/config"
+	"github.com/Koseeee-27/podlog/backend/internal/logging"
 )
 
 func main() {
@@ -36,16 +36,32 @@ func main() {
 
 // run は引数を解釈してマイグレーションコマンドを実行します。
 // テスト容易性のため main から分離している。
+//
+// 初期化パターンは cmd/server / cmd/backfill-* と揃える:
+//  1. 暫定ロガー（本番 JSON Handler）を SetDefault
+//  2. .env 読み込み（無ければ無視）
+//  3. config.Load() で環境変数をパース
+//  4. 環境別ロガーに差し替え
 func run() error {
-	// .env が存在すれば読み込む（存在しなければ無視）。
-	// 環境変数で直接渡されている場合（CI 等）は .env なしで動く。
-	_ = godotenv.Load()
+	// 1. ロガーを暫定初期化（本番相当の JSON Handler）。
+	// config 読み込み失敗時のログも slog に乗せるため、ここで先に SetDefault する。
+	slog.SetDefault(logging.NewLogger(logging.EnvProduction))
 
-	// 環境変数を Config 構造体にマッピング。cmd/server と同じ仕組みを再利用する。
-	cfg := &config.Config{}
-	if err := env.Parse(cfg); err != nil {
-		return fmt.Errorf("環境変数の読み込みに失敗: %w", err)
+	// 2. .env が存在すれば読み込む（無ければ環境変数からそのまま読む）。
+	if err := godotenv.Load(); err != nil {
+		slog.Info(".env file not found, loading config from environment variables")
 	}
+
+	// 3. 環境変数を Config 構造体にロード。cmd/server / cmd/backfill-* と
+	// 同じファクトリを使うことで一貫性を保つ。
+	cfg, err := config.Load()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// 4. ロガーを環境に応じたものに差し替える（development なら TextHandler）。
+	slog.SetDefault(logging.NewLogger(cfg.Environment))
+
 	dsn := cfg.DatabaseDSN()
 
 	// サブコマンド形式: go run ./cmd/migrate <up|down>

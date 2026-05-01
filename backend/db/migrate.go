@@ -79,8 +79,12 @@ func logVersion(m *migrate.Migrate, msg string) {
 	if verErr != nil {
 		// migrate.ErrNilVersion はバージョンレコードがない（適用済み 0 件）状態を意味する。
 		// ロールバックで全マイグレーションを巻き戻した直後など、エラーではなく正常系。
+		// `version` キーは通常時 uint で出すため、未設定状態で string "none" を入れると
+		// Cloud Logging のフィルタ・集計で型不一致が起きる（rules/backend.md の
+		// 「ログ属性のキー名と値の粒度を統一する」セクション参照）。version 自体は
+		// 出さず、別フィールド `has_version=false` で未設定状態を表現する。
 		if errors.Is(verErr, migrate.ErrNilVersion) {
-			slog.Info(msg, "version", "none")
+			slog.Info(msg, "has_version", false)
 			return
 		}
 		slog.Warn(msg+" but version lookup failed", "error", verErr)
