@@ -22,24 +22,23 @@ import (
 const maxEpisodesPerFetch = 50
 
 // EpisodeDetailResult はエピソード詳細のレスポンスです。
-// API 設計書に従い、エピソード情報に加えて podcast 情報と average_rating / total_ratings を含みます。
+// API 設計書に従い、エピソード情報に加えて podcast 情報、評価集計（average_rating /
+// total_ratings）、感想件数（total_comments）を含みます。
 // Listened は認証ユーザーの聴取状態です。未認証の場合は omitempty により省略されます。
-//
-// 注: API 設計書では `total_comments` も含む方針だが、本 PR (podlog#390) は rating レイヤーのみの
-// 切替で、comment 関連は podlog#391 で別途追加する。
 type EpisodeDetailResult struct {
-	ID            uuid.UUID              `json:"id"`
-	Title         string                 `json:"title"`
-	Description   *string                `json:"description,omitempty"`
-	AudioURL      *string                `json:"audio_url,omitempty"`
-	ArtworkURL    *string                `json:"artwork_url,omitempty"`
-	DurationMs    *int64                 `json:"duration_ms,omitempty"`
-	PublishedAt   *string                `json:"published_at,omitempty"`
-	Podcast       EpisodePodcastInfo     `json:"podcast"`
-	AverageRating float64                `json:"average_rating"`
-	TotalRatings  int                    `json:"total_ratings"`
-	Listened      *bool                  `json:"listened,omitempty"`
-	CreatedAt     string                 `json:"created_at"`
+	ID            uuid.UUID          `json:"id"`
+	Title         string             `json:"title"`
+	Description   *string            `json:"description,omitempty"`
+	AudioURL      *string            `json:"audio_url,omitempty"`
+	ArtworkURL    *string            `json:"artwork_url,omitempty"`
+	DurationMs    *int64             `json:"duration_ms,omitempty"`
+	PublishedAt   *string            `json:"published_at,omitempty"`
+	Podcast       EpisodePodcastInfo `json:"podcast"`
+	AverageRating float64            `json:"average_rating"`
+	TotalRatings  int                `json:"total_ratings"`
+	TotalComments int                `json:"total_comments"`
+	Listened      *bool              `json:"listened,omitempty"`
+	CreatedAt     string             `json:"created_at"`
 }
 
 // EpisodePodcastInfo はエピソード詳細に含まれるポッドキャスト情報です。

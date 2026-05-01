@@ -253,6 +253,7 @@ func run() error {
 	episodeRepo := repository.NewEpisodeRepository(db)
 	listeningRecordRepo := repository.NewListeningRecordRepository(db)
 	ratingRepo := repository.NewRatingRepository(db)
+	commentRepo := repository.NewCommentRepository(db)
 	favoritePodcastRepo := repository.NewFavoritePodcastRepository(db)
 	podcastRequestRepo := repository.NewPodcastRequestRepository(db)
 	sitemapRepo := repository.NewSitemapRepository(db)
@@ -264,6 +265,7 @@ func run() error {
 	episodeUsecase := usecase.NewEpisodeUsecase(episodeRepo, podcastRepo, rssClient, &bgWg)
 	listeningRecordUsecase := usecase.NewListeningRecordUsecase(listeningRecordRepo, episodeRepo, userRepo)
 	ratingUsecase := usecase.NewRatingUsecase(ratingRepo, episodeRepo, userRepo)
+	commentUsecase := usecase.NewCommentUsecase(commentRepo, episodeRepo, userRepo)
 	favoritePodcastUsecase := usecase.NewFavoritePodcastUsecase(favoritePodcastRepo, userRepo, podcastRepo)
 	podcastRequestUsecase := usecase.NewPodcastRequestUsecase(podcastRequestRepo)
 	genreUsecase := usecase.NewGenreUsecase(podcastRepo)
@@ -280,9 +282,10 @@ func run() error {
 		Health:          handler.NewHealthHandler(db),
 		User:            handler.NewUserHandler(userUsecase, adminUserIDs),
 		Podcast:         handler.NewPodcastHandler(podcastUsecase, ratingUsecase, favoritePodcastRepo, ogpScraper),
-		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, ratingUsecase),
+		Episode:         handler.NewEpisodeHandler(episodeUsecase, podcastUsecase, ratingUsecase, commentUsecase),
 		ListeningRecord: handler.NewListeningRecordHandler(listeningRecordUsecase),
 		Rating:          handler.NewRatingHandler(ratingUsecase),
+		Comment:         handler.NewCommentHandler(commentUsecase),
 		FavoritePodcast: handler.NewFavoritePodcastHandler(favoritePodcastUsecase),
 		PodcastRequest:  handler.NewPodcastRequestHandler(podcastRequestUsecase),
 		Genre:           handler.NewGenreHandler(genreUsecase),

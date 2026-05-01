@@ -151,9 +151,153 @@ const docTemplate = `{
                 }
             }
         },
+        "/comments/{id}": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが自分の感想本文を更新します。他ユーザーの感想を更新しようとした場合は 403 を返します。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "感想更新",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "コメントID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "感想本文",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UpdateCommentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Comment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが自分の感想を削除します。他ユーザーの感想を削除しようとした場合は 403 を返します。",
+                "tags": [
+                    "comments"
+                ],
+                "summary": "感想削除",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "コメントID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "Forbidden",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/episodes/{id}": {
             "get": {
-                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数を含みます。認証済みの場合は聴取状態も含みます。",
+                "description": "エピソードIDから詳細情報を取得します。ポッドキャスト情報・平均評価・評価件数・感想件数を含みます。認証済みの場合は聴取状態も含みます。",
                 "produces": [
                     "application/json"
                 ],
@@ -175,6 +319,129 @@ const docTemplate = `{
                         "description": "OK",
                         "schema": {
                             "$ref": "#/definitions/usecase.EpisodeDetailResult"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/episodes/{id}/comments": {
+            "get": {
+                "description": "エピソードに投稿された感想を新しい順で取得します。認証不要。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "エピソードの感想一覧",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.EpisodeCommentListResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーがエピソードに感想（1〜1000文字）を投稿します。同一ユーザーが同一エピソードに複数件投稿可能です。",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "感想投稿",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "エピソードID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "感想本文",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/usecase.CreateCommentInput"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/model.Comment"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "404": {
@@ -1304,6 +1571,42 @@ const docTemplate = `{
                 }
             }
         },
+        "/timeline": {
+            "get": {
+                "description": "全ユーザーの最新の感想を時系列で取得します（comment ベース）。認証不要。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "タイムライン",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.TimelineResult"
+                        }
+                    }
+                }
+            }
+        },
         "/users/me": {
             "get": {
                 "security": [
@@ -1465,6 +1768,56 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me/comments": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "認証ユーザーが投稿した感想をエピソード・番組情報付きで一覧取得します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "自分の感想一覧",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UserCommentListResult"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -1779,6 +2132,67 @@ const docTemplate = `{
                 }
             }
         },
+        "/users/{username}/comments": {
+            "get": {
+                "description": "ユーザー名を指定して公開感想を一覧取得します。",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "comments"
+                ],
+                "summary": "ユーザーの感想一覧（公開）",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ユーザー名",
+                        "name": "username",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "default": 20,
+                        "description": "最大取得件数",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "default": 0,
+                        "description": "スキップ件数",
+                        "name": "offset",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/usecase.UserCommentListResult"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/users/{username}/favorite-podcasts": {
             "get": {
                 "description": "ユーザー名を指定して好きな番組一覧を取得します。ユーザーページの「好きな番組」セクションで使用します。",
@@ -1922,6 +2336,29 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "avatar_url": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.Comment": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user_id": {
                     "type": "string"
                 }
             }
@@ -2164,6 +2601,62 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.CommentEpisodeInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast_id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.CommentPodcastInfo": {
+            "type": "object",
+            "properties": {
+                "artwork_url": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.CommentUserInfo": {
+            "type": "object",
+            "properties": {
+                "avatar_url": {
+                    "type": "string"
+                },
+                "display_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.CreateCommentInput": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                }
+            }
+        },
         "usecase.CreateEpisodeInput": {
             "type": "object",
             "properties": {
@@ -2234,6 +2727,40 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.EpisodeCommentItem": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/usecase.CommentUserInfo"
+                }
+            }
+        },
+        "usecase.EpisodeCommentListResult": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.EpisodeCommentItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
         "usecase.EpisodeDetailResult": {
             "type": "object",
             "properties": {
@@ -2269,6 +2796,9 @@ const docTemplate = `{
                 },
                 "title": {
                     "type": "string"
+                },
+                "total_comments": {
+                    "type": "integer"
                 },
                 "total_ratings": {
                     "type": "integer"
@@ -2778,6 +3308,54 @@ const docTemplate = `{
                 }
             }
         },
+        "usecase.TimelineItem": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode": {
+                    "$ref": "#/definitions/usecase.CommentEpisodeInfo"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.CommentPodcastInfo"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/usecase.CommentUserInfo"
+                }
+            }
+        },
+        "usecase.TimelineResult": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.TimelineItem"
+                    }
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.UpdateCommentInput": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                }
+            }
+        },
         "usecase.UpdateFavoritePodcastsInput": {
             "type": "object",
             "properties": {
@@ -2793,6 +3371,43 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "rating": {
+                    "type": "integer"
+                }
+            }
+        },
+        "usecase.UserCommentItem": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "episode": {
+                    "$ref": "#/definitions/usecase.CommentEpisodeInfo"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "podcast": {
+                    "$ref": "#/definitions/usecase.CommentPodcastInfo"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "usecase.UserCommentListResult": {
+            "type": "object",
+            "properties": {
+                "comments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/usecase.UserCommentItem"
+                    }
+                },
+                "total": {
                     "type": "integer"
                 }
             }
