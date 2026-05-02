@@ -193,6 +193,18 @@ describe("createRating", () => {
       }),
     );
   });
+
+  it("episodeId を encodeURIComponent する", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce({});
+
+    await createRating("ep with/slash-create", { rating: 4 });
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/episodes/ep%20with%2Fslash-create/ratings",
+      expect.any(Object),
+    );
+  });
 });
 
 describe("updateMyRating", () => {
@@ -212,6 +224,18 @@ describe("updateMyRating", () => {
         }),
         body: JSON.stringify({ rating: 3 }),
       }),
+    );
+  });
+
+  it("episodeId を encodeURIComponent する", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce({});
+
+    await updateMyRating("ep with/slash-update", { rating: 2 });
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/episodes/ep%20with%2Fslash-update/ratings/mine",
+      expect.any(Object),
     );
   });
 });
@@ -235,5 +259,17 @@ describe("deleteMyRating", () => {
     expect(init).not.toHaveProperty("body");
     // DELETE では Content-Type を付けない（PodLog API 規約）
     expect(init?.headers).not.toHaveProperty("Content-Type");
+  });
+
+  it("episodeId を encodeURIComponent する", async () => {
+    mockGetAuthHeaders.mockResolvedValueOnce({});
+    mockApiFetch.mockResolvedValueOnce(undefined);
+
+    await deleteMyRating("ep with/slash-delete");
+
+    expect(mockApiFetch).toHaveBeenCalledWith(
+      "/episodes/ep%20with%2Fslash-delete/ratings/mine",
+      expect.any(Object),
+    );
   });
 });

@@ -51,6 +51,12 @@ import type {
  * `ApiRequestError` を catch して未ログイン / 未投稿を判別する。
  *
  * Authorization ヘッダー付きの呼び出しなので `cache: "no-store"` を明示する。
+ *
+ * 呼び出し側のパターン例: P-6 の `app/(main)/episodes/[id]/RatingSectionWithAuth.tsx`
+ * （仮称）で実装予定。`getMyReview` を使っている既存の
+ * `EpisodeReviewSectionView` 系コンポーネントを参考にする想定（401 は
+ * 「星クリックで POST を促す」UI、404 は「評価未投稿、星クリックで POST」UI、
+ * 200 は「自分の評価値で星を highlight」UI）。
  */
 export const getMyRating = cache(
   async (episodeId: string): Promise<MyRatingResult> => {
@@ -164,8 +170,9 @@ export const getMyRatings = cache(
  * DAL 側では 401 を事前判定せず `apiFetch` にそのまま投げる。呼び出し側
  * (Server Action) で `ApiRequestError` を catch して扱う (FE 規約)。
  *
- * 既に投稿済みの場合は BE が 409 を返すので、Server Action 側で 409 を
- * 検知したら `updateMyRating` にフォールバックする運用。
+ * 既に投稿済みの場合は BE が 409 を返す。**409 のフォールバック (PUT への
+ * 切替) は UI 層 (P-6) の責務とする**。Server Action は POST のみを叩き、
+ * 409 を含むエラーはそのまま返す。
  */
 export async function createRating(
   episodeId: string,

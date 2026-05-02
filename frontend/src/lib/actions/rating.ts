@@ -33,6 +33,14 @@ import type { Rating } from "@/types/rating";
 export interface RatingFormState {
   success: boolean;
   error?: string;
+  /**
+   * 投稿/更新成功時の Rating レコード。
+   *
+   * 本 PR (P-5) ではこの値を消費する UI は無い。P-6 で UI 側が
+   * `useActionState` の戻り値から `state.rating` を読み、楽観的更新の
+   * 確定値として使う想定で先行定義している（既存 `ReviewFormState.review`
+   * と同じパターン）。
+   */
   rating?: Rating;
 }
 
