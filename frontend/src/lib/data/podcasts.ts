@@ -7,8 +7,9 @@
  * - React の `cache()` でラップし、同一リクエスト内の重複取得を防ぐ
  * - エンドポイント URL・`revalidate` 戦略を DAL 側に閉じ込める
  *
- * `/podcasts/:id`, `/podcasts/popular`, `/podcasts/:id/rating`, `/podcasts/search`
+ * `/podcasts/:id`, `/podcasts/popular`, `/podcasts/search`
  * は公開 API で、Authorization ヘッダーは付けない。
+ * （`/podcasts/:id/rating` は `lib/data/ratings.ts::getPodcastRating` に移動した）
  *
  * `/podcasts/:id/episodes` だけはオプショナル認証で、未ログインでも動くが
  * ログイン中はエピソードに「聴取済み」フラグが付く。Authorization ヘッダーが
@@ -20,7 +21,6 @@ import { cache } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
 import type { PodcastDetailResult, PodcastSearchResult } from "@/types/podcast";
-import type { OldPodcastRatingResult } from "@/types/review";
 import type { EpisodeListResult } from "@/types/episode";
 
 /**
@@ -57,29 +57,6 @@ export const getPopularPodcasts = cache(
       headers: { "Content-Type": "application/json" },
       next: { revalidate: 300, tags: ["popular-podcasts"] },
     });
-  },
-);
-
-/**
- * 番組の評価情報 (平均点 + レビュー総数) を取得する (公開)。
- * revalidate: 60 秒。
- *
- * **注意**: BE は podlog#390 で `total_ratings` 形に切り替え済みのため、本関数
- * の戻り型 `OldPodcastRatingResult.total_reviews` は実行時 `undefined` になる。
- * 次コミットで `lib/data/ratings.ts::getPodcastRating` （新型）に引っ越す。
- * 本コミット時点では型ミスマッチ状態のままだが、過渡期リネームのコミット粒度を
- * 守るために一時的に許容している。
- */
-export const getPodcastRating = cache(
-  async (id: string): Promise<OldPodcastRatingResult> => {
-    return apiFetch<OldPodcastRatingResult>(
-      `/podcasts/${encodeURIComponent(id)}/rating`,
-      {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-        next: { revalidate: 60 },
-      },
-    );
   },
 );
 

@@ -1,4 +1,4 @@
-import { getPodcastRating } from "@/lib/data/podcasts";
+import { getPodcastRating } from "@/lib/data/ratings";
 import RatingDisplay from "./RatingDisplay";
 
 interface RatingSectionProps {
@@ -18,6 +18,11 @@ interface RatingSectionProps {
  * これは「握りつぶし」ではなく ErrorBoundary への明示的な委譲であり、
  * Server 側で throw されたエラーは `src/instrumentation.ts` の `onRequestError`
  * が自動で Sentry に送信するため、取得失敗は無音で隠しても観測は欠落しない。
+ *
+ * podlog#390（BE）で `total_reviews` → `total_ratings` に切替済みのため、
+ * 本コンポーネントも `result.total_ratings` を読む（旧 `total_reviews` を
+ * 読んでいた状態は実行時 undefined になっていた）。RatingDisplay 側の
+ * prop 名 `totalReviews` の追従と表示文言（「件のレビュー」）は P-6 の責務。
  */
 export default async function RatingSection({ podcastId }: RatingSectionProps) {
   const result = await getPodcastRating(podcastId);
@@ -25,7 +30,7 @@ export default async function RatingSection({ podcastId }: RatingSectionProps) {
   return (
     <RatingDisplay
       averageRating={result.average_rating}
-      totalReviews={result.total_reviews}
+      totalReviews={result.total_ratings}
     />
   );
 }
