@@ -41,7 +41,14 @@ export interface ReviewListResult {
   average_rating: number;
 }
 
-export interface PodcastRatingResult {
+/**
+ * 旧モデルの番組評価結果（`total_reviews` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `types/rating.ts` の `PodcastRatingResult`
+ * （`total_ratings` 形）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。P-9 で削除予定。
+ */
+export interface OldPodcastRatingResult {
   average_rating: number;
   total_reviews: number;
 }

@@ -20,7 +20,7 @@ import { cache } from "react";
 import { apiFetch } from "@/lib/api/fetch";
 import { getAuthHeaders } from "@/lib/auth/getAuthHeaders";
 import type { PodcastDetailResult, PodcastSearchResult } from "@/types/podcast";
-import type { PodcastRatingResult } from "@/types/review";
+import type { OldPodcastRatingResult } from "@/types/review";
 import type { EpisodeListResult } from "@/types/episode";
 
 /**
@@ -63,10 +63,16 @@ export const getPopularPodcasts = cache(
 /**
  * 番組の評価情報 (平均点 + レビュー総数) を取得する (公開)。
  * revalidate: 60 秒。
+ *
+ * **注意**: BE は podlog#390 で `total_ratings` 形に切り替え済みのため、本関数
+ * の戻り型 `OldPodcastRatingResult.total_reviews` は実行時 `undefined` になる。
+ * 次コミットで `lib/data/ratings.ts::getPodcastRating` （新型）に引っ越す。
+ * 本コミット時点では型ミスマッチ状態のままだが、過渡期リネームのコミット粒度を
+ * 守るために一時的に許容している。
  */
 export const getPodcastRating = cache(
-  async (id: string): Promise<PodcastRatingResult> => {
-    return apiFetch<PodcastRatingResult>(
+  async (id: string): Promise<OldPodcastRatingResult> => {
+    return apiFetch<OldPodcastRatingResult>(
       `/podcasts/${encodeURIComponent(id)}/rating`,
       {
         method: "GET",

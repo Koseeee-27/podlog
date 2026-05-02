@@ -51,8 +51,15 @@ export const optionalHttpUrlSchema = z
     "正しいURLを入力してください"
   );
 
-/** 星評価（1〜5 の整数） */
-export const ratingSchema = z
+/**
+ * 星評価の **値そのもの** のバリデーション（1〜5 の整数）。
+ *
+ * `lib/schemas/rating.ts` の `ratingSchema`（API レスポンス全体型）と名前衝突
+ * しないよう、値バリデータ部品は `ratingValueSchema` と命名している。
+ * `createRatingRequestSchema` 等の `rating` フィールドの値検証部品として
+ * 再利用する。
+ */
+export const ratingValueSchema = z
   .coerce.number()
   .int("評価は整数で入力してください")
   .min(1, "評価は1以上で入力してください")
