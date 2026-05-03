@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { uuidSchema, datetimeSchema, ratingSchema, commentSchema } from "./common";
+// 過渡期メモ: 旧モデル（review）は podlog-workspace#59 の P-9 で削除予定。
+// 値バリデータ部品の名前は `ratingSchema` → `ratingValueSchema` にリネーム済み
+// （新モデル `lib/schemas/rating.ts` の `ratingSchema`（API 全体型）と
+// 衝突回避のため）。
+import { uuidSchema, datetimeSchema, ratingValueSchema, commentSchema } from "./common";
 
 /** レビュー投稿者 */
 export const reviewUserSchema = z.object({
@@ -26,7 +30,7 @@ export type Review = z.infer<typeof reviewSchema>;
 
 /** レビュー作成リクエスト */
 export const createReviewRequestSchema = z.object({
-  rating: ratingSchema,
+  rating: ratingValueSchema,
   comment: commentSchema.optional(),
 });
 
@@ -34,7 +38,7 @@ export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
 
 /** レビュー更新リクエスト */
 export const updateReviewRequestSchema = z.object({
-  rating: ratingSchema,
+  rating: ratingValueSchema,
   comment: commentSchema.optional(),
 });
 
@@ -60,13 +64,19 @@ export const reviewListResultSchema = z.object({
 
 export type ReviewListResult = z.infer<typeof reviewListResultSchema>;
 
-/** 番組評価結果 */
-export const podcastRatingResultSchema = z.object({
+/**
+ * 旧モデルの番組評価結果（`total_reviews` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `lib/schemas/rating.ts` の `podcastRatingResultSchema`
+ * （`total_ratings` 形）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。P-9 で削除予定。
+ */
+export const oldPodcastRatingResultSchema = z.object({
   average_rating: z.number(),
   total_reviews: z.number(),
 });
 
-export type PodcastRatingResult = z.infer<typeof podcastRatingResultSchema>;
+export type OldPodcastRatingResult = z.infer<typeof oldPodcastRatingResultSchema>;
 
 /** レビューに含まれるエピソード情報 */
 export const reviewEpisodeSchema = z.object({

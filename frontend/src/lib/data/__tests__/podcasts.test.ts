@@ -10,7 +10,6 @@
 import {
   getPodcastById,
   getPopularPodcasts,
-  getPodcastRating,
   searchPodcasts,
   getPodcastEpisodes,
 } from "../podcasts";
@@ -80,21 +79,6 @@ describe("getPopularPodcasts", () => {
         method: "GET",
         headers: { "Content-Type": "application/json" },
         next: { revalidate: 300, tags: ["popular-podcasts"] },
-      }),
-    );
-  });
-});
-
-describe("getPodcastRating", () => {
-  it("id を encodeURIComponent して revalidate: 60 で呼ぶ", async () => {
-    mockApiFetch.mockResolvedValueOnce({ average_rating: 4, total_reviews: 10 });
-
-    await getPodcastRating("rating id-1");
-
-    expect(mockApiFetch).toHaveBeenCalledWith(
-      "/podcasts/rating%20id-1/rating",
-      expect.objectContaining({
-        next: { revalidate: 60 },
       }),
     );
   });
