@@ -17,11 +17,11 @@ export default function EpisodeCard({ episode, showListenButton }: EpisodeCardPr
       <div className="mt-2 flex items-center gap-3 text-xs text-stone-500">
         {episode.published_at && <span>{formatDate(episode.published_at)}</span>}
         {episode.duration_ms && <span>{formatDuration(episode.duration_ms)}</span>}
-        {episode.total_reviews > 0 && (
+        {episode.total_ratings > 0 && (
           <span className="inline-flex items-center gap-0.5">
             <StarIcon className="w-3.5 h-3.5 text-amber-500" />
             <span>{episode.average_rating.toFixed(1)}</span>
-            <span className="ml-0.5">({episode.total_reviews}件)</span>
+            <span className="ml-0.5">({episode.total_ratings}件)</span>
           </span>
         )}
       </div>
