@@ -22,7 +22,7 @@ function makeEpisodes(count: number, offset = 0): EpisodeListItem[] {
     duration_ms: null,
     published_at: null,
     average_rating: 0,
-    total_reviews: 0,
+    total_ratings: 0,
   }));
 }
 
