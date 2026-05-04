@@ -15,7 +15,7 @@ export interface Episode {
 }
 
 export interface EpisodeWithStats extends Episode {
-  total_reviews: number;
+  total_ratings: number;
   average_rating: number;
 }
 
@@ -32,7 +32,7 @@ export interface EpisodeDetailResult {
   created_at: string;
   podcast: EpisodePodcastInfo;
   average_rating: number;
-  total_reviews: number;
+  total_ratings: number;
 }
 
 export interface EpisodePodcastInfo {
@@ -48,7 +48,7 @@ export interface EpisodeListItem {
   duration_ms?: number | null;
   published_at?: string | null;
   average_rating: number;
-  total_reviews: number;
+  total_ratings: number;
 }
 
 export interface EpisodeListResult {

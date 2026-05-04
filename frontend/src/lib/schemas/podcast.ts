@@ -27,7 +27,7 @@ export const podcastSearchItemSchema = z.object({
   author: z.string().nullish(),
   artwork_url: z.string().nullish(),
   average_rating: z.number(),
-  total_reviews: z.number(),
+  total_ratings: z.number(),
 });
 
 export type PodcastSearchItem = z.infer<typeof podcastSearchItemSchema>;

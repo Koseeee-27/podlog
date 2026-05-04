@@ -20,13 +20,13 @@ export interface PodcastSearchItem {
   author: string | null;
   artwork_url: string | null;
   average_rating: number;
-  total_reviews: number;
+  total_ratings: number;
   favorite_count: number;
 }
 
 export interface PodcastDetailResult extends Podcast {
   average_rating: number;
-  total_reviews: number;
+  total_ratings: number;
   favorite_count: number;
 }
 

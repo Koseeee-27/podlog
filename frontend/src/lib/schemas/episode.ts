@@ -28,7 +28,7 @@ export const episodeListItemSchema = z.object({
   duration_ms: z.number().nullish(),
   published_at: z.string().nullish(),
   average_rating: z.number(),
-  total_reviews: z.number(),
+  total_ratings: z.number(),
 });
 
 export type EpisodeListItem = z.infer<typeof episodeListItemSchema>;

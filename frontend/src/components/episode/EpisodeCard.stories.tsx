@@ -19,7 +19,7 @@ export const Default: Story = {
       duration_ms: 3600000,
       published_at: "2024-06-15T00:00:00Z",
       average_rating: 4.2,
-      total_reviews: 8,
+      total_ratings: 8,
     },
   },
 };
@@ -33,7 +33,7 @@ export const WithHighRating: Story = {
       duration_ms: 5400000,
       published_at: "2024-06-08T00:00:00Z",
       average_rating: 4.8,
-      total_reviews: 25,
+      total_ratings: 25,
     },
   },
 };
@@ -47,7 +47,7 @@ export const NoReviews: Story = {
       duration_ms: null,
       published_at: null,
       average_rating: 0,
-      total_reviews: 0,
+      total_ratings: 0,
     },
   },
 };
@@ -61,7 +61,7 @@ export const MinimalInfo: Story = {
       duration_ms: null,
       published_at: null,
       average_rating: 0,
-      total_reviews: 0,
+      total_ratings: 0,
     },
   },
 };

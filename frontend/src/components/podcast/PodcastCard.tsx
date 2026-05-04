@@ -33,13 +33,13 @@ export default function PodcastCard({ podcast }: PodcastCardProps) {
         {podcast.author && (
           <p className="text-sm text-stone-500 mt-0.5">{podcast.author}</p>
         )}
-        {(podcast.total_reviews > 0 || podcast.favorite_count > 0) && (
+        {(podcast.total_ratings > 0 || podcast.favorite_count > 0) && (
           <div className="flex items-center gap-3 mt-1.5">
-            {podcast.total_reviews > 0 && (
+            {podcast.total_ratings > 0 && (
               <span className="inline-flex items-center gap-1 text-xs text-stone-500">
                 <StarIcon className="w-3.5 h-3.5 text-amber-500" />
                 <span>{podcast.average_rating.toFixed(1)}</span>
-                <span>({podcast.total_reviews}件)</span>
+                <span>({podcast.total_ratings}件)</span>
               </span>
             )}
             {podcast.favorite_count > 0 && (
