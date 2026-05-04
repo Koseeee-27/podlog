@@ -5,8 +5,8 @@ import {
   getUserPublicProfile,
   getUserFavoritePodcasts,
   getUserListeningRecords,
-  getUserReviews,
 } from "@/lib/data/users";
+import { getUserRatingsStats } from "@/lib/data/ratings";
 import {
   buildMetadataDescription,
   defaultOpenGraph,
@@ -119,9 +119,12 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
   // 各セクションのデータを Promise として作成（await しない）。
   // プロフィール取得で DB が起きているのでコールドスタートの影響を受けにくい。
   // ユーザー操作で頻繁に変わるデータなので DAL 側で `revalidate: 0` (キャッシュなし)。
+  // 評価/感想分離（podlog-workspace#59）の P-6 で、旧 `getUserReviews`（個別レビュー一覧）
+  // を `getUserRatingsStats`（統計サマリー）に置き換えた。screens.md の評価サマリー
+  // セクション（個別レコードは表示しない方針）に整合させている。
   const favoritesPromise = getUserFavoritePodcasts(username);
   const recordsPromise = getUserListeningRecords(username, PAGE_SIZE, 0);
-  const reviewsPromise = getUserReviews(username, PAGE_SIZE, 0);
+  const ratingsStatsPromise = getUserRatingsStats(username);
 
   return (
     <PublicProfileClient
@@ -130,7 +133,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       viewer={viewer}
       favoritesPromise={favoritesPromise}
       recordsPromise={recordsPromise}
-      reviewsPromise={reviewsPromise}
+      ratingsStatsPromise={ratingsStatsPromise}
     />
   );
 }

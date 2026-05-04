@@ -1,18 +1,22 @@
 interface RatingDisplayProps {
   averageRating?: number;
-  totalReviews?: number;
+  totalRatings?: number;
 }
 
 /**
- * ポッドキャストの平均評価と総レビュー数を表示する。
+ * ポッドキャストの平均評価と総評価数を表示する。
  * 取得失敗は親の Server Component (RatingSection) が throw し
  * ErrorBoundary に委譲するため、ここではエラー状態を持たない。
+ *
+ * 評価/感想分離（podlog-workspace#59）に伴い、prop 名と表示文言を
+ * `totalReviews` / 「件のレビュー」 → `totalRatings` / 「件の評価」 に
+ * 切り替えた（podlog#393）。
  */
 export default function RatingDisplay({
   averageRating,
-  totalReviews,
+  totalRatings,
 }: RatingDisplayProps) {
-  if (totalReviews === undefined || totalReviews === 0 || averageRating === undefined) {
+  if (totalRatings === undefined || totalRatings === 0 || averageRating === undefined) {
     return null;
   }
 
@@ -27,7 +31,7 @@ export default function RatingDisplay({
         </span>
       </div>
       <span className="text-sm text-stone-500">
-        ({totalReviews}件のレビュー)
+        ({totalRatings}件の評価)
       </span>
     </div>
   );
