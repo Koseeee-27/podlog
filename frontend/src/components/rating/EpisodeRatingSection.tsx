@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import RatingForm from "./RatingForm";
 import MyRatingCard from "./MyRatingCard";
+import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import { useToast } from "@/components/ui/Toast";
 import {
   createRatingAction,
@@ -81,40 +81,12 @@ export default function EpisodeRatingSection({
     });
   }
 
-  return (
-    <section className="space-y-4">
-      <h2 className="text-lg font-semibold text-stone-900">評価</h2>
-
-      {/* 平均評価サマリー（screens.md: 平均評価 ★X.X（評価 N 件）） */}
-      {episodeStats.total_ratings > 0 ? (
-        <div className="flex items-center gap-2 text-sm text-stone-700">
-          <span className="text-yellow-500" aria-hidden="true">★</span>
-          <span className="font-semibold text-stone-900">
-            {episodeStats.average_rating.toFixed(1)}
-          </span>
-          <span className="text-stone-500">
-            （評価 {episodeStats.total_ratings} 件）
-          </span>
-        </div>
-      ) : (
-        <p className="text-sm text-stone-500">まだ評価がありません</p>
-      )}
-
-      {/* 自分の評価入力 / 表示 / 編集 UI */}
-      {renderRatingArea()}
-    </section>
-  );
-
+  // 自分の評価入力 / 表示 / 編集 UI の分岐。
+  // 直接 JSX 内で if-else チェーンを書くと読みづらいため、関数に切り出す。
+  // クロージャで state を参照するため `EpisodeRatingSection` 内に置く。
   function renderRatingArea() {
     if (!isLoggedIn) {
-      return (
-        <Link
-          href="/login"
-          className="inline-block rounded-lg bg-rose-500 px-4 py-2 text-sm font-medium text-white hover:bg-rose-600"
-        >
-          ログインして評価する
-        </Link>
-      );
+      return <LoginPromptButton label="ログインして評価する" />;
     }
 
     if (editing && myRating) {
@@ -162,4 +134,28 @@ export default function EpisodeRatingSection({
       />
     );
   }
+
+  return (
+    <section className="space-y-4">
+      <h2 className="text-lg font-semibold text-stone-900">評価</h2>
+
+      {/* 平均評価サマリー（screens.md: 平均評価 ★X.X（評価 N 件）） */}
+      {episodeStats.total_ratings > 0 ? (
+        <div className="flex items-center gap-2 text-sm text-stone-700">
+          <span className="text-yellow-500" aria-hidden="true">★</span>
+          <span className="font-semibold text-stone-900">
+            {episodeStats.average_rating.toFixed(1)}
+          </span>
+          <span className="text-stone-500">
+            （評価 {episodeStats.total_ratings} 件）
+          </span>
+        </div>
+      ) : (
+        <p className="text-sm text-stone-500">まだ評価がありません</p>
+      )}
+
+      {/* 自分の評価入力 / 表示 / 編集 UI */}
+      {renderRatingArea()}
+    </section>
+  );
 }
