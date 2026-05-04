@@ -15,7 +15,7 @@ import { uuidSchema } from "@/lib/schemas/common";
 import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import ListenButtonSection from "./ListenButtonSection";
-import ReviewSectionWithAuth from "./ReviewSectionWithAuth";
+import RatingSectionWithAuth from "./RatingSectionWithAuth";
 import type { EpisodeDetailResult } from "@/types/episode";
 
 interface EpisodePageProps {
@@ -97,7 +97,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
   }
 
   // エピソード詳細のみページレベルで取得する。
-  // レビュー（認証依存の自分のレビュー含む）は ReviewSectionWithAuth 内で
+  // 評価（認証依存の自分の評価含む）は RatingSectionWithAuth 内で
   // 取得し、Suspense + ErrorBoundary で分離する。
   // `getEpisodeById` はオプショナル認証 — ログイン中は Authorization 付き
   // で `cache: "no-store"`、未ログイン時は `revalidate: 60` でキャッシュ。
@@ -118,11 +118,12 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
       <div className="mt-3 flex flex-wrap items-center gap-4 text-sm text-stone-500">
         {episode.published_at && <span>{formatDate(episode.published_at)}</span>}
         {episode.duration_ms && <span>{formatDuration(episode.duration_ms)}</span>}
-        {episode.total_reviews > 0 && (
-          <span>
-            {episode.average_rating.toFixed(1)} ({episode.total_reviews}件のレビュー)
-          </span>
-        )}
+        {/*
+          評価サマリー表示は RatingSectionWithAuth → EpisodeRatingSection 内に
+          一本化した（podlog#393 / 評価/感想分離 podlog-workspace#59）。
+          旧 `episode.total_reviews` 参照は podlog#406（P-6.5）の名前一掃で
+          types/schemas/Card 系から最終的に消える。
+        */}
       </div>
 
       {/* 聴取ボタン: 認証依存なので Suspense で分離 */}
@@ -162,8 +163,8 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
-      {/* レビューセクション: データ取得中は Skeleton を表示 */}
-      <div id="review-section">
+      {/* 評価セクション: データ取得中は Skeleton を表示。感想セクションは P-8 で追加 */}
+      <div id="rating-section">
         <ErrorBoundary>
           <Suspense
             fallback={
@@ -174,7 +175,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
               </div>
             }
           >
-            <ReviewSectionWithAuth episodeId={episode.id} />
+            <RatingSectionWithAuth episodeId={episode.id} />
           </Suspense>
         </ErrorBoundary>
       </div>

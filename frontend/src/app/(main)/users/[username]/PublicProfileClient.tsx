@@ -10,12 +10,12 @@ import { Cog6ToothIcon } from "@heroicons/react/24/outline";
 import AdminBadge from "@/components/ui/AdminBadge";
 import type { UserPublicProfile, FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
-import type { UserReviewListResult } from "@/types/review";
+import type { UserRatingsStatsResult } from "@/types/rating";
 import type { Viewer } from "@/lib/auth/getViewer";
 import { SectionSkeleton, SectionError } from "./SectionFallbacks";
 import FavoritePodcastsLoader from "./FavoritePodcastsLoader";
 import ListeningHistoryLoader from "./ListeningHistoryLoader";
-import ReviewListLoader from "./ReviewListLoader";
+import RatingStatsLoader from "./RatingStatsLoader";
 
 interface PublicProfileClientProps {
   username: string;
@@ -24,7 +24,12 @@ interface PublicProfileClientProps {
   viewer: Viewer;
   favoritesPromise: Promise<FavoritePodcastListResult>;
   recordsPromise: Promise<ListeningRecordListResult>;
-  reviewsPromise: Promise<UserReviewListResult>;
+  /**
+   * 評価統計サマリー Promise。評価/感想分離（podlog-workspace#59）の P-6 で
+   * 旧 `reviewsPromise`（個別レビュー一覧）から差し替え。screens.md の
+   * 「個別の評価レコードは表示しない」方針に整合。
+   */
+  ratingsStatsPromise: Promise<UserRatingsStatsResult>;
 }
 
 export default function PublicProfileClient({
@@ -33,7 +38,7 @@ export default function PublicProfileClient({
   viewer,
   favoritesPromise,
   recordsPromise,
-  reviewsPromise,
+  ratingsStatsPromise,
 }: PublicProfileClientProps) {
   const isOwnProfile =
     viewer.status === "authenticated" && viewer.profile.username === username;
@@ -89,9 +94,9 @@ export default function PublicProfileClient({
         </Suspense>
       </ErrorBoundary>
 
-      <ErrorBoundary key={`reviews-${username}`} fallback={<SectionError title="レビュー" />}>
-        <Suspense fallback={<SectionSkeleton title="レビュー" />}>
-          <ReviewListLoader promise={reviewsPromise} username={username} />
+      <ErrorBoundary key={`ratings-${username}`} fallback={<SectionError title="評価サマリー" />}>
+        <Suspense fallback={<SectionSkeleton title="評価サマリー" />}>
+          <RatingStatsLoader promise={ratingsStatsPromise} />
         </Suspense>
       </ErrorBoundary>
     </div>
