@@ -4,5 +4,6 @@ export * from "./podcast";
 export * from "./episode";
 export * from "./review";
 export * from "./rating";
+export * from "./comment";
 export * from "./podcast-request";
 export * from "./admin";
