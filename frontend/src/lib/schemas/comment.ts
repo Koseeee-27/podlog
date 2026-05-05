@@ -77,8 +77,13 @@ export type CommentPodcast = z.infer<typeof commentPodcastSchema>;
 
 /**
  * エピソード感想一覧の各行（`GET /episodes/{id}/comments` のレスポンス内 `comments[]`）。
+ *
+ * 命名: `userCommentItemSchema` / `timelineItemSchema` と prefix 対称にし、
+ * `types/comment.ts::EpisodeCommentItem` (interface) と同名で揃える
+ * （`frontend.md`「`types/*` と `schemas/*` の z.infer 由来 type alias は
+ * 同名で再 export」規約）。
  */
-export const commentItemSchema = z.object({
+export const episodeCommentItemSchema = z.object({
   id: uuidSchema,
   user: commentUserSchema,
   body: z.string(),
@@ -86,15 +91,17 @@ export const commentItemSchema = z.object({
   updated_at: datetimeSchema,
 });
 
-export type CommentItem = z.infer<typeof commentItemSchema>;
+export type EpisodeCommentItem = z.infer<typeof episodeCommentItemSchema>;
 
 /** エピソード感想一覧結果（`GET /episodes/{id}/comments`） */
-export const commentListResultSchema = z.object({
-  comments: z.array(commentItemSchema),
+export const episodeCommentListResultSchema = z.object({
+  comments: z.array(episodeCommentItemSchema),
   total: z.number(),
 });
 
-export type CommentListResult = z.infer<typeof commentListResultSchema>;
+export type EpisodeCommentListResult = z.infer<
+  typeof episodeCommentListResultSchema
+>;
 
 /**
  * ユーザー感想一覧の各行（`GET /users/me/comments` /
