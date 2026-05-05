@@ -65,8 +65,15 @@ export const ratingValueSchema = z
   .min(1, "評価は1以上で入力してください")
   .max(5, "評価は5以下で入力してください");
 
-/** レビューコメント（任意、最大 1000 文字） */
-export const commentSchema = z
+/**
+ * コメント / 感想本文の **値そのもの** のバリデーション（最大 1000 文字、trim 済み）。
+ *
+ * 旧 review モデルの「レビューコメント」と新 comment モデルの「感想本文」の
+ * 両方で再利用できる汎用バリデータ部品。`schemas/comment.ts` の `commentSchema`
+ * （API レスポンス全体型）と名前衝突しないよう、本体バリデータは
+ * `commentBodySchema` と命名している（`ratingValueSchema` と同じ流儀）。
+ */
+export const commentBodySchema = z
   .string()
   .trim()
   .max(1000, "コメントは1000文字以内で入力してください");

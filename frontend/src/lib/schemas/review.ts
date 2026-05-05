@@ -3,7 +3,7 @@ import { z } from "zod";
 // 値バリデータ部品の名前は `ratingSchema` → `ratingValueSchema` にリネーム済み
 // （新モデル `lib/schemas/rating.ts` の `ratingSchema`（API 全体型）と
 // 衝突回避のため）。
-import { uuidSchema, datetimeSchema, ratingValueSchema, commentSchema } from "./common";
+import { uuidSchema, datetimeSchema, ratingValueSchema, commentBodySchema } from "./common";
 
 /** レビュー投稿者 */
 export const reviewUserSchema = z.object({
@@ -31,7 +31,7 @@ export type Review = z.infer<typeof reviewSchema>;
 /** レビュー作成リクエスト */
 export const createReviewRequestSchema = z.object({
   rating: ratingValueSchema,
-  comment: commentSchema.optional(),
+  comment: commentBodySchema.optional(),
 });
 
 export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
@@ -39,7 +39,7 @@ export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
 /** レビュー更新リクエスト */
 export const updateReviewRequestSchema = z.object({
   rating: ratingValueSchema,
-  comment: commentSchema.optional(),
+  comment: commentBodySchema.optional(),
 });
 
 export type UpdateReviewRequest = z.infer<typeof updateReviewRequestSchema>;
