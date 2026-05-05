@@ -93,7 +93,7 @@ export type CommentPodcast = z.infer<typeof commentPodcastSchema>;
 export const episodeCommentItemSchema = z.object({
   id: uuidSchema,
   user: commentUserSchema,
-  body: z.string(),
+  body: commentBodySchema.min(1),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
@@ -118,7 +118,7 @@ export const userCommentItemSchema = z.object({
   id: uuidSchema,
   episode: commentEpisodeSchema,
   podcast: commentPodcastSchema,
-  body: z.string(),
+  body: commentBodySchema.min(1),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
@@ -142,7 +142,7 @@ export const timelineItemSchema = z.object({
   user: commentUserSchema,
   episode: commentEpisodeSchema,
   podcast: commentPodcastSchema,
-  body: z.string(),
+  body: commentBodySchema.min(1),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
