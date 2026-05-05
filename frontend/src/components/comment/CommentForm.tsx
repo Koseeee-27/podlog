@@ -20,7 +20,7 @@
  *   見えることはない
  */
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import type { CommentFormState } from "@/lib/actions/comment";
 import type { Comment } from "@/types/comment";
 
@@ -61,13 +61,36 @@ export default function CommentForm({
   placeholder = "いまの感想をひとことで",
   onSuccess,
 }: CommentFormProps) {
-  // useActionState の Action を wrap して onSuccess を呼ぶ
+  const formRef = useRef<HTMLFormElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [length, setLength] = useState(initialBody.length);
+
+  /**
+   * useActionState の Action を wrap して、投稿成功時の textarea クリア + フォーカス
+   * 保持 + onSuccess コールバック呼び出しを行う。
+   *
+   * **効果を effect 内で setState する形にしない理由**: React 19 の
+   * `react-hooks/set-state-in-effect` ルールで `useEffect` 内の `setState` は
+   * cascading render を招くため避けるべきとされている。Action の戻り値判定 →
+   * DOM 操作 + setState は同期的にまとめてここで実行する。`wrappedAction` 自体は
+   * クライアント側で実行されるラッパー（"use server" は内側の `action` のみ）
+   * なので、DOM 操作と setState を直接書ける。
+   */
   async function wrappedAction(
     prev: CommentFormState,
     fd: FormData,
   ): Promise<CommentFormState> {
     const result = await action(prev, fd);
     if (result.success && result.comment) {
+      formRef.current?.reset();
+      if (textareaRef.current) {
+        // reset 後の auto-grow 高さを初期化
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.focus();
+      }
+      // form.reset() は textarea の onInput を発火させないため、
+      // length state を明示的に同期する
+      setLength(0);
       onSuccess?.(result.comment);
     }
     return result;
@@ -77,23 +100,6 @@ export default function CommentForm({
     CommentFormState,
     FormData
   >(wrappedAction, { success: false });
-
-  const formRef = useRef<HTMLFormElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [length, setLength] = useState(initialBody.length);
-
-  // 投稿成功時に textarea をクリア + フォーカス保持（連投 UX）
-  useEffect(() => {
-    if (state.success) {
-      formRef.current?.reset();
-      setLength(0);
-      textareaRef.current?.focus();
-      // reset 後の auto-grow 高さも初期化
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-      }
-    }
-  }, [state]);
 
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget;
