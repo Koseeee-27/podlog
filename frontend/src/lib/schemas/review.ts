@@ -117,8 +117,14 @@ export const userReviewListResultSchema = z.object({
 
 export type UserReviewListResult = z.infer<typeof userReviewListResultSchema>;
 
-/** タイムラインアイテム */
-export const timelineItemSchema = z.object({
+/**
+ * 旧モデルのタイムラインアイテム（`{ rating, comment }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `lib/schemas/comment.ts` の `timelineItemSchema`
+ * （comment ベース）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。**podlog-workspace#59 の P-9 で削除予定**。
+ */
+export const oldTimelineItemSchema = z.object({
   id: uuidSchema,
   user: reviewUserSchema,
   episode: reviewEpisodeSchema,
@@ -128,12 +134,18 @@ export const timelineItemSchema = z.object({
   created_at: datetimeSchema,
 });
 
-export type TimelineItem = z.infer<typeof timelineItemSchema>;
+export type OldTimelineItem = z.infer<typeof oldTimelineItemSchema>;
 
-/** タイムライン結果 */
-export const timelineResultSchema = z.object({
-  reviews: z.array(timelineItemSchema),
+/**
+ * 旧モデルのタイムライン結果（`{ reviews }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `lib/schemas/comment.ts` の `timelineResultSchema`
+ * （`{ comments }` 形）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。**podlog-workspace#59 の P-9 で削除予定**。
+ */
+export const oldTimelineResultSchema = z.object({
+  reviews: z.array(oldTimelineItemSchema),
   total: z.number(),
 });
 
-export type TimelineResult = z.infer<typeof timelineResultSchema>;
+export type OldTimelineResult = z.infer<typeof oldTimelineResultSchema>;

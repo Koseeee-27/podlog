@@ -2,7 +2,7 @@ import TimelineCard from "@/components/timeline/TimelineCard";
 import EmptyState from "@/components/ui/EmptyState";
 import TimelineLoadMore from "@/components/home/TimelineLoadMore";
 import { ChatBubbleLeftRightIcon } from "@heroicons/react/24/outline";
-import { getTimeline } from "@/lib/data/timeline";
+import { getOldTimeline } from "@/lib/data/timeline";
 
 const PAGE_SIZE = 20;
 
@@ -16,7 +16,7 @@ export default async function TimelineSection({
   const Heading = headingLevel;
 
   // 取得失敗時は throw して ErrorBoundary に委譲する
-  const data = await getTimeline(PAGE_SIZE, 0);
+  const data = await getOldTimeline(PAGE_SIZE, 0);
 
   const reviews = data.reviews ?? [];
 

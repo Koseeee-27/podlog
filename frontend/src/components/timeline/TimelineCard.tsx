@@ -1,10 +1,10 @@
 import Link from "next/link";
 import Image from "next/image";
-import type { TimelineItem } from "@/types/review";
+import type { OldTimelineItem } from "@/types/review";
 import { formatDate, formatStars } from "@/lib/utils";
 
 interface TimelineCardProps {
-  item: TimelineItem;
+  item: OldTimelineItem;
 }
 
 export default function TimelineCard({ item }: TimelineCardProps) {
