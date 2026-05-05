@@ -8,7 +8,9 @@
  *
  * 命名規約: `lib/api/*` は `fetchXxx` で始める（DAL の `getXxx` と区別するため。
  * `frontend.md`「データ取得」セクション参照）。旧 `lib/api/reviews.ts` の
- * `getEpisodeReviews` / `getTimeline` は規約違反だが P-9 で削除予定のため触らない。
+ * `getEpisodeReviews` は規約違反だが P-9 で削除予定のため触らない。旧
+ * `getTimeline` は新 DAL `lib/data/comments.ts::getTimeline` との同名衝突を
+ * 避けるため、本 PR で `fetchOldTimeline` に退避リネーム済み。
  */
 import { apiGet } from "./client";
 import type {

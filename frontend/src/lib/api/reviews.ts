@@ -30,14 +30,17 @@ export function getEpisodeReviews(
  * 旧モデルの timeline 取得（クライアント API、`{ reviews }` 形）。
  *
  * 過渡期メモ: 新モデル（comment ベース）は `lib/api/comments.ts` の
- * `fetchTimeline` を使う。本関数は命名規約（`fetchXxx`）にも違反しているが、
- * **podlog-workspace#59 の P-9 で削除予定**のため触らない。
+ * `fetchTimeline` を使う。本関数はもともと `getTimeline` 命名で `lib/api/*`
+ * 規約（`fetchXxx`）に違反していた。新 DAL `lib/data/comments.ts::getTimeline`
+ * を新設したことで「DAL と クライアント API で同名関数禁止」（`frontend.md`）
+ * にも抵触するため、`fetchOldTimeline` に退避リネームした。
+ * **podlog-workspace#59 の P-9 で削除予定**。
  *
  * BE の `/timeline` は既に新 comment ベースに切り替わっているため、本関数を
  * 呼んでも `data.reviews` は undefined になる（P-8 で旧 UI を新型へ置き換える
  * までの暫定）。
  */
-export function getTimeline(
+export function fetchOldTimeline(
   params?: { limit?: number; offset?: number }
 ): Promise<OldTimelineResult> {
   const searchParams = new URLSearchParams();

@@ -67,6 +67,11 @@ export interface DeleteCommentState {
  * 戻り値:
  * - `{ ok: true, viewer }` — 認証 OK（プロフィール設定済み）
  * - `{ ok: false, error }` — 認証エラー（UI に返すメッセージ付き）
+ *
+ * **横展開メモ**: rating / review の Server Action では同じパターンが各 Action
+ * にベタ書きされている。本ヘルパーは comment ドメインで先行導入したもので、
+ * rating / review への横展開は本 PR スコープ外のため別 Issue でフォローアップする
+ * 想定（コードを読む人が「なぜ comment だけ綺麗なのか」を理解できるように記す）。
  */
 async function ensureAuthenticated(): Promise<
   { ok: true; viewer: Viewer } | { ok: false; error: string }

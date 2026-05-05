@@ -65,6 +65,11 @@ export default function CommentForm({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [length, setLength] = useState(initialBody.length);
 
+  // 編集モード判定: initialBody が非空 = 編集中。textarea クリアは新規投稿
+  // モードのみで実行する（編集モードでは親が onSuccess で UI を表示モードに
+  // 戻すため、空 textarea が一瞬見える可能性を避ける）
+  const isEditMode = initialBody.length > 0;
+
   /**
    * useActionState の Action を wrap して、投稿成功時の textarea クリア + フォーカス
    * 保持 + onSuccess コールバック呼び出しを行う。
@@ -75,6 +80,10 @@ export default function CommentForm({
    * DOM 操作 + setState は同期的にまとめてここで実行する。`wrappedAction` 自体は
    * クライアント側で実行されるラッパー（"use server" は内側の `action` のみ）
    * なので、DOM 操作と setState を直接書ける。
+   *
+   * **編集モードでは textarea クリアをスキップ**: 編集モードでは親が `onSuccess`
+   * で表示モードに戻すため、フォーム自体がアンマウントされる想定。クリア処理を
+   * 走らせると、unmount 直前の 1 フレームで空 textarea が見える可能性がある。
    */
   async function wrappedAction(
     prev: CommentFormState,
@@ -82,15 +91,17 @@ export default function CommentForm({
   ): Promise<CommentFormState> {
     const result = await action(prev, fd);
     if (result.success && result.comment) {
-      formRef.current?.reset();
-      if (textareaRef.current) {
-        // reset 後の auto-grow 高さを初期化
-        textareaRef.current.style.height = "auto";
-        textareaRef.current.focus();
+      if (!isEditMode) {
+        formRef.current?.reset();
+        if (textareaRef.current) {
+          // reset 後の auto-grow 高さを初期化
+          textareaRef.current.style.height = "auto";
+          textareaRef.current.focus();
+        }
+        // form.reset() は textarea の onInput を発火させないため、
+        // length state を明示的に同期する
+        setLength(0);
       }
-      // form.reset() は textarea の onInput を発火させないため、
-      // length state を明示的に同期する
-      setLength(0);
       onSuccess?.(result.comment);
     }
     return result;
@@ -140,8 +151,12 @@ export default function CommentForm({
           // maxLength は意図的に設定しない:
           // ハードカットすると「1001 字超過時の視覚フィードバック」が機能しなくなるため、
           // ペースト等で超過した場合は赤字 + 投稿ボタン無効化で抑止する設計
-          aria-invalid={isOverHardLimit}
-          aria-describedby="comment-counter"
+          aria-invalid={isOverHardLimit || Boolean(state.error)}
+          // エラー文言（state.error）も aria-describedby に含めることで、
+          // textarea にフォーカスを戻したときスクリーンリーダーがエラー内容を再度伝える
+          aria-describedby={
+            state.error ? "comment-counter comment-error" : "comment-counter"
+          }
           className="w-full resize-none rounded-lg border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 disabled:bg-stone-50"
           style={{ minHeight: "5rem", maxHeight: `${AUTOGROW_MAX_PX}px` }}
         />
@@ -158,7 +173,7 @@ export default function CommentForm({
       </div>
 
       {state.error && (
-        <p className="text-sm text-red-600" role="alert">
+        <p id="comment-error" className="text-sm text-red-600" role="alert">
           {state.error}
         </p>
       )}

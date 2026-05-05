@@ -72,6 +72,14 @@ export const ratingValueSchema = z
  * 両方で再利用できる汎用バリデータ部品。`schemas/comment.ts` の `commentSchema`
  * （API レスポンス全体型）と名前衝突しないよう、本体バリデータは
  * `commentBodySchema` と命名している（`ratingValueSchema` と同じ流儀）。
+ *
+ * **最小値（必須/任意）の付与は呼び出し側の責務**:
+ * - 必須にする場合: `commentBodySchema.min(1, "感想を入力してください")`
+ * - 任意にする場合: `commentBodySchema.optional()`
+ *
+ * `commentBodySchema` 自体は最小値を持たないため、空文字も通過する。これは
+ * review の `comment` フィールド（任意）と comment ドメインの `body`（必須）で
+ * 同じ部品を再利用するためのトレードオフ。
  */
 export const commentBodySchema = z
   .string()

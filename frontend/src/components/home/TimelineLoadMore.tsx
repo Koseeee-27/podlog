@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useTransition } from "react";
 import TimelineCard from "@/components/timeline/TimelineCard";
-import { getTimeline } from "@/lib/api/reviews";
+import { fetchOldTimeline } from "@/lib/api/reviews";
 import type { OldTimelineItem } from "@/types/review";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 
@@ -32,7 +32,7 @@ export default function TimelineLoadMore({
     startLoadMore(async () => {
       try {
         setError(null);
-        const data = await getTimeline({
+        const data = await fetchOldTimeline({
           limit: PAGE_SIZE,
           offset: loadedCount,
         });
