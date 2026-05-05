@@ -20,12 +20,19 @@ import { uuidSchema, datetimeSchema, commentBodySchema } from "./common";
  * 感想（Comment オブジェクト全体）。
  *
  * `POST /episodes/{id}/comments` / `PUT /comments/{id}` のレスポンス共通形式。
+ *
+ * `body` は BE が必ず trim 済み 1〜1000 文字を返すため、リクエスト側
+ * (`createCommentRequestSchema` 等) と同じ `commentBodySchema.min(1)` を使う。
+ * 既存 `ratingSchema` が `rating: z.number().int().min(1).max(5)` で BE の値域を
+ * schema に反映している流儀と整合させる。**現状この schema は parse されておらず
+ * 型抽出のみ**だが、将来 `safeParse` を入れたときにドリフトを検知できるよう
+ * 制約を持たせておく。
  */
 export const commentSchema = z.object({
   id: uuidSchema,
   user_id: uuidSchema,
   episode_id: uuidSchema,
-  body: z.string(),
+  body: commentBodySchema.min(1),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
