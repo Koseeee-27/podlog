@@ -7,17 +7,18 @@
  * - **短文を促すデフォルト**: 初期 3 行 / プレースホルダー「いまの感想をひとことで」
  * - **柔軟な拡張**: textarea が auto-grow（最大 240px 程度まで）
  * - **文字数表示**: 0〜140 グレー / 141〜1000 通常 / 1001+ 赤
- * - **送信抑止**: 0 文字 / 1001 字超 / `isPending` 中は disabled
+ * - **送信抑止**: trim 後 0 文字（空白のみ含む）/ 1001 字超 / `isPending` 中は disabled
  * - **連投 UX**: 投稿成功時 (`state.success === true`) に textarea をクリアし、
  *   フォーカスを保持して即座に次の感想を書ける
  * - フォーム送信は `useActionState` + Server Action（`frontend.md` 規約）
  *
  * 編集モードの想定:
- * - `initialBody` を渡すと textarea の初期値になる
+ * - `initialBody` を渡すと textarea の初期値になる（非空 = 編集モード判定）
  * - `submitLabel` を「更新」等に変えて使う
- * - 投稿成功時の textarea クリアは編集モードでも実行されるが、親 (`MyCommentCard`)
- *   側が `onSuccess` を受けて UI を表示モードに戻すため、クリアされた textarea が
- *   見えることはない
+ * - **編集モードでは投稿成功時の textarea クリアをスキップする**: 親
+ *   (`MyCommentCard`) 側が `onSuccess` を受けてフォーム自体を unmount し
+ *   表示モードに戻す想定。クリア処理を走らせると unmount 直前の 1 フレームで
+ *   空 textarea が見える可能性があるため、明示的に分岐している
  */
 
 import { useActionState, useRef, useState } from "react";
@@ -64,6 +65,10 @@ export default function CommentForm({
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [length, setLength] = useState(initialBody.length);
+  // trim 後の長さ。送信ボタンの disabled 判定に使う（カウンタ表示は raw `length`）。
+  // 空白のみ（"   "）入力時にボタンが押せて Server Action 側でエラーになるのを
+  // 避けるため、disabled は trimmedLength 基準で判定する。
+  const [trimmedLength, setTrimmedLength] = useState(initialBody.trim().length);
 
   // 編集モード判定: initialBody が非空 = 編集中。textarea クリアは新規投稿
   // モードのみで実行する（編集モードでは親が onSuccess で UI を表示モードに
@@ -99,8 +104,9 @@ export default function CommentForm({
           textareaRef.current.focus();
         }
         // form.reset() は textarea の onInput を発火させないため、
-        // length state を明示的に同期する
+        // length / trimmedLength state を明示的に同期する
         setLength(0);
+        setTrimmedLength(0);
       }
       onSuccess?.(result.comment);
     }
@@ -115,6 +121,7 @@ export default function CommentForm({
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget;
     setLength(ta.value.length);
+    setTrimmedLength(ta.value.trim().length);
     // auto-grow: 一度 auto に戻して scrollHeight を測り、上限内で再設定
     ta.style.height = "auto";
     ta.style.height = `${Math.min(ta.scrollHeight, AUTOGROW_MAX_PX)}px`;
@@ -131,7 +138,9 @@ export default function CommentForm({
   }
 
   const isOverHardLimit = length > HARD_LIMIT;
-  const disabled = isPending || isOverHardLimit || length === 0;
+  // disabled 判定は trim 後の長さ基準。空白のみ（"   "）でボタンが押せるのを
+  // 避ける（Server Action 側の `commentBodySchema.min(1)` でエラーになるため）
+  const disabled = isPending || isOverHardLimit || trimmedLength === 0;
 
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
