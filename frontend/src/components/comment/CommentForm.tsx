@@ -21,7 +21,7 @@
  *   空 textarea が見える可能性があるため、明示的に分岐している
  */
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useLayoutEffect, useRef, useState } from "react";
 import type { CommentFormState } from "@/lib/actions/comment";
 import type { Comment } from "@/types/comment";
 
@@ -118,6 +118,19 @@ export default function CommentForm({
     FormData
   >(wrappedAction, { success: false });
 
+  // 初回マウント時の auto-grow 初期化（編集モードで initialBody が長い場合の対応）。
+  // `handleInput` はユーザー入力時にしか走らないため、`defaultValue` で長文が
+  // 入っていると textarea が `minHeight: 5rem`（≈ 3 行）固定になりスクロールが
+  // 必要になる。`useLayoutEffect` で paint 前に高さを確定させるとチラつきがない。
+  // setState は呼ばないため React 19 の `set-state-in-effect` ルールには抵触しない。
+  useLayoutEffect(() => {
+    const ta = textareaRef.current;
+    if (ta && ta.value) {
+      ta.style.height = "auto";
+      ta.style.height = `${Math.min(ta.scrollHeight, AUTOGROW_MAX_PX)}px`;
+    }
+  }, []);
+
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget;
     setLength(ta.value.length);
@@ -127,19 +140,22 @@ export default function CommentForm({
     ta.style.height = `${Math.min(ta.scrollHeight, AUTOGROW_MAX_PX)}px`;
   }
 
-  // 文字数カウンタの色
+  // 文字数カウンタの色 / 上限判定はすべて trim 後の長さ基準に統一する。
+  // Server Action 側のバリデーション (`commentBodySchema = .trim().max(1000)`)
+  // と整合させ、末尾スペース等で raw が 1001+ でも trim 後 1000 以内なら
+  // 投稿可能、というケースで UI 側が不要に弾かないようにする。
   let counterClass: string;
-  if (length <= SOFT_LIMIT) {
+  if (trimmedLength <= SOFT_LIMIT) {
     counterClass = "text-stone-400";
-  } else if (length <= HARD_LIMIT) {
+  } else if (trimmedLength <= HARD_LIMIT) {
     counterClass = "text-stone-600";
   } else {
     counterClass = "text-red-600 font-medium";
   }
 
-  const isOverHardLimit = length > HARD_LIMIT;
+  const isOverHardLimit = trimmedLength > HARD_LIMIT;
   // disabled 判定は trim 後の長さ基準。空白のみ（"   "）でボタンが押せるのを
-  // 避ける（Server Action 側の `commentBodySchema.min(1)` でエラーになるため）
+  // 避ける（Server Action 側の `commentBodySchema.min(1)` でエラーになるため）。
   const disabled = isPending || isOverHardLimit || trimmedLength === 0;
 
   return (
