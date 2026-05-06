@@ -15,10 +15,13 @@ import { formatDate } from "@/lib/utils";
 
 interface MyCommentCardProps {
   /**
-   * 表示する感想。`Comment` のフィールドのうち id / body / created_at / updated_at
-   * のみを使う。一覧 API（`UserCommentItem`）等とも互換にするため `Pick` で絞る。
+   * 表示する感想。`Comment` のフィールドのうち id / body / created_at のみを使う。
+   * 一覧 API（`UserCommentItem`）等とも互換にするため `Pick` で絞る。
+   *
+   * `updated_at` は現状 UI で使わないため Pick に含めない（YAGNI）。将来「編集済み」
+   * マーク等を追加する際に、その PR で `updated_at` を Pick に加える方針。
    */
-  comment: Pick<Comment, "id" | "body" | "created_at" | "updated_at">;
+  comment: Pick<Comment, "id" | "body" | "created_at">;
   onEdit: () => void;
   onStartDelete: () => void;
   confirmDelete: boolean;

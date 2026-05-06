@@ -14,7 +14,6 @@ const baseComment = {
   id: "c1",
   body: "面白かった！次回も絶対に聴く。",
   created_at: "2026-04-30T12:00:00Z",
-  updated_at: "2026-04-30T12:00:00Z",
 };
 
 export const Default: Story = {
