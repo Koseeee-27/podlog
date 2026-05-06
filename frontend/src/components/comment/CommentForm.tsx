@@ -6,9 +6,11 @@
  * 設計のポイント:
  * - **短文を促すデフォルト**: 初期 3 行 / プレースホルダー「いまの感想をひとことで」
  * - **柔軟な拡張**: textarea が auto-grow（最大 240px 程度まで）
- * - **文字数表示**: trim 後の文字数を表示（0〜140 グレー / 141〜1000 通常 / 1001+ 赤）。
- *   表示と上限判定 / 投稿可否判定をすべて trim 後基準に揃え、Server Action 側の
- *   `commentBodySchema = .trim().max(1000)` と整合させる
+ * - **文字数表示**: trim 後のコードポイント数を表示（0〜140 グレー / 141〜1000
+ *   通常 / 1001+ 赤）。表示と上限判定 / 投稿可否判定をすべて trim 後の
+ *   コードポイント数基準に揃え、Server Action 側の `commentBodySchema`
+ *   （`Array.from(val).length <= 1000` の refine）および BE の
+ *   `utf8.RuneCountInString` と整合させる（絵文字等のサロゲートペア対応）
  * - **送信抑止**: trim 後 0 文字（空白のみ含む）/ 1001 字超 / `isPending` 中は disabled
  * - **連投 UX**: 投稿成功時 (`state.success === true`) に textarea をクリアし、
  *   フォーカスを保持して即座に次の感想を書ける
@@ -26,6 +28,7 @@
 import { useActionState, useId, useLayoutEffect, useRef, useState } from "react";
 import type { CommentFormState } from "@/lib/actions/comment";
 import type { Comment } from "@/types/comment";
+import { codePointLength } from "@/lib/utils";
 
 /** 推奨文字数（X 的な短文の目安）。これ以下はカウンターをグレーで表示する */
 const SOFT_LIMIT = 140;
@@ -66,12 +69,19 @@ export default function CommentForm({
 }: CommentFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  // trim 後の文字数。**カウンタ表示・色分け・上限超過判定・送信ボタン disabled**
-  // をすべてこの値で判定する。Server Action 側の `commentBodySchema =
-  // .trim().max(1000)` と整合させ、表示と判定の乖離（raw 1003 で trim 998 だと
-  // 「赤字なのに送れる」UX 不整合）を避けるため、raw length は state として
-  // 保持しない（YAGNI: 必要になったら個別に再導入）。
-  const [trimmedLength, setTrimmedLength] = useState(initialBody.trim().length);
+  // trim 後の **コードポイント数**。**カウンタ表示・色分け・上限超過判定・送信ボタン
+  // disabled** をすべてこの値で判定する。
+  //
+  // BE（Go の `utf8.RuneCountInString` / PostgreSQL の `char_length`）は
+  // コードポイント数で 1〜1000 を判定するため、JS の `string.length`（UTF-16
+  // code unit 数）基準だと絵文字（サロゲートペア）を含む本文で BE と乖離する
+  // （例: "😀" × 600 → string.length=1200 で UI 弾き / BE は OK）。
+  // `codePointLength()` で `Array.from(s).length` 基準に揃える。
+  //
+  // raw length は state として保持しない（YAGNI: 必要になったら個別に再導入）。
+  const [trimmedLength, setTrimmedLength] = useState(
+    codePointLength(initialBody.trim()),
+  );
 
   // 同一ページ内で複数の CommentForm が同時に描画されるケース（Storybook Docs /
   // 将来の複数編集フォーム等）で id が衝突しないよう、`useId()` で
@@ -145,7 +155,9 @@ export default function CommentForm({
 
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget;
-    setTrimmedLength(ta.value.trim().length);
+    // BE と同じくコードポイント数で文字数を数える（UTF-16 code unit 数の
+    // `string.length` だと絵文字でズレる。詳細は trimmedLength 初期値の JSDoc 参照）
+    setTrimmedLength(codePointLength(ta.value.trim()));
     // auto-grow: 一度 auto に戻して scrollHeight を測り、上限内で再設定
     ta.style.height = "auto";
     ta.style.height = `${Math.min(ta.scrollHeight, AUTOGROW_MAX_PX)}px`;

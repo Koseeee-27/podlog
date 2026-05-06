@@ -14,25 +14,25 @@
  * 返すため、Zod 側は `.optional()` で対応する。
  */
 import { z } from "zod";
-import { uuidSchema, datetimeSchema, commentBodySchema } from "./common";
+import { uuidSchema, datetimeSchema, requiredCommentBody } from "./common";
 
 /**
  * 感想（Comment オブジェクト全体）。
  *
  * `POST /episodes/{id}/comments` / `PUT /comments/{id}` のレスポンス共通形式。
  *
- * `body` は BE が必ず trim 済み 1〜1000 文字を返すため、リクエスト側
- * (`createCommentRequestSchema` 等) と同じ `commentBodySchema.min(1)` を使う。
- * 既存 `ratingSchema` が `rating: z.number().int().min(1).max(5)` で BE の値域を
- * schema に反映している流儀と整合させる。**現状この schema は parse されておらず
- * 型抽出のみ**だが、将来 `safeParse` を入れたときにドリフトを検知できるよう
- * 制約を持たせておく。
+ * `body` は BE が必ず trim 済み 1〜1000 文字（コードポイント数）を返すため、
+ * リクエスト側 (`createCommentRequestSchema` 等) と同じ `requiredCommentBody()`
+ * を使う。既存 `ratingSchema` が `rating: z.number().int().min(1).max(5)` で
+ * BE の値域を schema に反映している流儀と整合させる。**現状この schema は
+ * parse されておらず型抽出のみ**だが、将来 `safeParse` を入れたときにドリフトを
+ * 検知できるよう制約を持たせておく。
  */
 export const commentSchema = z.object({
   id: uuidSchema,
   user_id: uuidSchema,
   episode_id: uuidSchema,
-  body: commentBodySchema.min(1),
+  body: requiredCommentBody(),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
@@ -41,14 +41,14 @@ export type Comment = z.infer<typeof commentSchema>;
 
 /** 感想作成リクエスト（`POST /episodes/{id}/comments`） */
 export const createCommentRequestSchema = z.object({
-  body: commentBodySchema.min(1, "感想を入力してください"),
+  body: requiredCommentBody("感想を入力してください"),
 });
 
 export type CreateCommentRequest = z.infer<typeof createCommentRequestSchema>;
 
 /** 感想更新リクエスト（`PUT /comments/{id}`） */
 export const updateCommentRequestSchema = z.object({
-  body: commentBodySchema.min(1, "感想を入力してください"),
+  body: requiredCommentBody("感想を入力してください"),
 });
 
 export type UpdateCommentRequest = z.infer<typeof updateCommentRequestSchema>;
@@ -93,7 +93,7 @@ export type CommentPodcast = z.infer<typeof commentPodcastSchema>;
 export const episodeCommentItemSchema = z.object({
   id: uuidSchema,
   user: commentUserSchema,
-  body: commentBodySchema.min(1),
+  body: requiredCommentBody(),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
@@ -118,7 +118,7 @@ export const userCommentItemSchema = z.object({
   id: uuidSchema,
   episode: commentEpisodeSchema,
   podcast: commentPodcastSchema,
-  body: commentBodySchema.min(1),
+  body: requiredCommentBody(),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });
@@ -142,7 +142,7 @@ export const timelineItemSchema = z.object({
   user: commentUserSchema,
   episode: commentEpisodeSchema,
   podcast: commentPodcastSchema,
-  body: commentBodySchema.min(1),
+  body: requiredCommentBody(),
   created_at: datetimeSchema,
   updated_at: datetimeSchema,
 });

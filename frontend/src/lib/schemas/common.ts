@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { codePointLength } from "@/lib/utils";
 
 /** UUID 形式のバリデーション */
 export const uuidSchema = z.string().uuid("有効な UUID 形式ではありません");
@@ -73,9 +74,19 @@ export const ratingValueSchema = z
  * （API レスポンス全体型）と名前衝突しないよう、本体バリデータは
  * `commentBodySchema` と命名している（`ratingValueSchema` と同じ流儀）。
  *
+ * **文字数定義は Unicode コードポイント数**:
+ * BE（Go の `utf8.RuneCountInString` / PostgreSQL の `char_length`）と整合させる。
+ * JS の標準 `.max(N)` は UTF-16 code unit 数基準のため、絵文字（サロゲート
+ * ペア）を含む本文で BE と乖離する。`refine` で `Array.from(val).length` に
+ * 揃える（utils.ts の `codePointLength()` 経由）。
+ *
  * **最小値（必須/任意）の付与は呼び出し側の責務**:
- * - 必須にする場合: `commentBodySchema.min(1, "感想を入力してください")`
+ * - 必須にする場合: `requiredCommentBody("...")`（本ファイルで提供）
  * - 任意にする場合: `commentBodySchema.optional()`
+ *
+ * Zod の chain 制約により、`refine()` を含む schema（ZodEffects）には
+ * `.min()` を直接 chain できない。そのため必須バージョンは `requiredCommentBody()`
+ * ヘルパーで別途提供する。
  *
  * `commentBodySchema` 自体は最小値を持たないため、空文字も通過する。これは
  * review の `comment` フィールド（任意）と comment ドメインの `body`（必須）で
@@ -84,7 +95,33 @@ export const ratingValueSchema = z
 export const commentBodySchema = z
   .string()
   .trim()
-  .max(1000, "コメントは1000文字以内で入力してください");
+  .refine((val) => codePointLength(val) <= 1000, {
+    message: "コメントは1000文字以内で入力してください",
+  });
+
+/**
+ * 必須のコメント本文（コードポイント数 1〜1000、trim 済み）。
+ *
+ * `commentBodySchema.min(1, ...)` の代替。Zod では refine() を含む schema
+ * （ZodEffects）の上に `.min()` を chain できないため、min 含みの schema を
+ * この関数で生成する。
+ *
+ * @param message `.min(1)` 違反時のエラーメッセージ（デフォルト: 「感想を入力してください」）
+ *
+ * @example
+ * createCommentRequestSchema = z.object({
+ *   body: requiredCommentBody("感想を入力してください"),
+ * });
+ */
+export function requiredCommentBody(message = "感想を入力してください") {
+  return z
+    .string()
+    .trim()
+    .min(1, message)
+    .refine((val) => codePointLength(val) <= 1000, {
+      message: "コメントは1000文字以内で入力してください",
+    });
+}
 
 /** ISO 8601 日時文字列 */
 export const datetimeSchema = z.string();
