@@ -200,7 +200,13 @@ export default function CommentForm({
           // maxLength は意図的に設定しない:
           // ハードカットすると「1001 字超過時の視覚フィードバック」が機能しなくなるため、
           // ペースト等で超過した場合は赤字 + 投稿ボタン無効化で抑止する設計
-          aria-invalid={isOverHardLimit || Boolean(state.error)}
+          //
+          // aria-invalid は **本文起因のエラー（上限超過）のみ** で立てる。
+          // state.error には認証失敗・ネットワークエラー等の「本文自体は妥当」な
+          // ケースも含まれるため、これで textarea を invalid 扱いすると WAI-ARIA
+          // の意味（入力値が想定形式と一致しない）と乖離する。フォーム全体エラーは
+          // 下方の <p role="alert"> で別途通知済み。
+          aria-invalid={isOverHardLimit}
           aria-describedby={describedByIds}
           className="w-full resize-none rounded-lg border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 disabled:bg-stone-50"
           style={{ minHeight: "5rem", maxHeight: `${AUTOGROW_MAX_PX}px` }}
