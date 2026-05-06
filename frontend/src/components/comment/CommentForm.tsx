@@ -6,7 +6,9 @@
  * 設計のポイント:
  * - **短文を促すデフォルト**: 初期 3 行 / プレースホルダー「いまの感想をひとことで」
  * - **柔軟な拡張**: textarea が auto-grow（最大 240px 程度まで）
- * - **文字数表示**: 0〜140 グレー / 141〜1000 通常 / 1001+ 赤
+ * - **文字数表示**: trim 後の文字数を表示（0〜140 グレー / 141〜1000 通常 / 1001+ 赤）。
+ *   表示と上限判定 / 投稿可否判定をすべて trim 後基準に揃え、Server Action 側の
+ *   `commentBodySchema = .trim().max(1000)` と整合させる
  * - **送信抑止**: trim 後 0 文字（空白のみ含む）/ 1001 字超 / `isPending` 中は disabled
  * - **連投 UX**: 投稿成功時 (`state.success === true`) に textarea をクリアし、
  *   フォーカスを保持して即座に次の感想を書ける
@@ -64,10 +66,11 @@ export default function CommentForm({
 }: CommentFormProps) {
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [length, setLength] = useState(initialBody.length);
-  // trim 後の長さ。送信ボタンの disabled 判定に使う（カウンタ表示は raw `length`）。
-  // 空白のみ（"   "）入力時にボタンが押せて Server Action 側でエラーになるのを
-  // 避けるため、disabled は trimmedLength 基準で判定する。
+  // trim 後の文字数。**カウンタ表示・色分け・上限超過判定・送信ボタン disabled**
+  // をすべてこの値で判定する。Server Action 側の `commentBodySchema =
+  // .trim().max(1000)` と整合させ、表示と判定の乖離（raw 1003 で trim 998 だと
+  // 「赤字なのに送れる」UX 不整合）を避けるため、raw length は state として
+  // 保持しない（YAGNI: 必要になったら個別に再導入）。
   const [trimmedLength, setTrimmedLength] = useState(initialBody.trim().length);
 
   // 同一ページ内で複数の CommentForm が同時に描画されるケース（Storybook Docs /
@@ -114,8 +117,7 @@ export default function CommentForm({
           textareaRef.current.focus();
         }
         // form.reset() は textarea の onInput を発火させないため、
-        // length / trimmedLength state を明示的に同期する
-        setLength(0);
+        // trimmedLength state を明示的に同期する
         setTrimmedLength(0);
       }
       onSuccess?.(result.comment);
@@ -143,7 +145,6 @@ export default function CommentForm({
 
   function handleInput(e: React.FormEvent<HTMLTextAreaElement>) {
     const ta = e.currentTarget;
-    setLength(ta.value.length);
     setTrimmedLength(ta.value.trim().length);
     // auto-grow: 一度 auto に戻して scrollHeight を測り、上限内で再設定
     ta.style.height = "auto";
@@ -206,7 +207,7 @@ export default function CommentForm({
         />
         <div className="mt-1 flex items-center justify-between">
           <span id={counterId} className={`text-xs ${counterClass}`}>
-            {length}/{HARD_LIMIT}
+            {trimmedLength}/{HARD_LIMIT}
           </span>
           {isOverHardLimit && (
             // role="alert" でライブリージョン化し、超過した瞬間に
