@@ -21,7 +21,7 @@
  *   空 textarea が見える可能性があるため、明示的に分岐している
  */
 
-import { useActionState, useLayoutEffect, useRef, useState } from "react";
+import { useActionState, useId, useLayoutEffect, useRef, useState } from "react";
 import type { CommentFormState } from "@/lib/actions/comment";
 import type { Comment } from "@/types/comment";
 
@@ -69,6 +69,16 @@ export default function CommentForm({
   // 空白のみ（"   "）入力時にボタンが押せて Server Action 側でエラーになるのを
   // 避けるため、disabled は trimmedLength 基準で判定する。
   const [trimmedLength, setTrimmedLength] = useState(initialBody.trim().length);
+
+  // 同一ページ内で複数の CommentForm が同時に描画されるケース（Storybook Docs /
+  // 将来の複数編集フォーム等）で id が衝突しないよう、`useId()` で
+  // インスタンスごとにユニークな接頭辞を生成する。`<label htmlFor>` と
+  // `<textarea id>` / `aria-describedby` の関連付けを壊さないために必須。
+  const idPrefix = useId();
+  const bodyId = `${idPrefix}-body`;
+  const counterId = `${idPrefix}-counter`;
+  const errorId = `${idPrefix}-error`;
+  const limitWarningId = `${idPrefix}-limit-warning`;
 
   // 編集モード判定: initialBody が非空 = 編集中。textarea クリアは新規投稿
   // モードのみで実行する（編集モードでは親が onSuccess で UI を表示モードに
@@ -158,15 +168,28 @@ export default function CommentForm({
   // 避ける（Server Action 側の `commentBodySchema.min(1)` でエラーになるため）。
   const disabled = isPending || isOverHardLimit || trimmedLength === 0;
 
+  // textarea の `aria-describedby` を動的に組み立てる。
+  // - 常時: カウンタ
+  // - 条件付き: 上限超過警告 / Server エラー文言
+  // スクリーンリーダーが textarea にフォーカスしたとき、なぜ無効なのかを
+  // 「カウンタ + 警告 + エラー」の順で読み上げられるようにする。
+  const describedByIds = [
+    counterId,
+    isOverHardLimit ? limitWarningId : null,
+    state.error ? errorId : null,
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       <div>
-        <label htmlFor="comment-body" className="sr-only">
+        <label htmlFor={bodyId} className="sr-only">
           感想
         </label>
         <textarea
           ref={textareaRef}
-          id="comment-body"
+          id={bodyId}
           name="body"
           defaultValue={initialBody}
           onInput={handleInput}
@@ -177,20 +200,22 @@ export default function CommentForm({
           // ハードカットすると「1001 字超過時の視覚フィードバック」が機能しなくなるため、
           // ペースト等で超過した場合は赤字 + 投稿ボタン無効化で抑止する設計
           aria-invalid={isOverHardLimit || Boolean(state.error)}
-          // エラー文言（state.error）も aria-describedby に含めることで、
-          // textarea にフォーカスを戻したときスクリーンリーダーがエラー内容を再度伝える
-          aria-describedby={
-            state.error ? "comment-counter comment-error" : "comment-counter"
-          }
+          aria-describedby={describedByIds}
           className="w-full resize-none rounded-lg border border-stone-300 px-3 py-2 text-sm placeholder:text-stone-400 focus:border-rose-500 focus:ring-1 focus:ring-rose-500 disabled:bg-stone-50"
           style={{ minHeight: "5rem", maxHeight: `${AUTOGROW_MAX_PX}px` }}
         />
         <div className="mt-1 flex items-center justify-between">
-          <span id="comment-counter" className={`text-xs ${counterClass}`}>
+          <span id={counterId} className={`text-xs ${counterClass}`}>
             {length}/{HARD_LIMIT}
           </span>
           {isOverHardLimit && (
-            <span className="text-xs text-red-600">
+            // role="alert" でライブリージョン化し、超過した瞬間に
+            // スクリーンリーダーが読み上げる。aria-describedby 経由でも参照される
+            <span
+              id={limitWarningId}
+              role="alert"
+              className="text-xs text-red-600"
+            >
               {HARD_LIMIT}文字以内で入力してください
             </span>
           )}
@@ -198,7 +223,7 @@ export default function CommentForm({
       </div>
 
       {state.error && (
-        <p id="comment-error" className="text-sm text-red-600" role="alert">
+        <p id={errorId} className="text-sm text-red-600" role="alert">
           {state.error}
         </p>
       )}
