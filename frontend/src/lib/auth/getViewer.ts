@@ -33,6 +33,20 @@ export type Viewer =
   | { status: "authenticated"; profile: User };
 
 /**
+ * `Viewer` のうち `authenticated` 状態のみに絞った narrowed 型。
+ *
+ * 「認証必須 + プロフィール設定済み」を保証する関数（例:
+ * `lib/actions/comment.ts::ensureAuthenticated`）の戻り値型として使う。呼び出し側
+ * で `viewer.profile.id` 等にアクセスする際、`viewer.status === "authenticated"`
+ * の再判定が不要になる。
+ *
+ * 横展開メモ: rating / review の Server Action にも同様の認証チェックパターンが
+ * ベタ書きされているが、戻り値型を narrow する形ではない。別 Issue で
+ * `ensureAuthenticated` を共通ヘルパー化する際に本型を使う想定。
+ */
+export type AuthenticatedViewer = Extract<Viewer, { status: "authenticated" }>;
+
+/**
  * 現在の閲覧者を `guest` / `no_profile` / `authenticated` の判別 union で返す。
  * `getAuthHeaders()` → `/users/me` の 1 段階で解決し、React `cache()` でリクエスト
  * スコープメモ化する。詳細はモジュール冒頭の JSDoc を参照。

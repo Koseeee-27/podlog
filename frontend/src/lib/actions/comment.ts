@@ -38,7 +38,11 @@ import {
   updateMyComment,
   deleteMyComment,
 } from "@/lib/data/comments";
-import { getViewer, type Viewer } from "@/lib/auth/getViewer";
+import {
+  getViewer,
+  type Viewer,
+  type AuthenticatedViewer,
+} from "@/lib/auth/getViewer";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { Comment } from "@/types/comment";
 
@@ -65,7 +69,10 @@ export interface DeleteCommentState {
  * パターンを書かずに済むよう括り出している。
  *
  * 戻り値:
- * - `{ ok: true, viewer }` — 認証 OK（プロフィール設定済み）
+ * - `{ ok: true, viewer }` — 認証 OK（プロフィール設定済み）。`viewer` は
+ *   `AuthenticatedViewer` 型に narrow されているため、呼び出し側で
+ *   `viewer.profile.id` 等に安全にアクセスできる（再度 `viewer.status` を
+ *   判定する必要がない）
  * - `{ ok: false, error }` — 認証エラー（UI に返すメッセージ付き）
  *
  * **横展開メモ**: rating / review の Server Action では同じパターンが各 Action
@@ -74,7 +81,7 @@ export interface DeleteCommentState {
  * 想定（コードを読む人が「なぜ comment だけ綺麗なのか」を理解できるように記す）。
  */
 async function ensureAuthenticated(): Promise<
-  { ok: true; viewer: Viewer } | { ok: false; error: string }
+  { ok: true; viewer: AuthenticatedViewer } | { ok: false; error: string }
 > {
   let viewer: Viewer;
   try {
@@ -88,6 +95,7 @@ async function ensureAuthenticated(): Promise<
   if (viewer.status !== "authenticated") {
     return { ok: false, error: "プロフィール設定が必要です" };
   }
+  // ここに到達した時点で TypeScript は viewer を AuthenticatedViewer に narrow している
   return { ok: true, viewer };
 }
 
