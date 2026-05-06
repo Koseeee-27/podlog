@@ -1,5 +1,23 @@
 import { ApiRequestError } from "@/types/api";
 
+/**
+ * 文字列の Unicode コードポイント数を返す。
+ *
+ * JS の標準 `string.length` は UTF-16 code unit 数なので、絵文字などサロゲート
+ * ペアを含む文字列では「人が見える文字数」と一致しない（例: "😀".length === 2）。
+ * BE（Go の `utf8.RuneCountInString` / PostgreSQL の `char_length`）はコード
+ * ポイント数で文字数を判定するため、FE 側でも同じ基準で数える必要がある場面で
+ * 使う。
+ *
+ * @example
+ * codePointLength("😀") // → 1（string.length は 2）
+ * codePointLength("あ") // → 1
+ * codePointLength("hello") // → 5
+ */
+export function codePointLength(s: string): number {
+  return Array.from(s).length;
+}
+
 export function formatDuration(ms: number | null): string {
   if (!ms) return "";
   const totalSeconds = Math.floor(ms / 1000);

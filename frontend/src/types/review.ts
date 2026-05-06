@@ -80,7 +80,18 @@ export interface UserReviewListResult {
   total: number;
 }
 
-export interface TimelineItem {
+/**
+ * 旧モデルの timeline アイテム（`{ rating, comment }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `types/comment.ts` の `TimelineItem`（comment ベース）を
+ * 使う。両者を併存させるため、旧側を `Old` プレフィックス付きにリネーム退避している。
+ * **podlog-workspace#59 の P-9 で削除予定**。
+ *
+ * BE の `/timeline` エンドポイントは既に新 comment ベースに切り替わっているため、
+ * 本型は実行時にはマッチしない（P-8 で UI を新型に置き換えるまで暫定）。型として
+ * ビルドを通す目的で残している。
+ */
+export interface OldTimelineItem {
   id: string;
   user: ReviewUser;
   episode: ReviewEpisode;
@@ -90,7 +101,14 @@ export interface TimelineItem {
   created_at: string;
 }
 
-export interface TimelineResult {
-  reviews: TimelineItem[];
+/**
+ * 旧モデルの timeline 結果（`{ reviews }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `types/comment.ts` の `TimelineResult`（`{ comments }` 形）
+ * を使う。両者を併存させるため、旧側を `Old` プレフィックス付きにリネーム退避して
+ * いる。**podlog-workspace#59 の P-9 で削除予定**。
+ */
+export interface OldTimelineResult {
+  reviews: OldTimelineItem[];
   total: number;
 }

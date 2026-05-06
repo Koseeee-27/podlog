@@ -3,7 +3,7 @@ import { z } from "zod";
 // 値バリデータ部品の名前は `ratingSchema` → `ratingValueSchema` にリネーム済み
 // （新モデル `lib/schemas/rating.ts` の `ratingSchema`（API 全体型）と
 // 衝突回避のため）。
-import { uuidSchema, datetimeSchema, ratingValueSchema, commentSchema } from "./common";
+import { uuidSchema, datetimeSchema, ratingValueSchema, commentBodySchema } from "./common";
 
 /** レビュー投稿者 */
 export const reviewUserSchema = z.object({
@@ -31,7 +31,7 @@ export type Review = z.infer<typeof reviewSchema>;
 /** レビュー作成リクエスト */
 export const createReviewRequestSchema = z.object({
   rating: ratingValueSchema,
-  comment: commentSchema.optional(),
+  comment: commentBodySchema.optional(),
 });
 
 export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
@@ -39,7 +39,7 @@ export type CreateReviewRequest = z.infer<typeof createReviewRequestSchema>;
 /** レビュー更新リクエスト */
 export const updateReviewRequestSchema = z.object({
   rating: ratingValueSchema,
-  comment: commentSchema.optional(),
+  comment: commentBodySchema.optional(),
 });
 
 export type UpdateReviewRequest = z.infer<typeof updateReviewRequestSchema>;
@@ -117,8 +117,14 @@ export const userReviewListResultSchema = z.object({
 
 export type UserReviewListResult = z.infer<typeof userReviewListResultSchema>;
 
-/** タイムラインアイテム */
-export const timelineItemSchema = z.object({
+/**
+ * 旧モデルのタイムラインアイテム（`{ rating, comment }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `lib/schemas/comment.ts` の `timelineItemSchema`
+ * （comment ベース）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。**podlog-workspace#59 の P-9 で削除予定**。
+ */
+export const oldTimelineItemSchema = z.object({
   id: uuidSchema,
   user: reviewUserSchema,
   episode: reviewEpisodeSchema,
@@ -128,12 +134,18 @@ export const timelineItemSchema = z.object({
   created_at: datetimeSchema,
 });
 
-export type TimelineItem = z.infer<typeof timelineItemSchema>;
+export type OldTimelineItem = z.infer<typeof oldTimelineItemSchema>;
 
-/** タイムライン結果 */
-export const timelineResultSchema = z.object({
-  reviews: z.array(timelineItemSchema),
+/**
+ * 旧モデルのタイムライン結果（`{ reviews }` 形）。
+ *
+ * 過渡期メモ: 新モデルでは `lib/schemas/comment.ts` の `timelineResultSchema`
+ * （`{ comments }` 形）を使う。両者を併存させるため、旧側を `Old` プレフィックス
+ * 付きにリネーム退避している。**podlog-workspace#59 の P-9 で削除予定**。
+ */
+export const oldTimelineResultSchema = z.object({
+  reviews: z.array(oldTimelineItemSchema),
   total: z.number(),
 });
 
-export type TimelineResult = z.infer<typeof timelineResultSchema>;
+export type OldTimelineResult = z.infer<typeof oldTimelineResultSchema>;
