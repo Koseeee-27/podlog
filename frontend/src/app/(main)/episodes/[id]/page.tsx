@@ -16,6 +16,7 @@ import { formatDuration, formatDate, stripHtmlTags } from "@/lib/utils";
 import ErrorBoundary from "@/components/ui/ErrorBoundary";
 import ListenButtonSection from "./ListenButtonSection";
 import RatingSectionWithAuth from "./RatingSectionWithAuth";
+import EpisodeCommentSection from "./EpisodeCommentSection";
 import type { EpisodeDetailResult } from "@/types/episode";
 
 interface EpisodePageProps {
@@ -163,7 +164,7 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
 
       <hr className="my-8 border-stone-200" />
 
-      {/* 評価セクション: データ取得中は Skeleton を表示。感想セクションは P-8 で追加 */}
+      {/* 評価セクション: コンパクトな星評価。データ取得中は Skeleton を表示 */}
       <div id="rating-section">
         <ErrorBoundary>
           <Suspense
@@ -176,6 +177,29 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
             }
           >
             <RatingSectionWithAuth episodeId={episode.id} />
+          </Suspense>
+        </ErrorBoundary>
+      </div>
+
+      {/*
+        感想セクション（P-8 で追加）: 評価セクションの下にメイン感想 UI を配置。
+        ErrorBoundary + Suspense で分離し、メインコンテンツの描画をブロックしない。
+        感想は 1 ユーザー複数件投稿可（rating と異なる）。
+      */}
+      <hr className="my-8 border-stone-200" />
+      <div id="comment-section">
+        <ErrorBoundary>
+          <Suspense
+            fallback={
+              <div className="space-y-3">
+                <div className="h-6 w-32 rounded bg-stone-200 animate-pulse" />
+                <div className="h-24 rounded bg-stone-100 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+                <div className="h-20 rounded bg-stone-100 animate-pulse" />
+              </div>
+            }
+          >
+            <EpisodeCommentSection episodeId={episode.id} />
           </Suspense>
         </ErrorBoundary>
       </div>
