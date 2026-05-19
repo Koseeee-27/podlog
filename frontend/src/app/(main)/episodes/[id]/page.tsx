@@ -185,18 +185,37 @@ export default async function EpisodePage({ params }: EpisodePageProps) {
         感想セクション（P-8 で追加）: 評価セクションの下にメイン感想 UI を配置。
         ErrorBoundary + Suspense で分離し、メインコンテンツの描画をブロックしない。
         感想は 1 ユーザー複数件投稿可（rating と異なる）。
+
+        Suspense fallback でも `episode.total_comments`（page で取得済み）を使って
+        見出し + 件数を即座に表示し、ストリーミング中もチラつかないようにする。
+        `<hr>` は section の外（評価セクションとの間）に置き、感想セクションが
+        エラー / 空のときに不自然な区切り線だけ残らないようにする。
       */}
       <hr className="my-8 border-stone-200" />
       <div id="comment-section">
         <ErrorBoundary>
           <Suspense
             fallback={
-              <div className="space-y-3">
-                <div className="h-6 w-32 rounded bg-stone-200 animate-pulse" />
-                <div className="h-24 rounded bg-stone-100 animate-pulse" />
-                <div className="h-20 rounded bg-stone-100 animate-pulse" />
-                <div className="h-20 rounded bg-stone-100 animate-pulse" />
-              </div>
+              <section aria-labelledby="comment-section-heading-fallback">
+                <div className="mb-4 flex items-center gap-3">
+                  <h2
+                    id="comment-section-heading-fallback"
+                    className="text-lg font-semibold text-stone-900"
+                  >
+                    感想
+                  </h2>
+                  {episode.total_comments > 0 && (
+                    <span className="text-sm text-stone-500">
+                      {episode.total_comments}件
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-3">
+                  <div className="h-24 rounded bg-stone-100 animate-pulse" />
+                  <div className="h-20 rounded bg-stone-100 animate-pulse" />
+                  <div className="h-20 rounded bg-stone-100 animate-pulse" />
+                </div>
+              </section>
             }
           >
             <EpisodeCommentSection episodeId={episode.id} />

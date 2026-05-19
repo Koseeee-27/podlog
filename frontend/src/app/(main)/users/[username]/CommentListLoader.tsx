@@ -17,6 +17,14 @@ import { PAGE_SIZE } from "./constants";
  *
  * 旧 `ReviewListLoader` は P-9 で削除予定。本 PR では参照を切るだけにとどめる
  * （`PublicProfileClient` 側で本 Loader を新規参照する）。
+ *
+ * エラー経路は 2 つに分かれる:
+ * - **初回 `use(promise)` 失敗**: throw が伝播して親の `ErrorBoundary`
+ *   （`PublicProfileClient.tsx`）で `<SectionError title="感想" />` を表示
+ * - **「もっと見る」失敗**: 取得済みリストは残したいので `useTransition` 内で
+ *   try/catch し、`<ErrorMessage>` をリスト下に表示
+ *
+ * この 2 経路は `ListeningHistoryLoader` / `RatingStatsLoader` と整合的。
  */
 export default function CommentListLoader({
   promise,

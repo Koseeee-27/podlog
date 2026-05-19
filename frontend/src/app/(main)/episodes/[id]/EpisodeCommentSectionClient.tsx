@@ -14,8 +14,7 @@ import { fetchEpisodeComments } from "@/lib/api/comments";
 import { getUserFriendlyErrorMessage } from "@/lib/utils";
 import type { Comment, EpisodeCommentItem } from "@/types/comment";
 import type { Viewer } from "@/lib/auth/getViewer";
-
-const PAGE_SIZE = 10;
+import { COMMENT_PAGE_SIZE } from "./constants";
 
 interface Props {
   episodeId: string;
@@ -89,6 +88,13 @@ export default function EpisodeCommentSectionClient({
    * サーバーから返る `Comment` には user 情報が含まれないため、viewer.profile から
    * `CommentUser` を組み立てる。avatar_url は User 型では `string | null` だが
    * `CommentUser` では `string?`（undefined）。null は undefined に正規化する。
+   *
+   * **viewer.profile のスナップショット依存**: ここで使う `display_name` /
+   * `avatar_url` は Server Component で `getViewer()` を呼んだ時点の値。投稿直後に
+   * 別タブでプロフィールを変更してから再度投稿すると、その時点の楽観反映では古い
+   * 表示名で残る（ページリロードで解消する）。**`viewer.profile.id === Comment.user_id`**
+   * の対応関係は BE の Profile.ID と Comment.UserID の規約に依存する（PodLog では
+   * Supabase UID を user_id として共有しているため一致する）。
    */
   function handleCreate(comment: Comment) {
     if (!isLoggedIn) return;
@@ -128,7 +134,18 @@ export default function EpisodeCommentSectionClient({
 
   // ----- 削除（2 段階）-------------------------------------------------------
 
+  /**
+   * 削除確定時の処理。
+   *
+   * - **同時実行ガード**: 既に削除 API を投げ中 (`pendingDeleteId !== null`) の場合は
+   *   早期 return。`MyCommentCard` 側でも `actionLoading` 中はボタンを disable して
+   *   いるが、二重防御として親側でもガードする（複数カード間の race も塞ぐ）。
+   * - **Server Action が throw する経路（ネットワーク断・シリアライズエラー等）**は
+   *   `try/catch` で受けて `actionError` を表示する。`deleteCommentAction` 内部の
+   *   catch を素通りした例外を UI に届ける役割。
+   */
   async function handleConfirmDelete(commentId: string) {
+    if (pendingDeleteId !== null) return;
     setPendingDeleteId(commentId);
     setActionError(null);
     try {
@@ -140,6 +157,10 @@ export default function EpisodeCommentSectionClient({
       } else {
         setActionError(result.error ?? "感想の削除に失敗しました");
       }
+    } catch (err) {
+      setActionError(
+        getUserFriendlyErrorMessage(err, "感想の削除に失敗しました"),
+      );
     } finally {
       setPendingDeleteId(null);
     }
@@ -149,15 +170,28 @@ export default function EpisodeCommentSectionClient({
 
   const hasMore = comments.length < total;
 
+  /**
+   * 「もっと見る」で次ページを取得する。
+   *
+   * - `offset = comments.length` で続きを取りに行く前提だが、楽観反映で先頭に
+   *   追加した自分の感想と、サーバー側 `revalidate: 0` で返ってくる感想が同じ
+   *   `id` で重複する可能性が理論上ある（複数タブ・複数ユーザーの並列投稿等）。
+   *   id ベースで dedupe するガードを 1 段入れて防御する。
+   * - `total` はサーバーの最新値で上書き（hasMore 判定を正確に保つ）。
+   */
   function handleLoadMore() {
     startLoadMore(async () => {
       try {
         setActionError(null);
         const data = await fetchEpisodeComments(episodeId, {
-          limit: PAGE_SIZE,
+          limit: COMMENT_PAGE_SIZE,
           offset: comments.length,
         });
-        setComments((prev) => [...prev, ...data.comments]);
+        setComments((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const fresh = data.comments.filter((c) => !existingIds.has(c.id));
+          return [...prev, ...fresh];
+        });
         setTotal(data.total);
       } catch (err) {
         setActionError(

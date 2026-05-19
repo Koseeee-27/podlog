@@ -1,9 +1,7 @@
 import { getEpisodeComments } from "@/lib/data/comments";
 import { getViewer, type Viewer } from "@/lib/auth/getViewer";
 import EpisodeCommentSectionClient from "./EpisodeCommentSectionClient";
-
-/** 初回サーバー取得件数。「もっと見る」のページサイズと揃える */
-const PAGE_SIZE = 10;
+import { COMMENT_PAGE_SIZE } from "./constants";
 
 /**
  * エピソード詳細ページの感想セクション（Server Component）。
@@ -21,6 +19,12 @@ const PAGE_SIZE = 10;
  *
  * `getEpisodeComments` は `revalidate: 0`（キャッシュなし、感想は頻繁に変わる）。
  * 取得失敗は呼び出し側（page.tsx の ErrorBoundary）に投げて握りつぶさない。
+ *
+ * 件数表示の二重化防止: 親 `page.tsx` の Suspense fallback で `episode.total_comments`
+ * を使って見出し + 件数を見せる構造になっているため、本セクション本体（ストリーミング
+ * 後に描画される側）は内部で `initialData.total` から件数を表示する。両者は理論上
+ * 同値だが、後者は「実際に取得したリスト」と整合的なため、投稿後の楽観反映で件数が
+ * 増減した場合も追随できる。
  */
 export default async function EpisodeCommentSection({
   episodeId,
@@ -28,7 +32,7 @@ export default async function EpisodeCommentSection({
   episodeId: string;
 }) {
   const [initialData, viewer] = await Promise.all([
-    getEpisodeComments(episodeId, PAGE_SIZE, 0),
+    getEpisodeComments(episodeId, COMMENT_PAGE_SIZE, 0),
     getViewer().catch<Viewer>((err) => {
       console.error(
         "[EpisodeCommentSection] getViewer failed, falling back to guest:",
