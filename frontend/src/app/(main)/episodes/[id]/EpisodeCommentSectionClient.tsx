@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
 import CommentForm from "@/components/comment/CommentForm";
 import CommentCard from "@/components/comment/CommentCard";
 import MyCommentCard from "@/components/comment/MyCommentCard";
+import LoginPromptButton from "@/components/ui/LoginPromptButton";
 import {
   createCommentAction,
   updateCommentAction,
@@ -85,16 +85,18 @@ export default function EpisodeCommentSectionClient({
   /**
    * 投稿成功時のコールバック。新しい comment をリスト先頭に追加して楽観的に反映する。
    *
-   * サーバーから返る `Comment` には user 情報が含まれないため、viewer.profile から
-   * `CommentUser` を組み立てる。avatar_url は User 型では `string | null` だが
-   * `CommentUser` では `string?`（undefined）。null は undefined に正規化する。
-   *
-   * **viewer.profile のスナップショット依存**: ここで使う `display_name` /
-   * `avatar_url` は Server Component で `getViewer()` を呼んだ時点の値。投稿直後に
-   * 別タブでプロフィールを変更してから再度投稿すると、その時点の楽観反映では古い
-   * 表示名で残る（ページリロードで解消する）。**`viewer.profile.id === Comment.user_id`**
-   * の対応関係は BE の Profile.ID と Comment.UserID の規約に依存する（PodLog では
-   * Supabase UID を user_id として共有しているため一致する）。
+   * - **`user.id` はサーバーが返す `comment.user_id` を使う**: サーバーの真実を
+   *   そのまま保持することで、`isMine` 判定（`c.user.id === myId`）や後続の編集/削除
+   *   UI が確実に整合する。`username` / `display_name` / `avatar_url` は `Comment` に
+   *   含まれないため、引き続き `viewer.profile` のスナップショットから補う。
+   * - **viewer.profile のスナップショット依存**: `display_name` / `avatar_url` は
+   *   Server Component で `getViewer()` を呼んだ時点の値。投稿直後に別タブで
+   *   プロフィールを変更してから再度投稿すると、その楽観反映では古い表示名で残る
+   *   （ページリロードで解消）。
+   * - `avatar_url` は User 型では `string | null`、`CommentUser` では `string?`
+   *   （undefined）。null は undefined に正規化する。
+   * - **直前のセクションエラー（もっと見る失敗等）をクリア**: 操作が成功したのに
+   *   赤字エラーが残り続けないよう `actionError` を null に戻す。
    */
   function handleCreate(comment: Comment) {
     if (!isLoggedIn) return;
@@ -102,7 +104,7 @@ export default function EpisodeCommentSectionClient({
     const newItem: EpisodeCommentItem = {
       id: comment.id,
       user: {
-        id: profile.id,
+        id: comment.user_id,
         username: profile.username,
         display_name: profile.display_name,
         avatar_url: profile.avatar_url ?? undefined,
@@ -111,6 +113,7 @@ export default function EpisodeCommentSectionClient({
       created_at: comment.created_at,
       updated_at: comment.updated_at,
     };
+    setActionError(null);
     setComments((prev) => [newItem, ...prev]);
     setTotal((prev) => prev + 1);
   }
@@ -119,9 +122,11 @@ export default function EpisodeCommentSectionClient({
 
   /**
    * 編集成功時のコールバック。該当 comment の body / updated_at を差し替え、
-   * 編集モードを抜ける。
+   * 編集モードを抜ける。直前のセクションエラーもクリアする（成功後に赤字が
+   * 残り続けないように）。
    */
   function handleUpdate(comment: Comment) {
+    setActionError(null);
     setComments((prev) =>
       prev.map((c) =>
         c.id === comment.id
@@ -217,22 +222,17 @@ export default function EpisodeCommentSectionClient({
         )}
       </div>
 
-      {/* 投稿フォーム / 未ログイン CTA */}
+      {/*
+        投稿フォーム / 未ログイン CTA。
+        未ログイン（guest / no_profile）時は共通の `LoginPromptButton` を表示する。
+        同一ページの評価セクション（EpisodeRatingSection）も同じ `LoginPromptButton`
+        を使っており、コンテンツ内 CTA の挙動・デザインを統一している。
+      */}
       <div className="mb-6">
         {createBound ? (
           <CommentForm action={createBound} onSuccess={handleCreate} />
         ) : (
-          <div className="rounded-lg border border-stone-200 bg-stone-50 p-4 text-center">
-            <p className="text-sm text-stone-600">
-              <Link
-                href="/login"
-                className="font-medium text-rose-600 hover:text-rose-700"
-              >
-                ログイン
-              </Link>
-              して感想を書きましょう
-            </p>
-          </div>
+          <LoginPromptButton label="ログインして感想を書く" />
         )}
       </div>
 

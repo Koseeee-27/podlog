@@ -11,7 +11,7 @@ const PAGE_SIZE = 20;
 interface TimelineLoadMoreProps {
   /** サーバーで取得済みの件数（追加読み込みの offset として使う） */
   initialCount: number;
-  /** サーバーで取得した感想総数（hasMore 判定に使う） */
+  /** サーバーで取得した感想総数（hasMore 判定の初期値に使う） */
   total: number;
 }
 
@@ -23,14 +23,21 @@ interface TimelineLoadMoreProps {
  * 切替。アイテム型も `OldTimelineItem` → `TimelineItem` に変更。
  *
  * UI 上の振る舞いは旧実装を踏襲（`useTransition` で連打防止 / 失敗時は赤字メッセージ）。
+ *
+ * `total` は state で持ち、追加取得のたびに `data.total` で更新する。これにより
+ * 追加読み込み中に他ユーザーが投稿して総数が増減しても hasMore 判定が古くならない
+ * （`CommentListLoader` / `EpisodeCommentSectionClient` と同じ流儀）。また、追加取得
+ * したページどうしで同じ id が混ざった場合（連打・キャッシュずれ等）に二重表示
+ * されないよう、`additionalComments` 内で id ベースの重複排除をかける。
  */
 export default function TimelineLoadMore({
   initialCount,
-  total,
+  total: initialTotal,
 }: TimelineLoadMoreProps) {
   const [additionalComments, setAdditionalComments] = useState<TimelineItem[]>(
     []
   );
+  const [total, setTotal] = useState(initialTotal);
   const [isLoadingMore, startLoadMore] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +52,12 @@ export default function TimelineLoadMore({
           limit: PAGE_SIZE,
           offset: loadedCount,
         });
-        setAdditionalComments((prev) => [...prev, ...data.comments]);
+        setAdditionalComments((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const fresh = data.comments.filter((c) => !existingIds.has(c.id));
+          return [...prev, ...fresh];
+        });
+        setTotal(data.total);
       } catch (err) {
         setError(
           getUserFriendlyErrorMessage(err, "追加読み込みに失敗しました")
