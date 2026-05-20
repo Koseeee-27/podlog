@@ -9,40 +9,40 @@ import { getUserFriendlyErrorMessage } from "@/lib/utils";
 const PAGE_SIZE = 20;
 
 interface TimelineLoadMoreProps {
-  /** サーバーで取得済みの件数（追加読み込みの offset として使う） */
-  initialCount: number;
+  /** サーバーで取得済みの初回感想一覧（全件 state の初期値） */
+  initialComments: TimelineItem[];
   /** サーバーで取得した感想総数（hasMore 判定の初期値に使う） */
-  total: number;
+  initialTotal: number;
 }
 
 /**
- * タイムラインの「もっと見る」用 Client Component。
+ * タイムラインの一覧表示 + 「もっと見る」用 Client Component。
  *
  * 評価/感想分離（podlog-workspace#59）の P-8 で、`fetchOldTimeline`
  * （`{ reviews }` 形）を `fetchTimeline`（`{ comments }` 形、`lib/api/comments.ts`）に
  * 切替。アイテム型も `OldTimelineItem` → `TimelineItem` に変更。
  *
- * UI 上の振る舞いは旧実装を踏襲（`useTransition` で連打防止 / 失敗時は赤字メッセージ）。
+ * **初回分も含めて全件を 1 つの state で管理・描画する**（`CommentListLoader` /
+ * `EpisodeCommentSectionClient` と同じパターン）。SC（`TimelineSection`）は初回取得と
+ * セクション枠だけを担当し、一覧描画と追加読み込みは本コンポーネントに一元化している。
+ * これにより:
+ * - offset ベースのページ境界ずれ（投稿/削除で発生）で初回分と追加分に同じ id が
+ *   返っても、`prev` ベースの id dedupe で二重表示を防げる
+ * - `total` を state で持ち追加取得のたびに `data.total` で更新するため、総数が
+ *   増減しても hasMore 判定が古くならない
  *
- * `total` は state で持ち、追加取得のたびに `data.total` で更新する。これにより
- * 追加読み込み中に他ユーザーが投稿して総数が増減しても hasMore 判定が古くならない
- * （`CommentListLoader` / `EpisodeCommentSectionClient` と同じ流儀）。また、追加取得
- * したページどうしで同じ id が混ざった場合（連打・キャッシュずれ等）に二重表示
- * されないよう、`additionalComments` 内で id ベースの重複排除をかける。
+ * UI 上の振る舞いは旧実装を踏襲（`useTransition` で連打防止 / 失敗時は赤字メッセージ）。
  */
 export default function TimelineLoadMore({
-  initialCount,
-  total: initialTotal,
+  initialComments,
+  initialTotal,
 }: TimelineLoadMoreProps) {
-  const [additionalComments, setAdditionalComments] = useState<TimelineItem[]>(
-    []
-  );
+  const [comments, setComments] = useState<TimelineItem[]>(initialComments);
   const [total, setTotal] = useState(initialTotal);
   const [isLoadingMore, startLoadMore] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  const loadedCount = initialCount + additionalComments.length;
-  const hasMore = loadedCount < total;
+  const hasMore = comments.length < total;
 
   const loadMore = useCallback(() => {
     startLoadMore(async () => {
@@ -50,9 +50,9 @@ export default function TimelineLoadMore({
         setError(null);
         const data = await fetchTimeline({
           limit: PAGE_SIZE,
-          offset: loadedCount,
+          offset: comments.length,
         });
-        setAdditionalComments((prev) => {
+        setComments((prev) => {
           const existingIds = new Set(prev.map((c) => c.id));
           const fresh = data.comments.filter((c) => !existingIds.has(c.id));
           return [...prev, ...fresh];
@@ -64,17 +64,15 @@ export default function TimelineLoadMore({
         );
       }
     });
-  }, [loadedCount]);
+  }, [comments.length]);
 
   return (
     <>
-      {additionalComments.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-          {additionalComments.map((item) => (
-            <TimelineCard key={item.id} item={item} />
-          ))}
-        </div>
-      )}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        {comments.map((item) => (
+          <TimelineCard key={item.id} item={item} />
+        ))}
+      </div>
 
       {error && (
         <p className="mt-4 text-sm text-red-600 text-center">{error}</p>

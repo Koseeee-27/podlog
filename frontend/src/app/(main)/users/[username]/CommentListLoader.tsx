@@ -71,7 +71,15 @@ function CommentListWithLoadMore({
           limit: PAGE_SIZE,
           offset: comments.length,
         });
-        setComments((prev) => [...prev, ...data.comments]);
+        // offset ベースページングはページ境界がずれる（別タブで同ユーザーが
+        // 投稿/削除した等）と初回分と追加分に同じ id が返り二重表示になる。
+        // 全件 state の prev を基準に id dedupe してから append する
+        // （EpisodeCommentSectionClient / TimelineLoadMore と同じ流儀）。
+        setComments((prev) => {
+          const existingIds = new Set(prev.map((c) => c.id));
+          const fresh = data.comments.filter((c) => !existingIds.has(c.id));
+          return [...prev, ...fresh];
+        });
         setTotal(data.total);
       } catch (err) {
         setError(getUserFriendlyErrorMessage(err));
