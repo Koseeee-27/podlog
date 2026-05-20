@@ -7,6 +7,7 @@ import {
   getUserListeningRecords,
 } from "@/lib/data/users";
 import { getUserRatingsStats } from "@/lib/data/ratings";
+import { getUserComments } from "@/lib/data/comments";
 import {
   buildMetadataDescription,
   defaultOpenGraph,
@@ -123,14 +124,17 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
   //  - `getUserFavoritePodcasts`: `revalidate: 0`（お気に入りはユーザー操作で頻繁に変わる）
   //  - `getUserListeningRecords`: `revalidate: 0`（聴取履歴も同様）
   //  - `getUserRatingsStats`:    `revalidate: 60`（集計値は短期キャッシュで負荷軽減）
+  //  - `getUserComments`:        `revalidate: 0`（感想もユーザー操作で頻繁に変わる）
   //
   // 評価/感想分離（podlog-workspace#59）の P-6 で、旧 `getUserReviews`（個別レビュー
   // 一覧、`revalidate: 0`）を `getUserRatingsStats`（統計サマリー、`revalidate: 60`）に
   // 置き換えた。screens.md の評価サマリーセクション（個別レコードは表示しない方針）に
   // 整合させている。
+  // P-8（本 PR）では、独立した「感想セクション」を `getUserComments` で追加する。
   const favoritesPromise = getUserFavoritePodcasts(username);
   const recordsPromise = getUserListeningRecords(username, PAGE_SIZE, 0);
   const ratingsStatsPromise = getUserRatingsStats(username);
+  const commentsPromise = getUserComments(username, PAGE_SIZE, 0);
 
   return (
     <PublicProfileClient
@@ -140,6 +144,7 @@ export default async function PublicProfilePage({ params }: PublicProfilePagePro
       favoritesPromise={favoritesPromise}
       recordsPromise={recordsPromise}
       ratingsStatsPromise={ratingsStatsPromise}
+      commentsPromise={commentsPromise}
     />
   );
 }

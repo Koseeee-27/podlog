@@ -1,29 +1,46 @@
+import { getTimeline } from "@/lib/data/comments";
+import TimelineLoadMore from "./TimelineLoadMore";
+
+/** 初回サーバー取得件数。「もっと見る」のページサイズと揃える */
+const INITIAL_LIMIT = 20;
+
 /**
- * 旧 review ベースのタイムラインセクション。
+ * トップページのタイムラインセクション（新 comment ベース、Server Component）。
  *
- * **暫定: 本セクションは P-8 まで非表示**。
+ * 評価/感想分離（podlog-workspace#59）の P-8 で、暫定の `return null` 実装
+ * （podlog#411 系で導入）から本実装に切替。
  *
- * BE の `/timeline` は podlog#391 系で新 comment ベースのレスポンス
- * （`{ comments, total }`）に切り替わっており、旧 `OldTimelineResult`
- * （`{ reviews, total }`）として受け取ると `data.reviews` が常に `undefined`
- * になる。そのまま動かすと:
+ * **本 PR では UI の本格再設計を行わず、データソースを新 `getTimeline`
+ * （`lib/data/comments.ts`、`{ comments, total }` 形）に切替えるだけ**。
+ * 見出しを「みんなのレビュー」→「みんなの感想」に変更し、TimelineCard も
+ * 新 `TimelineItem` 型で動かす。X 風カード化等の UI 本格再設計は
+ * podlog-workspace#60 に委譲。
  *
- * - 「まだレビューがありません」EmptyState の誤表示
- * - `loadedCount` が増えず「もっと見る」が永遠に押せる無限ループ
+ * 一覧の描画と「もっと見る」のページネーションは `TimelineLoadMore`（Client）に
+ * 一元化している。SC では初回取得とセクション枠（見出し）だけを担当し、初回分も
+ * 含めて `TimelineLoadMore` が全件 state で管理する（`CommentListLoader` /
+ * `EpisodeCommentSectionClient` と同じパターン）。これにより offset ベースの
+ * ページ境界ずれによる重複表示を `prev` ベース dedupe で防げる。
  *
- * という UX 障害が起きるため、podlog-workspace#59 の P-8（FE 感想 UI 統合）で
- * comment ベースの新 TimelineSection に置き換えるまで、本コンポーネントは
- * `return null` で非表示にする。
- *
- * `app/(main)/page.tsx` 側の `<TimelineSection />` 呼び出しは保持し、P-8 で
- * 中身だけ差し替える設計（呼び出し側を巻き込まない）。P-8 では:
- * 1. `lib/data/comments.ts::getTimeline`（新 DAL）に切り替え
- * 2. `TimelineCard` を `EpisodeCommentItem` ベースの新カードに置き換え
- * 3. `TimelineLoadMore` も `fetchTimeline`（新 client API）に切り替え
- *
- * 暫定対応中は呼び出し側の props も渡されないため、引数を取らない形にしている
- * （P-8 で `headingLevel` 等のシグネチャを必要に応じて再設計する）。
+ * `getTimeline` は `revalidate: 60` + `["timeline"]` タグでキャッシュされる。
+ * 感想投稿時に `revalidateTag("timeline")` で個別無効化可能。
  */
 export default async function TimelineSection() {
-  return null;
+  const data = await getTimeline(INITIAL_LIMIT, 0);
+
+  // 感想が 0 件のときはセクション自体を出さない（旧実装の挙動を踏襲）。
+  if (data.comments.length === 0) {
+    return null;
+  }
+
+  return (
+    <section>
+      <h2 className="text-lg font-semibold text-stone-900 mb-4">みんなの感想</h2>
+
+      <TimelineLoadMore
+        initialComments={data.comments}
+        initialTotal={data.total}
+      />
+    </section>
+  );
 }

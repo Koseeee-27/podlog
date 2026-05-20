@@ -20,7 +20,11 @@ export interface EpisodeWithStats extends Episode {
 }
 
 /** エピソード詳細 API（GET /episodes/:id）のレスポンス型。
- * バックエンドが omitempty で返すフィールドは optional にしている。 */
+ * バックエンドが omitempty で返すフィールドは optional にしている。
+ *
+ * `total_comments` は評価/感想分離（podlog-workspace#59）の P-8 で追加。BE は
+ * podlog#404 で既に返しており、感想セクション見出しで「感想 N件」のように
+ * 表示するために使う。 */
 export interface EpisodeDetailResult {
   id: string;
   title: string;
@@ -33,6 +37,7 @@ export interface EpisodeDetailResult {
   podcast: EpisodePodcastInfo;
   average_rating: number;
   total_ratings: number;
+  total_comments: number;
 }
 
 export interface EpisodePodcastInfo {

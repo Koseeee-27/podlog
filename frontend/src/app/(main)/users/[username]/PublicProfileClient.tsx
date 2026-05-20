@@ -11,11 +11,13 @@ import AdminBadge from "@/components/ui/AdminBadge";
 import type { UserPublicProfile, FavoritePodcastListResult } from "@/types/user";
 import type { ListeningRecordListResult } from "@/types/listening-record";
 import type { UserRatingsStatsResult } from "@/types/rating";
+import type { UserCommentListResult } from "@/types/comment";
 import type { Viewer } from "@/lib/auth/getViewer";
 import { SectionSkeleton, SectionError } from "./SectionFallbacks";
 import FavoritePodcastsLoader from "./FavoritePodcastsLoader";
 import ListeningHistoryLoader from "./ListeningHistoryLoader";
 import RatingStatsLoader from "./RatingStatsLoader";
+import CommentListLoader from "./CommentListLoader";
 
 interface PublicProfileClientProps {
   username: string;
@@ -30,6 +32,12 @@ interface PublicProfileClientProps {
    * 「個別の評価レコードは表示しない」方針に整合。
    */
   ratingsStatsPromise: Promise<UserRatingsStatsResult>;
+  /**
+   * ユーザーの公開感想一覧 Promise。評価/感想分離（podlog-workspace#59）の P-8 で
+   * 追加。評価サマリーとは独立したセクションとして「感想」を表示する
+   * （`screens.md` のユーザーページ仕様に従う）。
+   */
+  commentsPromise: Promise<UserCommentListResult>;
 }
 
 export default function PublicProfileClient({
@@ -39,6 +47,7 @@ export default function PublicProfileClient({
   favoritesPromise,
   recordsPromise,
   ratingsStatsPromise,
+  commentsPromise,
 }: PublicProfileClientProps) {
   const isOwnProfile =
     viewer.status === "authenticated" && viewer.profile.username === username;
@@ -97,6 +106,12 @@ export default function PublicProfileClient({
       <ErrorBoundary key={`ratings-${username}`} fallback={<SectionError title="評価サマリー" />}>
         <Suspense fallback={<SectionSkeleton title="評価サマリー" />}>
           <RatingStatsLoader promise={ratingsStatsPromise} />
+        </Suspense>
+      </ErrorBoundary>
+
+      <ErrorBoundary key={`comments-${username}`} fallback={<SectionError title="感想" />}>
+        <Suspense fallback={<SectionSkeleton title="感想" />}>
+          <CommentListLoader promise={commentsPromise} username={username} />
         </Suspense>
       </ErrorBoundary>
     </div>
