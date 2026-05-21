@@ -151,7 +151,7 @@ cd frontend && npm install && npm run dev
 - フォロー・フォロワーとフォロー中タイムライン
 - 番組推薦（共起ベースのレコメンド）
 - 通知機能
-- radiko 連携
+- Spotify, radiko 連携
 
 ---
 
