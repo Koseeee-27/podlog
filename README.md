@@ -7,9 +7,13 @@
 
 **Live Demo: https://podlog.netlify.app/**
 
-<!-- 要編集: トップ画面のスクリーンショット or 操作 GIF を 1 枚置くと印象が大きく変わります。
-     おすすめ: docs/screenshots/home.png を追加して、下のコメントを外してください。 -->
-<!-- ![PodLog のスクリーンショット](docs/screenshots/home.png) -->
+<img width="1649" height="1001" alt="image" src="https://github.com/user-attachments/assets/4bef53e9-bbe2-4ee7-a0aa-6076058b20e5" />
+<img width="1657" height="998" alt="image" src="https://github.com/user-attachments/assets/03a1cbcd-d98f-4915-9eec-af25f7e4f04d" />
+<img width="1536" height="993" alt="image" src="https://github.com/user-attachments/assets/a5376e87-9b1f-4bbc-a62c-a571bcc7e760" />
+<img width="1499" height="970" alt="image" src="https://github.com/user-attachments/assets/181514ee-1d27-4427-8d03-5317d9d912a8" />
+
+
+
 
 ---
 
@@ -147,7 +151,6 @@ cd frontend && npm install && npm run dev
 
 ## 今後の展望
 
-<!-- 要編集: 実際にやりたいことに差し替えてください。下は requirements.md の Phase 2 候補です。 -->
 - フォロー・フォロワーとフォロー中タイムライン
 - 番組推薦（共起ベースのレコメンド）
 - 通知機能
